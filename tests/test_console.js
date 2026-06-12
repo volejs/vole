@@ -1,0 +1,10 @@
+console.log("before group");
+console.group("group 1");
+console.log("inside group 1");
+console.group("group 2");
+console.log("inside group 2");
+console.groupEnd();
+console.log("back to group 1");
+console.groupEnd();
+console.log("after group");
+console.trace("my trace");

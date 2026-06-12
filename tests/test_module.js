@@ -1,0 +1,10 @@
+console.log("line 1");
+console.log("line 2");
+console.log("line 3");
+console.log("performance:", performance.now());
+console.log("btoa:", btoa("hi"));
+console.log("atob:", atob("aGk="));
+const err = new DOMException("test", "TypeError");
+console.log("DOMException:", err.name, err.message);
+reportError(new Error("reported"));
+console.log("=== done ===");
