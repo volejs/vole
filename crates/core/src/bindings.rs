@@ -26,6 +26,7 @@ pub fn registry() -> ExtensionRegistry {
         .with(crate::raw_bindings::path::init)
         .with(crate::raw_bindings::http_server::init)
         .with(crate::raw_bindings::streams::init)
+        .with(crate::global_bindings::compression::init)
         .with(crate::raw_bindings::tcp::init)
         .with(crate::raw_bindings::udp::init)
         .with(crate::raw_bindings::socket::init)
@@ -62,13 +63,6 @@ pub async fn init(ctx: &AsyncContext) -> Result<(), rquickjs::Error> {
 /// globalThis before the shims run.
 pub async fn init_async(ctx: &AsyncContext) -> Result<(), rquickjs::Error> {
     ctx.async_with(async |ctx| {
-        let compression = rquickjs::Module::evaluate(
-            ctx.clone(),
-            "std:compression",
-            include_str!("../../modules/src/js_shims/compression.js"),
-        )?;
-        compression.finish::<()>()?;
-
         let wasm = rquickjs::Module::evaluate(
             ctx.clone(),
             "std:wasm",

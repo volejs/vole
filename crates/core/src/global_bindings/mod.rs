@@ -1,5 +1,6 @@
 pub mod base64;
 pub mod blob;
+pub mod compression;
 pub mod dom_exception;
 pub mod encoding;
 pub mod events;
