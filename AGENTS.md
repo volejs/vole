@@ -134,6 +134,8 @@ Located in `crates/core/src/global_bindings/`. Registered via `ExtensionRegistry
 - **Phase 0**: console, timers, performance, base64, DOMException, reportError
 - **Phase 1**: TextEncoder/TextDecoder, URL/URLSearchParams, Blob/File, structuredClone
 - **Phase 2**: Event/EventTarget/CustomEvent, MessageEvent/MessageChannel/MessagePort, AbortController/AbortSignal
+  - `EventTarget` is implemented as a Rust native class; `globalThis` is wired to behave as an `EventTarget` instance.
+  - Runtime errors and unhandled Promise rejections are dispatched as `"error"` / `"unhandledrejection"` / `"rejectionhandled"` events on `globalThis`.
 - **Phase 3**: fetch/Request/Response/Headers/FormData
 - **Phase 4**: Web Crypto (`crypto`, `CryptoKey`, `SubtleCrypto`)
 - **Streams**: ReadableStream/WritableStream/TransformStream and readers/writers/controllers

@@ -36,14 +36,14 @@ WinterTC 要求以下 53 个接口全部暴露在 `globalThis` 上。
 
 ### 1.2 HTML
 
-| Interface               | Status | Notes                                                                                                      |
-| ----------------------- | :----: | ---------------------------------------------------------------------------------------------------------- |
-| `CustomEvent`           |   ✅   | —                                                                                                          |
-| `ErrorEvent`            |   ➖   | HTML 错误事件类型；vole 计划让 `globalThis` 实现 `EventTarget`，通过 `"error"` 事件替代                    |
-| `MessageChannel`        |   ✅   | —                                                                                                          |
-| `MessageEvent`          |   ✅   | —                                                                                                          |
-| `MessagePort`           |   ⚠️   | 已实现，但仅能在同一 VM 内通信；无 Worker / 跨线程能力                                                     |
-| `PromiseRejectionEvent` |   ➖   | HTML Promise 拒绝事件类型；计划通过 `globalThis` 的 `"unhandledrejection"` / `"rejectionhandled"` 事件替代 |
+| Interface               | Status | Notes                                                                                                  |
+| ----------------------- | :----: | ------------------------------------------------------------------------------------------------------ |
+| `CustomEvent`           |   ✅   | —                                                                                                      |
+| `ErrorEvent`            |   ➖   | HTML 错误事件类型；已用 `globalThis` 的 `"error"` 事件替代，`reportError()` 与未捕获异常均会派发该事件 |
+| `MessageChannel`        |   ✅   | —                                                                                                      |
+| `MessageEvent`          |   ✅   | —                                                                                                      |
+| `MessagePort`           |   ⚠️   | 已实现，但仅能在同一 VM 内通信；无 Worker / 跨线程能力                                                 |
+| `PromiseRejectionEvent` |   ➖   | HTML Promise 拒绝事件类型；已用 `globalThis` 的 `"unhandledrejection"` / `"rejectionhandled"` 事件替代 |
 
 ### 1.3 WEBIDL
 
@@ -156,23 +156,23 @@ WinterTC 要求以下方法和属性暴露在 `globalThis` 上。
 
 ### 2.1 HTML
 
-| API                    | Status | Notes                                                                                                                                                  |
-| ---------------------- | :----: | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `globalThis`           |   ✅   | —                                                                                                                                                      |
-| `atob()`               |   ✅   | —                                                                                                                                                      |
-| `btoa()`               |   ✅   | —                                                                                                                                                      |
-| `clearTimeout()`       |   ✅   | —                                                                                                                                                      |
-| `clearInterval()`      |   ✅   | —                                                                                                                                                      |
-| `navigator.userAgent`  |   ➖   | 浏览器 `navigator` 概念；vole 已移除 `navigator`，运行时信息通过 `process` / `std:env` 等机制提供                                                      |
-| `onerror`              |   ➖   | HTML `Window` / `WorkerGlobalScope` 事件处理器；vole 不实现该属性，错误通过 `"error"` 事件在 `globalThis` 上派发（待 `globalThis` 实现 `EventTarget`） |
-| `onunhandledrejection` |   ➖   | 同上；通过 `"unhandledrejection"` 事件替代                                                                                                             |
-| `onrejectionhandled`   |   ➖   | 同上；通过 `"rejectionhandled"` 事件替代                                                                                                               |
-| `queueMicrotask()`     |   ✅   | —                                                                                                                                                      |
-| `reportError()`        |   ✅   | —                                                                                                                                                      |
-| `self`                 |   ➖   | 浏览器 / Worker 全局别名概念；vole 已移除 `self`，统一使用 `globalThis`                                                                                |
-| `setTimeout()`         |   ✅   | 含 args 传递                                                                                                                                           |
-| `setInterval()`        |   ✅   | 含 args 传递                                                                                                                                           |
-| `structuredClone()`    |   ✅   | serde_json 往返，无 transfer list                                                                                                                      |
+| API                    | Status | Notes                                                                                                            |
+| ---------------------- | :----: | ---------------------------------------------------------------------------------------------------------------- |
+| `globalThis`           |   ✅   | —                                                                                                                |
+| `atob()`               |   ✅   | —                                                                                                                |
+| `btoa()`               |   ✅   | —                                                                                                                |
+| `clearTimeout()`       |   ✅   | —                                                                                                                |
+| `clearInterval()`      |   ✅   | —                                                                                                                |
+| `navigator.userAgent`  |   ➖   | 浏览器 `navigator` 概念；vole 已移除 `navigator`，运行时信息通过 `process` / `std:env` 等机制提供                |
+| `onerror`              |   ➖   | HTML `Window` / `WorkerGlobalScope` 事件处理器；vole 不实现该属性，错误通过 `"error"` 事件在 `globalThis` 上派发 |
+| `onunhandledrejection` |   ➖   | HTML 属性；已用 `globalThis` 的 `"unhandledrejection"` 事件替代                                                  |
+| `onrejectionhandled`   |   ➖   | HTML 属性；已用 `globalThis` 的 `"rejectionhandled"` 事件替代                                                    |
+| `queueMicrotask()`     |   ✅   | —                                                                                                                |
+| `reportError()`        |   ✅   | 派发 `"error"` 事件；若未被取消默认行为则回退打印                                                                |
+| `self`                 |   ➖   | 浏览器 / Worker 全局别名概念；vole 已移除 `self`，统一使用 `globalThis`                                          |
+| `setTimeout()`         |   ✅   | 含 args 传递                                                                                                     |
+| `setInterval()`        |   ✅   | 含 args 传递                                                                                                     |
+| `structuredClone()`    |   ✅   | serde_json 往返，无 transfer list                                                                                |
 
 ### 2.2 Fetch
 
@@ -217,6 +217,18 @@ WinterTC **不要求**运行时支持 Web Workers。
 
 如果 vole 未来引入 Worker，也会使用**运行时错误/进程机制**处理异常与未捕获拒绝，而不是暴露 HTML 事件模型中的 `onerror` / `onunhandledrejection` / `PromiseRejectionEvent`。
 
+> **注意：`MessagePort` / `MessageChannel`**
+>
+> 当前实现的 `MessagePort` / `MessageChannel` 仅用于同 VM 内的兼容性占位：消息通过 `setTimeout` 在同一 JavaScript 堆中传递，没有真正的跨上下文能力。
+> 一旦 vole 决定支持 Worker，这两者必须重写——最可能改成 Rust native 实现，以支持：
+>
+> - 跨 Worker / 跨线程的 channel 通信；
+> - `postMessage` 的 transferable 语义（如 `ArrayBuffer`、`MessagePort` 的所有权转移）；
+> - 跨 VM 的 structured clone 序列化/反序列化；
+> - `MessageChannel` 两个端口分别属于不同全局作用域。
+>
+> 因此现在保留它们只是作为过渡，Worker 实现时是必改项。
+
 ---
 
 ## 4. 汇总
@@ -226,7 +238,7 @@ WinterTC **不要求**运行时支持 Web Workers。
 | Common Interfaces         |  53  |    37     |      3      |    11     |        2         |
 | Common Methods/Properties |  25  |    16     |      0      |     4     |        5         |
 
-> **结论**：vole 不是浏览器，因此不会 100% 复刻 WinterTC 中所有浏览器/DOM/HTML 概念。➖ 项属于被明确替代或抛弃的浏览器概念；⚠️ 项是已用运行时概念保留但未来可进一步弱化的兼容层；❌ 项才是需要在纯运行时模型下继续补齐的能力（主要集中在 Streams 字节流、Compression 全局暴露、Performance 构造函数、WASM 缺失类型与方法，以及 `globalThis` 作为 `EventTarget` 的错误事件机制）。
+> **结论**：vole 不是浏览器，因此不会 100% 复刻 WinterTC 中所有浏览器/DOM/HTML 概念。➖ 项属于被明确替代或抛弃的浏览器概念；⚠️ 项是已用运行时概念保留但未来可进一步弱化的兼容层；❌ 项才是需要在纯运行时模型下继续补齐的能力（主要集中在 Streams 字节流、Compression 全局暴露、Performance 构造函数、WASM 缺失类型与方法）。
 
 ---
 
@@ -240,9 +252,10 @@ WinterTC **不要求**运行时支持 Web Workers。
    - 补齐 WASM `Global` / `Table` / `Exception` / `LinkError` / `validate()` / `JSTag`
    - 补齐 Streams 字节流三件套
 3. **P3（架构级 / 待设计）**
-   - 让 `globalThis` 实现 `EventTarget`，通过 `"error"` / `"unhandledrejection"` / `"rejectionhandled"` 事件替代 `ErrorEvent` / `PromiseRejectionEvent` / `onerror` 等浏览器概念
    - `WebAssembly.compileStreaming()` / `instantiateStreaming()`：设计为接受非浏览器字节源（ReadableStream / Promise<bytes> / AsyncIterable）
    - `DOMException`：保留兼容，未来如定义运行时通用 `Exception`，可将 `DOMException` 作为别名暴露
-4. **已移除 / 已抛弃**
+4. **已完成（已从优先级列表移除）**
+   - ✅ 让 `globalThis` 实现 `EventTarget`，通过 `"error"` / `"unhandledrejection"` / `"rejectionhandled"` 事件替代 `ErrorEvent` / `PromiseRejectionEvent` / `onerror` 等浏览器概念
+5. **已移除 / 已抛弃**
    - `navigator` 全局对象（含 `navigator.userAgent`）
    - `self` / `window` 全局别名

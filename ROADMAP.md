@@ -126,15 +126,15 @@
 | `Blob` |  ⚠️  | text/arrayBuffer/slice/bytes；`stream()` 返回的伪流尚未实现为真正 `ReadableStream` |
 | `File` |  ✅  | 继承 Blob + name/lastModified/webkitRelativePath                                   |
 
-### 1.8 Events — ⚠️ 部分实现
+### 1.8 Events — ✅ 事件系统已完成
 
-| API                                               | 状态 | 说明                                               |
-| ------------------------------------------------- | :--: | -------------------------------------------------- |
-| `Event` / `EventTarget` / `CustomEvent`           |  ✅  | 完整事件系统                                       |
-| `MessageEvent` / `MessageChannel` / `MessagePort` |  ⚠️  | 消息通道（`MessagePort` 仅同 VM 内可用）           |
-| `AbortController` / `AbortSignal`                 |  ✅  | abort/timeout/any/throwIfAborted                   |
-| `ErrorEvent`                                      |  ❌  | 全局 `error` 事件类型                              |
-| `PromiseRejectionEvent`                           |  ❌  | `unhandledrejection` / `rejectionhandled` 事件类型 |
+| API                                               | 状态 | 说明                                                                                                     |
+| ------------------------------------------------- | :--: | -------------------------------------------------------------------------------------------------------- |
+| `Event` / `EventTarget` / `CustomEvent`           |  ✅  | `EventTarget` 为 Rust native 实现；`globalThis` 已挂载为 `EventTarget`                                   |
+| `MessageEvent` / `MessageChannel` / `MessagePort` |  ⚠️  | 消息通道（`MessagePort` 仅同 VM 内可用）                                                                 |
+| `AbortController` / `AbortSignal`                 |  ✅  | abort/timeout/any/throwIfAborted                                                                         |
+| `ErrorEvent`                                      |  ➖  | HTML 错误事件类型；已通过 `globalThis` 的 `"error"` 事件替代                                             |
+| `PromiseRejectionEvent`                           |  ➖  | HTML Promise 拒绝事件类型；已通过 `globalThis` 的 `"unhandledrejection"` / `"rejectionhandled"` 事件替代 |
 
 ### 1.9 Timers — ✅ 完成
 
