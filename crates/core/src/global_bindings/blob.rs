@@ -119,6 +119,11 @@ fn blob_array_buffer<'js>(ctx: Ctx<'js>, this: This<Class<'js, Blob>>) -> Result
     this.try_borrow()?.array_buffer(ctx)
 }
 
+fn blob_bytes<'js>(ctx: Ctx<'js>, this: This<Class<'js, Blob>>) -> Result<TypedArray<'js, u8>> {
+    let buf = this.try_borrow()?.array_buffer(ctx.clone())?;
+    TypedArray::new_copy(ctx, <ArrayBuffer<'js> as AsRef<[u8]>>::as_ref(&buf))
+}
+
 fn blob_slice<'js>(
     this: This<Class<'js, Blob>>,
     start: Option<i64>,
@@ -149,6 +154,7 @@ impl<'js> JsClass<'js> for Blob {
             "arrayBuffer",
             rquickjs::Function::new(ctx.clone(), blob_array_buffer)?,
         )?;
+        proto.set("bytes", rquickjs::Function::new(ctx.clone(), blob_bytes)?)?;
         proto.set("slice", rquickjs::Function::new(ctx.clone(), blob_slice)?)?;
         Ok(Some(proto))
     }
@@ -324,9 +330,6 @@ pub fn init(ctx: &Ctx) -> Result<()> {
                 });
             };
 
-            Blob.prototype.bytes = function() {
-                return Promise.resolve(new Uint8Array(this.arrayBuffer()));
-            };
         })();
     "#,
     )?;

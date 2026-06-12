@@ -1,8 +1,8 @@
 use percent_encoding::{percent_decode_str, utf8_percent_encode, NON_ALPHANUMERIC};
 use rquickjs::{
     class::{JsClass, Trace, Tracer, Writable},
-    function::This,
-    Class, Constructor, Ctx, FromJs, IntoJs, Object, Result, Value,
+    function::{Opt, This},
+    Class, Constructor, Ctx, FromJs, Function, IntoJs, Object, Result, Value,
 };
 use url::Url;
 
@@ -44,6 +44,17 @@ impl<'js> FromJs<'js> for UrlWrapper {
         Ok(Class::<UrlWrapper>::from_js(ctx, value)?
             .try_borrow()?
             .clone())
+    }
+}
+
+fn url_can_parse(url: String, base: Opt<String>) -> bool {
+    UrlWrapper::new(&url, base.0.as_deref()).is_ok()
+}
+
+fn url_parse<'js>(ctx: Ctx<'js>, url: String, base: Opt<String>) -> Result<Value<'js>> {
+    match UrlWrapper::new(&url, base.0.as_deref()) {
+        Ok(u) => u.into_js(&ctx),
+        Err(_) => Ok(Value::new_null(ctx)),
     }
 }
 
@@ -356,6 +367,11 @@ pub fn init(ctx: &Ctx) -> Result<()> {
     Class::<UrlWrapper>::define(&ctx.globals())?;
     Class::<UrlSearchParams>::define(&ctx.globals())?;
 
+    // URL static methods
+    let url_ctor: Function = ctx.globals().get("URL")?;
+    url_ctor.set("canParse", Function::new(ctx.clone(), url_can_parse))?;
+    url_ctor.set("parse", Function::new(ctx.clone(), url_parse))?;
+
     // Convert URL prototype methods to getters
     ctx.eval::<(), _>(r#"
         (function() {
@@ -471,30 +487,6 @@ pub fn init(ctx: &Ctx) -> Result<()> {
                 }
             }
             globalThis.URLPattern = URLPattern;
-
-            URL.canParse = function(url, base) {
-                try {
-                    if (base === undefined) {
-                        new URL(url);
-                    } else {
-                        new URL(url, base);
-                    }
-                    return true;
-                } catch {
-                    return false;
-                }
-            };
-            URL.parse = function(url, base) {
-                try {
-                    if (base === undefined) {
-                        return new URL(url);
-                    } else {
-                        return new URL(url, base);
-                    }
-                } catch {
-                    return null;
-                }
-            };
         })();
     "#,
     )?;
