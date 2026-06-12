@@ -1,10 +1,10 @@
-use rquickjs::{loader::Loader, Ctx, Error, Module, module::ModuleDef};
+use rquickjs::{loader::Loader, module::ModuleDef, Ctx, Error, Module};
 use std::collections::HashMap;
 
 use crate::{
-    MODULE_COMPRESSION, MODULE_CONSOLE, MODULE_CRYPTO, MODULE_ENV, MODULE_FFI, MODULE_FILE, MODULE_FS, MODULE_HTTP, MODULE_PATH,
-    MODULE_PREFIX, MODULE_PROCESS, MODULE_SHELL, MODULE_SOCKET, MODULE_SPAWN, MODULE_TCP, MODULE_TEST, MODULE_TRACING, MODULE_UDP,
-    MODULE_WASM,
+    MODULE_CONSOLE, MODULE_CRYPTO, MODULE_ENV, MODULE_FFI, MODULE_FILE, MODULE_FS, MODULE_HTTP,
+    MODULE_PATH, MODULE_PREFIX, MODULE_PROCESS, MODULE_SHELL, MODULE_SOCKET, MODULE_SPAWN,
+    MODULE_TCP, MODULE_TEST, MODULE_TRACING, MODULE_UDP, MODULE_WASM,
 };
 
 /// Allows the embedding runtime to provide Rust-native modules for `std:*` specifiers.
@@ -22,10 +22,6 @@ impl ModuleLoader {
     pub fn new() -> Self {
         let mut std_modules = HashMap::new();
 
-        std_modules.insert(
-            MODULE_COMPRESSION.to_string(),
-            include_str!("js_shims/compression.js").to_string(),
-        );
         std_modules.insert(
             MODULE_CONSOLE.to_string(),
             include_str!("js_shims/console.js").to_string(),
@@ -95,7 +91,10 @@ impl ModuleLoader {
             include_str!("js_shims/wasm.js").to_string(),
         );
 
-        ModuleLoader { std_modules, native_providers: Vec::new() }
+        ModuleLoader {
+            std_modules,
+            native_providers: Vec::new(),
+        }
     }
 
     /// Register a provider for Rust-native modules (e.g. `std:path`).
@@ -105,7 +104,10 @@ impl ModuleLoader {
     }
 
     /// Convenience helper to register a single native module by specifier.
-    pub fn register_native_module<D: ModuleDef + Send + Sync + 'static>(&mut self, name: impl Into<String>) {
+    pub fn register_native_module<D: ModuleDef + Send + Sync + 'static>(
+        &mut self,
+        name: impl Into<String>,
+    ) {
         let name = name.into();
         struct DefNativeModuleProvider<D> {
             name: String,
@@ -136,15 +138,18 @@ impl ModuleLoader {
         Module::declare(ctx.clone(), name, source.as_bytes().to_vec())
     }
 
-    fn load_file<'js>(&self, ctx: &Ctx<'js>, name: &str, format: Option<String>) -> Result<Module<'js>, Error> {
+    fn load_file<'js>(
+        &self,
+        ctx: &Ctx<'js>,
+        name: &str,
+        format: Option<String>,
+    ) -> Result<Module<'js>, Error> {
         let source = std::fs::read_to_string(name).map_err(|_| Error::Exception)?;
 
         let module_source = if let Some(fmt) = format {
-            transform_config(&source, &fmt)
-                .map_err(|_| Error::Exception)?
+            transform_config(&source, &fmt).map_err(|_| Error::Exception)?
         } else if is_typescript_file(name) {
-            transpile_typescript(&source, name)
-                .map_err(|_| Error::Exception)?
+            transpile_typescript(&source, name).map_err(|_| Error::Exception)?
         } else {
             source.into_bytes()
         };
@@ -154,7 +159,12 @@ impl ModuleLoader {
 }
 
 impl Loader for ModuleLoader {
-    fn load<'js>(&mut self, ctx: &Ctx<'js>, name: &str, attrs: Option<rquickjs::loader::ImportAttributes<'js>>) -> Result<Module<'js>, Error> {
+    fn load<'js>(
+        &mut self,
+        ctx: &Ctx<'js>,
+        name: &str,
+        attrs: Option<rquickjs::loader::ImportAttributes<'js>>,
+    ) -> Result<Module<'js>, Error> {
         if self.is_std_module(name) {
             for provider in &self.native_providers {
                 if let Some(result) = provider.load(ctx, name) {
@@ -179,7 +189,10 @@ fn is_typescript_file(path: &str) -> bool {
         || path_lower.ends_with(".tsx")
 }
 
-pub fn transpile_typescript(source: &str, path: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+pub fn transpile_typescript(
+    source: &str,
+    path: &str,
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     use oxc_allocator::Allocator;
     use oxc_codegen::Codegen;
     use oxc_parser::Parser;
@@ -256,9 +269,9 @@ fn toml_value_to_json(value: toml::Value) -> serde_json::Value {
     match value {
         toml::Value::String(s) => serde_json::Value::String(s),
         toml::Value::Integer(i) => serde_json::Value::Number(i.into()),
-        toml::Value::Float(f) => serde_json::Value::Number(
-            serde_json::Number::from_f64(f).unwrap_or(0.into()),
-        ),
+        toml::Value::Float(f) => {
+            serde_json::Value::Number(serde_json::Number::from_f64(f).unwrap_or(0.into()))
+        }
         toml::Value::Boolean(b) => serde_json::Value::Bool(b),
         toml::Value::Datetime(d) => serde_json::Value::String(d.to_string()),
         toml::Value::Array(arr) => {
@@ -330,7 +343,10 @@ fn parse_ini(content: &str) -> serde_json::Value {
         if line.starts_with('[') && line.ends_with(']') {
             current_section = line[1..line.len() - 1].trim().to_string();
             if !root.contains_key(&current_section) {
-                root.insert(current_section.clone(), serde_json::Value::Object(serde_json::Map::new()));
+                root.insert(
+                    current_section.clone(),
+                    serde_json::Value::Object(serde_json::Map::new()),
+                );
             }
         } else if let Some(eq_pos) = line.find('=') {
             let key = line[..eq_pos].trim();
@@ -339,7 +355,8 @@ fn parse_ini(content: &str) -> serde_json::Value {
 
             if current_section.is_empty() {
                 root.insert(key.to_string(), value);
-            } else if let Some(serde_json::Value::Object(section)) = root.get_mut(&current_section) {
+            } else if let Some(serde_json::Value::Object(section)) = root.get_mut(&current_section)
+            {
                 section.insert(key.to_string(), value);
             }
         }

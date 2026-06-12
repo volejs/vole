@@ -1,6 +1,5 @@
 pub const MODULE_PREFIX: &str = "std:";
 
-pub const MODULE_COMPRESSION: &str = "std:compression";
 pub const MODULE_CONSOLE: &str = "std:console";
 pub const MODULE_CRYPTO: &str = "std:crypto";
 pub const MODULE_ENV: &str = "std:env";
@@ -22,7 +21,6 @@ pub const MODULE_WASM: &str = "std:wasm";
 /// Public `std:*` modules that are allowed to import internal `std:raw:*` native modules.
 /// This list is the source of truth for resolver access control.
 pub const PUBLIC_STD_MODULES: &[&str] = &[
-    MODULE_COMPRESSION,
     MODULE_CONSOLE,
     MODULE_CRYPTO,
     MODULE_ENV,
