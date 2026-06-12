@@ -41,4 +41,7 @@ export class DecompressionStream {
   }
 }
 
+globalThis.CompressionStream = CompressionStream;
+globalThis.DecompressionStream = DecompressionStream;
+
 export default { CompressionStream, DecompressionStream };
