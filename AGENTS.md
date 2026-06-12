@@ -104,7 +104,7 @@ known runtime differences.
 
 | Module      | Prefix          | Status      | Notes                                                      |
 | ----------- | --------------- | ----------- | ---------------------------------------------------------- |
-| compression | std:compression | Implemented | `CompressionStream` / `DecompressionStream`                |
+| compression | std:compression | Implemented | `CompressionStream` / `DecompressionStream`，已全局暴露    |
 | console     | std:console     | Implemented |                                                            |
 | crypto      | std:crypto      | Implemented | Web Crypto shim                                            |
 | env         | std:env         | Implemented |                                                            |
@@ -132,7 +132,7 @@ known runtime differences.
 Located in `crates/core/src/global_bindings/`. Registered via `ExtensionRegistry` builder in `bindings/mod.rs`.
 
 - **Phase 0**: console, timers, performance, base64, DOMException, reportError
-- **Phase 1**: TextEncoder/TextDecoder, URL/URLSearchParams, Blob/File, structuredClone
+- **Phase 1**: TextEncoder/TextDecoder, URL/URLSearchParams, Blob/File, CompressionStream/DecompressionStream, structuredClone
 - **Phase 2**: Event/EventTarget/CustomEvent, MessageEvent/MessageChannel/MessagePort, AbortController/AbortSignal
   - `EventTarget` is implemented as a Rust native class; `globalThis` is wired to behave as an `EventTarget` instance.
   - Runtime errors and unhandled Promise rejections are dispatched as `"error"` / `"unhandledrejection"` / `"rejectionhandled"` events on `globalThis`.
@@ -140,7 +140,9 @@ Located in `crates/core/src/global_bindings/`. Registered via `ExtensionRegistry
 - **Phase 4**: Web Crypto (`crypto`, `CryptoKey`, `SubtleCrypto`)
 - **Streams**: ReadableStream/WritableStream/TransformStream and readers/writers/controllers
 - **Encoding streams**: TextEncoderStream/TextDecoderStream
-- **Compression**: implemented in `std:compression`; not yet exposed globally
+- **Compression**: `CompressionStream` / `DecompressionStream` globally exposed
+- **Performance**: `Performance` constructor exposed; `performance` is an instance of `Performance`
+- **Blob**: `Blob.prototype.stream()` returns a real `ReadableStream`
 - **WebAssembly**: global `WebAssembly` object based on `wasmi` (partial: missing `Global` / `Table` / `Tag` / `Exception` / `LinkError` and streaming API)
 
 > 详细状态（含缺失接口列表）见 `ROADMAP.md` 第一章。

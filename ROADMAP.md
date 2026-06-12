@@ -78,9 +78,9 @@
 | `TransformStreamDefaultController` |  ✅  |  —   | enqueue()/error()/terminate()                    |
 | `ByteLengthQueuingStrategy`        |  ✅  |  —   | 简单策略对象                                     |
 | `CountQueuingStrategy`             |  ✅  |  —   | 简单策略对象                                     |
-| `ReadableByteStreamController`     |  ❌  |  P3  | 字节流 controller                                |
-| `ReadableStreamBYOBReader`         |  ❌  |  P3  | 字节流 reader                                    |
-| `ReadableStreamBYOBRequest`        |  ❌  |  P3  | 字节流请求对象                                   |
+| `ReadableByteStreamController`     |  ❌  |  P1  | 字节流 controller                                |
+| `ReadableStreamBYOBReader`         |  ❌  |  P1  | 字节流 reader                                    |
+| `ReadableStreamBYOBRequest`        |  ❌  |  P1  | 字节流请求对象                                   |
 
 ### 1.4 Encoding — ✅ 基本完成
 
@@ -91,14 +91,14 @@
 | `TextEncoderStream` |  ✅  | —                               | 基于 TransformStream 实现 |
 | `TextDecoderStream` |  ✅  | —                               | 基于 TransformStream 实现 |
 
-### 1.5 Compression — ⚠️ 部分实现
+### 1.5 Compression — ✅ 完成
 
-> `CompressionStream` / `DecompressionStream` 已在 `std:compression` 模块实现，但**未暴露为全局对象**，不符合 WinterTC 对全局接口的要求。
+> `CompressionStream` / `DecompressionStream` 已作为全局对象暴露，底层基于 `TransformStream` + flate2。
 
-| API                   | 状态 | 计划 | 说明                                                                                   |
-| --------------------- | :--: | :--: | -------------------------------------------------------------------------------------- |
-| `CompressionStream`   |  ⚠️  |  P3  | gzip/deflate/deflate-raw，基于 TransformStream + flate2，当前由 `std:compression` 暴露 |
-| `DecompressionStream` |  ⚠️  |  P3  | gzip/deflate/deflate-raw，基于 TransformStream + flate2，当前由 `std:compression` 暴露 |
+| API                   | 状态 | 计划 | 说明                                                    |
+| --------------------- | :--: | :--: | ------------------------------------------------------- |
+| `CompressionStream`   |  ✅  |  —   | gzip/deflate/deflate-raw，基于 TransformStream + flate2 |
+| `DecompressionStream` |  ✅  |  —   | gzip/deflate/deflate-raw，基于 TransformStream + flate2 |
 
 ### 1.6 Crypto — ✅ 基本完成
 
@@ -121,10 +121,10 @@
 
 ### 1.7 Binary — ⚠️ 部分实现
 
-| API    | 状态 | 说明                                                                               |
-| ------ | :--: | ---------------------------------------------------------------------------------- |
-| `Blob` |  ⚠️  | text/arrayBuffer/slice/bytes；`stream()` 返回的伪流尚未实现为真正 `ReadableStream` |
-| `File` |  ✅  | 继承 Blob + name/lastModified/webkitRelativePath                                   |
+| API    | 状态 | 说明                                                                      |
+| ------ | :--: | ------------------------------------------------------------------------- |
+| `Blob` |  ✅  | text/arrayBuffer/slice/bytes/stream；`stream()` 返回真正 `ReadableStream` |
+| `File` |  ✅  | 继承 Blob + name/lastModified/webkitRelativePath                          |
 
 ### 1.8 Events — ✅ 事件系统已完成
 
@@ -146,14 +146,14 @@
 
 ### 1.10 Utilities — ⚠️ 部分实现
 
-| API               | 状态 | 说明                                                                                                                                                                  |
-| ----------------- | :--: | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `console`         |  ✅  | log/info/warn/error/debug/time/timeEnd/timeLog/assert/table/count/countReset/dir/group/groupEnd/groupCollapsed/trace/clear/memory/profile/profileEnd/timeStamp/dirxml |
-| `performance`     |  ⚠️  | now/timeOrigin/mark/measure/clearMarks/clearMeasures/getEntries/getEntriesByType/getEntriesByName/toJSON；`Performance` 构造函数未暴露                                |
-| `structuredClone` |  ✅  | serde_json 往返，无 transfer list                                                                                                                                     |
-| `atob` / `btoa`   |  ✅  | —                                                                                                                                                                     |
-| `DOMException`    |  ✅  | 含标准 code 映射                                                                                                                                                      |
-| `reportError`     |  ✅  | —                                                                                                                                                                     |
+| API               | 状态 | 说明                                                                                                                                                                              |
+| ----------------- | :--: | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `console`         |  ✅  | log/info/warn/error/debug/time/timeEnd/timeLog/assert/table/count/countReset/dir/group/groupEnd/groupCollapsed/trace/clear/memory/profile/profileEnd/timeStamp/dirxml             |
+| `performance`     |  ✅  | now/timeOrigin/mark/measure/clearMarks/clearMeasures/getEntries/getEntriesByType/getEntriesByName/toJSON；`Performance` 构造函数已暴露，`performance instanceof Performance` 为真 |
+| `structuredClone` |  ✅  | serde_json 往返，无 transfer list                                                                                                                                                 |
+| `atob` / `btoa`   |  ✅  | —                                                                                                                                                                                 |
+| `DOMException`    |  ✅  | 含标准 code 映射                                                                                                                                                                  |
+| `reportError`     |  ✅  | —                                                                                                                                                                                 |
 
 ### 1.11 WebAssembly — ⚠️ 部分实现
 
@@ -176,9 +176,9 @@
 
 > **WinterTC 对齐小结**：
 >
-> - 53 个 Common Interfaces 中，约 39 个已完整实现，11 个缺失，3 个部分实现（Compression、URLPattern、MessagePort/performance 类）。
+> - 53 个 Common Interfaces 中，40 个已完整实现，8 个缺失，2 个部分实现（URLPattern、MessagePort）。
 > - Common Methods/Properties 基本覆盖；WASM streaming API (`compileStreaming`/`instantiateStreaming`/`validate`/`JSTag`) 仍缺失。
-> - 下一阶段重点：全局暴露 CompressionStream、补齐 `Performance` 构造函数、补齐 WASM 缺失接口、修复 `Blob.stream()`。
+> - 下一阶段重点：补齐 Streams 字节流三件套、补齐 WASM 缺失接口。
 
 ---
 

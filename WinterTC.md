@@ -69,15 +69,15 @@ WinterTC 要求以下 53 个接口全部暴露在 `globalThis` 上。
 
 | Interface | Status | Notes                                                                                      |
 | --------- | :----: | ------------------------------------------------------------------------------------------ |
-| `Blob`    |   ⚠️   | text/arrayBuffer/slice/bytes；`stream()` 返回的是伪流，不是真正 `ReadableStream`           |
+| `Blob`    |   ✅   | text/arrayBuffer/slice/bytes/stream；`stream()` 返回真正 `ReadableStream`                  |
 | `File`    |   ✅   | 继承 Blob + name/lastModified/webkitRelativePath；保留以兼容 fetch FormData / 文件上传场景 |
 
 ### 1.7 Compression
 
-| Interface             | Status | Notes                                                                                                                   |
-| --------------------- | :----: | ----------------------------------------------------------------------------------------------------------------------- |
-| `CompressionStream`   |   ❌   | 能力已实现，但未作为全局 `CompressionStream` 暴露；纯运行时下应直接挂到 `globalThis`，而非仅通过 `std:compression` 模块 |
-| `DecompressionStream` |   ❌   | 同上                                                                                                                    |
+| Interface             | Status | Notes              |
+| --------------------- | :----: | ------------------ |
+| `CompressionStream`   |   ✅   | 已作为全局对象暴露 |
+| `DecompressionStream` |   ✅   | 已作为全局对象暴露 |
 
 ### 1.8 Streams
 
@@ -129,9 +129,9 @@ WinterTC 要求以下 53 个接口全部暴露在 `globalThis` 上。
 
 ### 1.13 High-Resolution Time
 
-| Interface     | Status | Notes                                                                                |
-| ------------- | :----: | ------------------------------------------------------------------------------------ |
-| `Performance` |   ❌   | `performance` 全局对象已实现；`Performance` 类/构造函数未暴露，需补齐以符合 WinterTC |
+| Interface     | Status | Notes                                                                                              |
+| ------------- | :----: | -------------------------------------------------------------------------------------------------- |
+| `Performance` |   ✅   | `performance` 全局对象 + `Performance` 构造函数均已暴露；`performance instanceof Performance` 为真 |
 
 ### 1.14 WebAssembly
 
@@ -235,27 +235,27 @@ WinterTC **不要求**运行时支持 Web Workers。
 
 | 类别                      | 总数 | ✅ 已实现 | ⚠️ 部分实现 | ❌ 未实现 | ➖ 不适用/已替代 |
 | ------------------------- | :--: | :-------: | :---------: | :-------: | :--------------: |
-| Common Interfaces         |  53  |    37     |      3      |    11     |        2         |
+| Common Interfaces         |  53  |    40     |      2      |     8     |        2         |
 | Common Methods/Properties |  25  |    16     |      0      |     4     |        5         |
 
-> **结论**：vole 不是浏览器，因此不会 100% 复刻 WinterTC 中所有浏览器/DOM/HTML 概念。➖ 项属于被明确替代或抛弃的浏览器概念；⚠️ 项是已用运行时概念保留但未来可进一步弱化的兼容层；❌ 项才是需要在纯运行时模型下继续补齐的能力（主要集中在 Streams 字节流、Compression 全局暴露、Performance 构造函数、WASM 缺失类型与方法）。
+> **结论**：vole 不是浏览器，因此不会 100% 复刻 WinterTC 中所有浏览器/DOM/HTML 概念。➖ 项属于被明确替代或抛弃的浏览器概念；⚠️ 项是已用运行时概念保留但未来可进一步弱化的兼容层（目前仅剩 `MessagePort` 的同 VM 占位实现，以及基于正则的 `URLPattern` shim）；❌ 项才是需要在纯运行时模型下继续补齐的能力（主要集中在 Streams 字节流三件套与 WASM 缺失类型与方法）。
 
 ---
 
 ## 5. 推荐补齐优先级
 
 1. **P1（高）**
-   - 全局暴露 `CompressionStream` / `DecompressionStream`
-   - 暴露 `Performance` 构造函数
-   - 修复 `Blob.stream()` 返回真正 `ReadableStream`
+   - 补齐 Streams 字节流三件套（`ReadableByteStreamController`、`ReadableStreamBYOBReader`、`ReadableStreamBYOBRequest`）
 2. **P2（中）**
    - 补齐 WASM `Global` / `Table` / `Exception` / `LinkError` / `validate()` / `JSTag`
-   - 补齐 Streams 字节流三件套
 3. **P3（架构级 / 待设计）**
    - `WebAssembly.compileStreaming()` / `instantiateStreaming()`：设计为接受非浏览器字节源（ReadableStream / Promise<bytes> / AsyncIterable）
    - `DOMException`：保留兼容，未来如定义运行时通用 `Exception`，可将 `DOMException` 作为别名暴露
 4. **已完成（已从优先级列表移除）**
    - ✅ 让 `globalThis` 实现 `EventTarget`，通过 `"error"` / `"unhandledrejection"` / `"rejectionhandled"` 事件替代 `ErrorEvent` / `PromiseRejectionEvent` / `onerror` 等浏览器概念
+   - ✅ 全局暴露 `CompressionStream` / `DecompressionStream`
+   - ✅ 暴露 `Performance` 构造函数
+   - ✅ 修复 `Blob.stream()` 返回真正 `ReadableStream`
 5. **已移除 / 已抛弃**
    - `navigator` 全局对象（含 `navigator.userAgent`）
    - `self` / `window` 全局别名
