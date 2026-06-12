@@ -1,0 +1,34 @@
+[package]
+name = "vole-runtime"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rquickjs = { version = "0.12", features = ["futures", "loader"] }
+vole-module = { path = "../modules" }
+thiserror = "1.0"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "process", "fs"] }
+reqwest = "0.12"
+axum = "0.8"
+base64 = "0.22"
+sha1 = { version = "0.10", features = ["oid"] }
+sha2 = { version = "0.10", features = ["oid"] }
+hmac = "0.12"
+aes = "0.8"
+cbc = { version = "0.1", features = ["alloc"] }
+aes-gcm = "0.10"
+cipher = "0.4"
+rand = "0.8"
+getrandom = "0.2"
+rquickjs-serde = "0.6.1"
+url = "2.5"
+percent-encoding = "2.3"
+serde_json = "1.0"
+flate2 = "1.0"
+tracing = "0.1"
+libffi = { version = "4.1", features = ["system"] }
+libloading = "0.8"
+wasmi = "2.0.0-beta.2"
+rsa = { version = "0.9", features = ["getrandom"] }
+pkcs8 = { version = "0.10", features = ["encryption"] }
+spki = "0.7"
