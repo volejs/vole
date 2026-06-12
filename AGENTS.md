@@ -140,7 +140,7 @@ Located in `crates/core/src/global_bindings/`. Registered via `ExtensionRegistry
 - **Phase 4**: Web Crypto (`crypto`, `CryptoKey`, `SubtleCrypto`)
 - **Streams**: ReadableStream/WritableStream/TransformStream and readers/writers/controllers
 - **Encoding streams**: TextEncoderStream/TextDecoderStream
-- **Compression**: `CompressionStream` / `DecompressionStream` globally exposed
+- **Compression**: `CompressionStream` / `DecompressionStream` are global bindings defined in `global_bindings/compression.rs`; no `std:compression` shim module
 - **Performance**: `Performance` constructor exposed; `performance` is an instance of `Performance`
 - **Blob**: `Blob.prototype.stream()` returns a real `ReadableStream`
 - **WebAssembly**: global `WebAssembly` object based on `wasmi` (partial: missing `Global` / `Table` / `Tag` / `Exception` / `LinkError` and streaming API)
