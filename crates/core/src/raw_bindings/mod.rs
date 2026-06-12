@@ -8,7 +8,6 @@ pub mod http_server;
 pub mod path;
 pub mod process;
 pub mod socket;
-pub mod streams;
 pub mod tcp;
 pub mod tracing;
 pub mod udp;

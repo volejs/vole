@@ -7,6 +7,7 @@ pub mod events;
 pub mod fetch;
 pub mod performance;
 pub mod report_error;
+pub mod streams;
 pub mod structured_clone;
 pub mod timers;
 pub mod url;

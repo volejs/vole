@@ -25,7 +25,7 @@ pub fn registry() -> ExtensionRegistry {
         .with(crate::raw_bindings::fs::init)
         .with(crate::raw_bindings::path::init)
         .with(crate::raw_bindings::http_server::init)
-        .with(crate::raw_bindings::streams::init)
+        .with(crate::global_bindings::streams::init)
         .with(crate::global_bindings::compression::init)
         .with(crate::raw_bindings::tcp::init)
         .with(crate::raw_bindings::udp::init)
