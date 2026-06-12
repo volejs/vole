@@ -1,7 +1,7 @@
 use rquickjs::{
     class::{JsClass, Trace, Tracer, Writable},
     function::This,
-    Array, ArrayBuffer, Class, Constructor, Ctx, Object, Result, TypedArray, Value, IntoJs, FromJs,
+    Array, ArrayBuffer, Class, Constructor, Ctx, FromJs, IntoJs, Object, Result, TypedArray, Value,
 };
 
 // --- Blob ---
@@ -13,7 +13,11 @@ pub struct Blob {
 }
 
 impl Blob {
-    fn new<'js>(ctx: &Ctx<'js>, parts: Option<Value<'js>>, options: Option<Object<'js>>) -> Result<Self> {
+    fn new<'js>(
+        ctx: &Ctx<'js>,
+        parts: Option<Value<'js>>,
+        options: Option<Object<'js>>,
+    ) -> Result<Self> {
         let mime_type = options
             .as_ref()
             .and_then(|o| o.get::<&str, String>("type").ok())
@@ -47,7 +51,12 @@ impl Blob {
         ArrayBuffer::new_copy(ctx, &self.data)
     }
 
-    fn slice(&self, start: Option<i64>, end: Option<i64>, content_type: Option<String>) -> Result<Blob> {
+    fn slice(
+        &self,
+        start: Option<i64>,
+        end: Option<i64>,
+        content_type: Option<String>,
+    ) -> Result<Blob> {
         let len = self.data.len() as i64;
         let start = start.unwrap_or(0).clamp(0, len) as usize;
         let end = end.unwrap_or(len).clamp(0, len) as usize;
@@ -110,11 +119,20 @@ fn blob_array_buffer<'js>(ctx: Ctx<'js>, this: This<Class<'js, Blob>>) -> Result
     this.try_borrow()?.array_buffer(ctx)
 }
 
-fn blob_slice<'js>(this: This<Class<'js, Blob>>, start: Option<i64>, end: Option<i64>, content_type: Option<String>) -> Result<Blob> {
+fn blob_slice<'js>(
+    this: This<Class<'js, Blob>>,
+    start: Option<i64>,
+    end: Option<i64>,
+    content_type: Option<String>,
+) -> Result<Blob> {
     this.try_borrow()?.slice(start, end, content_type)
 }
 
-fn blob_constructor<'js>(ctx: Ctx<'js>, parts: rquickjs::function::Opt<Value<'js>>, options: rquickjs::function::Opt<Object<'js>>) -> Result<Blob> {
+fn blob_constructor<'js>(
+    ctx: Ctx<'js>,
+    parts: rquickjs::function::Opt<Value<'js>>,
+    options: rquickjs::function::Opt<Object<'js>>,
+) -> Result<Blob> {
     Blob::new(&ctx, parts.0, options.0)
 }
 
@@ -127,16 +145,16 @@ impl<'js> JsClass<'js> for Blob {
         proto.set("size", rquickjs::Function::new(ctx.clone(), blob_size)?)?;
         proto.set("type", rquickjs::Function::new(ctx.clone(), blob_type)?)?;
         proto.set("text", rquickjs::Function::new(ctx.clone(), blob_text)?)?;
-        proto.set("arrayBuffer", rquickjs::Function::new(ctx.clone(), blob_array_buffer)?)?;
+        proto.set(
+            "arrayBuffer",
+            rquickjs::Function::new(ctx.clone(), blob_array_buffer)?,
+        )?;
         proto.set("slice", rquickjs::Function::new(ctx.clone(), blob_slice)?)?;
         Ok(Some(proto))
     }
 
     fn constructor(ctx: &Ctx<'js>) -> Result<Option<Constructor<'js>>> {
-        let constr = Constructor::new_class::<Blob, _, _>(
-            ctx.clone(),
-            blob_constructor,
-        )?;
+        let constr = Constructor::new_class::<Blob, _, _>(ctx.clone(), blob_constructor)?;
         Ok(Some(constr))
     }
 }
@@ -151,7 +169,12 @@ pub struct File {
 }
 
 impl File {
-    fn new<'js>(ctx: &Ctx<'js>, parts: Option<Value<'js>>, name: String, options: Option<Object<'js>>) -> Result<Self> {
+    fn new<'js>(
+        ctx: &Ctx<'js>,
+        parts: Option<Value<'js>>,
+        name: String,
+        options: Option<Object<'js>>,
+    ) -> Result<Self> {
         let blob = Blob::new(ctx, parts, options.clone())?;
         let last_modified = options
             .as_ref()
@@ -162,7 +185,11 @@ impl File {
                     .unwrap_or_default()
                     .as_millis() as i64
             });
-        Ok(Self { blob, name, last_modified })
+        Ok(Self {
+            blob,
+            name,
+            last_modified,
+        })
     }
 }
 
@@ -210,11 +237,21 @@ fn file_array_buffer<'js>(ctx: Ctx<'js>, this: This<Class<'js, File>>) -> Result
     this.try_borrow()?.blob.array_buffer(ctx)
 }
 
-fn file_slice<'js>(this: This<Class<'js, File>>, start: Option<i64>, end: Option<i64>, content_type: Option<String>) -> Result<Blob> {
+fn file_slice<'js>(
+    this: This<Class<'js, File>>,
+    start: Option<i64>,
+    end: Option<i64>,
+    content_type: Option<String>,
+) -> Result<Blob> {
     this.try_borrow()?.blob.slice(start, end, content_type)
 }
 
-fn file_constructor<'js>(ctx: Ctx<'js>, parts: rquickjs::function::Opt<Value<'js>>, name: String, options: rquickjs::function::Opt<Object<'js>>) -> Result<File> {
+fn file_constructor<'js>(
+    ctx: Ctx<'js>,
+    parts: rquickjs::function::Opt<Value<'js>>,
+    name: String,
+    options: rquickjs::function::Opt<Object<'js>>,
+) -> Result<File> {
     File::new(&ctx, parts.0, name, options.0)
 }
 
@@ -225,20 +262,23 @@ impl<'js> JsClass<'js> for File {
     fn prototype(ctx: &Ctx<'js>) -> Result<Option<Object<'js>>> {
         let proto = Object::new(ctx.clone())?;
         proto.set("name", rquickjs::Function::new(ctx.clone(), file_name)?)?;
-        proto.set("lastModified", rquickjs::Function::new(ctx.clone(), file_last_modified)?)?;
+        proto.set(
+            "lastModified",
+            rquickjs::Function::new(ctx.clone(), file_last_modified)?,
+        )?;
         proto.set("size", rquickjs::Function::new(ctx.clone(), file_size)?)?;
         proto.set("type", rquickjs::Function::new(ctx.clone(), file_type)?)?;
         proto.set("text", rquickjs::Function::new(ctx.clone(), file_text)?)?;
-        proto.set("arrayBuffer", rquickjs::Function::new(ctx.clone(), file_array_buffer)?)?;
+        proto.set(
+            "arrayBuffer",
+            rquickjs::Function::new(ctx.clone(), file_array_buffer)?,
+        )?;
         proto.set("slice", rquickjs::Function::new(ctx.clone(), file_slice)?)?;
         Ok(Some(proto))
     }
 
     fn constructor(ctx: &Ctx<'js>) -> Result<Option<Constructor<'js>>> {
-        let constr = Constructor::new_class::<File, _, _>(
-            ctx.clone(),
-            file_constructor,
-        )?;
+        let constr = Constructor::new_class::<File, _, _>(ctx.clone(), file_constructor)?;
         Ok(Some(constr))
     }
 }
@@ -248,7 +288,8 @@ pub fn init(ctx: &Ctx) -> Result<()> {
     Class::<File>::define(&ctx.globals())?;
 
     // Convert Blob prototype methods to getters
-    ctx.eval::<(), _>(r#"
+    ctx.eval::<(), _>(
+        r#"
         (function() {
             const wrapGetter = (proto, name) => {
                 const fn = proto[name];
@@ -272,28 +313,23 @@ pub fn init(ctx: &Ctx) -> Result<()> {
 
             Blob.prototype.stream = function() {
                 var self = this;
-                return {
-                    getReader: function() {
-                        var consumed = false;
-                        return {
-                            read: function() {
-                                if (consumed) {
-                                    return Promise.resolve({ done: true, value: undefined });
-                                }
-                                consumed = true;
-                                var buf = self.arrayBuffer();
-                                return Promise.resolve({ done: false, value: new Uint8Array(buf) });
-                            }
-                        };
+                // ReadableStream is defined later in the init sequence; deferring
+                // the lookup until .stream() is called avoids ordering issues.
+                return new ReadableStream({
+                    start: function(controller) {
+                        var buf = self.arrayBuffer();
+                        controller.enqueue(new Uint8Array(buf));
+                        controller.close();
                     }
-                };
+                });
             };
 
             Blob.prototype.bytes = function() {
                 return Promise.resolve(new Uint8Array(this.arrayBuffer()));
             };
         })();
-    "#)?;
+    "#,
+    )?;
 
     Ok(())
 }

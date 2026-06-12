@@ -1,5 +1,5 @@
-use rquickjs::{Array, Ctx, Function, Object, Result};
 use rquickjs::function::Opt;
+use rquickjs::{Array, Ctx, Function, Object, Result};
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
@@ -53,12 +53,48 @@ pub fn init(ctx: &Ctx) -> Result<()> {
     perf.set("mark", Function::new(ctx.clone(), perf_mark))?;
     perf.set("measure", Function::new(ctx.clone(), perf_measure))?;
     perf.set("clearMarks", Function::new(ctx.clone(), perf_clear_marks))?;
-    perf.set("clearMeasures", Function::new(ctx.clone(), perf_clear_measures))?;
+    perf.set(
+        "clearMeasures",
+        Function::new(ctx.clone(), perf_clear_measures),
+    )?;
     perf.set("toJSON", Function::new(ctx.clone(), perf_to_json))?;
     perf.set("getEntries", Function::new(ctx.clone(), perf_get_entries))?;
-    perf.set("getEntriesByType", Function::new(ctx.clone(), perf_get_entries_by_type))?;
-    perf.set("getEntriesByName", Function::new(ctx.clone(), perf_get_entries_by_name))?;
+    perf.set(
+        "getEntriesByType",
+        Function::new(ctx.clone(), perf_get_entries_by_type),
+    )?;
+    perf.set(
+        "getEntriesByName",
+        Function::new(ctx.clone(), perf_get_entries_by_name),
+    )?;
     ctx.globals().set("performance", perf)?;
+
+    // Expose the Performance constructor so `new Performance()` and
+    // `performance instanceof Performance` work as expected.
+    ctx.eval::<(), _>(r#"
+        (function() {
+            class Performance {
+                constructor() {}
+                now() { return performance.now(); }
+                mark(name) { return performance.mark(name); }
+                measure(name, startMark, endMark) { return performance.measure(name, startMark, endMark); }
+                clearMarks(name) { performance.clearMarks(name); }
+                clearMeasures(name) { performance.clearMeasures(name); }
+                getEntries() { return performance.getEntries(); }
+                getEntriesByType(type) { return performance.getEntriesByType(type); }
+                getEntriesByName(name, type) { return performance.getEntriesByName(name, type); }
+                toJSON() { return performance.toJSON(); }
+            }
+            Object.defineProperty(Performance.prototype, "timeOrigin", {
+                get: function() { return performance.timeOrigin; },
+                enumerable: true,
+                configurable: true,
+            });
+            globalThis.Performance = Performance;
+            Object.setPrototypeOf(performance, Performance.prototype);
+        })();
+    "#)?;
+
     Ok(())
 }
 
@@ -76,12 +112,19 @@ fn perf_mark<'js>(ctx: Ctx<'js>, name: String) -> Result<Object<'js>> {
     build_entry_obj(&ctx, &entry)
 }
 
-fn perf_measure<'js>(ctx: Ctx<'js>, name: String, start_mark: Option<String>, end_mark: Option<String>) -> Result<Object<'js>> {
+fn perf_measure<'js>(
+    ctx: Ctx<'js>,
+    name: String,
+    start_mark: Opt<String>,
+    end_mark: Opt<String>,
+) -> Result<Object<'js>> {
     let marks = marks().lock().unwrap();
     let (start_instant, start_time) = start_mark
+        .0
         .and_then(|m| marks.get(&m).cloned())
         .unwrap_or_else(|| (*START.get_or_init(Instant::now), 0.0));
     let end = end_mark
+        .0
         .and_then(|m| marks.get(&m).cloned())
         .map(|(inst, _)| inst)
         .unwrap_or_else(Instant::now);
@@ -159,9 +202,10 @@ fn perf_get_entries_by_name<'js>(
     let entries = entries().lock().unwrap();
     let arr = Array::new(ctx.clone())?;
     let mut idx = 0usize;
-    for entry in entries.iter().filter(|e| {
-        e.name == name && entry_type.0.as_ref().map_or(true, |t| e.entry_type == *t)
-    }) {
+    for entry in entries
+        .iter()
+        .filter(|e| e.name == name && entry_type.0.as_ref().map_or(true, |t| e.entry_type == *t))
+    {
         arr.set(idx, build_entry_obj(&ctx, entry)?)?;
         idx += 1;
     }
