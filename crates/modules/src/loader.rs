@@ -1,7 +1,7 @@
 use rquickjs::{loader::Loader, module::ModuleDef, Ctx, Error, Module};
 use std::collections::HashMap;
 
-use crate::vole_mod;
+use crate::{vole_js_shim, vole_mod};
 
 /// Allows the embedding runtime to provide Rust-native modules for `vole:*` specifiers.
 pub trait NativeModuleProvider: Send + Sync {
@@ -22,7 +22,7 @@ impl ModuleLoader {
             ($map:ident, $path:literal) => {
                 $map.insert(
                     vole_mod!($path).to_string(),
-                    include_str!(concat!("js_shims/", $path, ".js")).to_string(),
+                    vole_js_shim!($path).to_string(),
                 );
             };
         }

@@ -21,6 +21,18 @@ macro_rules! vole_raw_mod {
     };
 }
 
+/// Include a bundled JS shim source by its logical module path.
+///
+/// `vole_js_shim!("net/http")` expands to `include_str!("js_shims/net/http.js")`.
+/// The path is resolved relative to the file where the macro is invoked,
+/// so it should be called from `loader.rs`.
+#[macro_export]
+macro_rules! vole_js_shim {
+    ($path:literal) => {
+        include_str!(concat!("js_shims/", $path, ".js"))
+    };
+}
+
 /// Public `vole:*` modules that are allowed to import internal `vole:raw:*`
 /// native modules. This list is the source of truth for resolver access control.
 pub const PUBLIC_VOLE_MODULES: &[&str] = &[
