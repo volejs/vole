@@ -1,3 +1,4 @@
+pub mod js_shims_embed;
 pub mod loader;
 pub mod module_names;
 pub mod resolver;

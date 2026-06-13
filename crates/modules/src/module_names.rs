@@ -23,13 +23,14 @@ macro_rules! vole_raw_mod {
 
 /// Include a bundled JS shim source by its logical module path.
 ///
-/// `vole_js_shim!("net/http")` expands to `include_str!("js_shims/net/http.js")`.
-/// The path is resolved relative to the file where the macro is invoked,
-/// so it should be called from `loader.rs`.
+/// `vole_js_shim!("net/http")` resolves to the content of
+/// `crates/modules/src/js_shims/net/http.js` via the embedded asset store.
+/// It can be called from anywhere because the path is anchored to the
+/// `vole-module` crate root.
 #[macro_export]
 macro_rules! vole_js_shim {
     ($path:literal) => {
-        include_str!(concat!("js_shims/", $path, ".js"))
+        $crate::js_shims_embed::get_shim($path).unwrap()
     };
 }
 

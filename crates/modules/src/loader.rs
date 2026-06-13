@@ -20,10 +20,7 @@ impl ModuleLoader {
 
         macro_rules! insert_shim {
             ($map:ident, $path:literal) => {
-                $map.insert(
-                    vole_mod!($path).to_string(),
-                    vole_js_shim!($path).to_string(),
-                );
+                $map.insert(vole_mod!($path).to_string(), vole_js_shim!($path));
             };
         }
 
