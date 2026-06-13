@@ -6,7 +6,7 @@ import {
   __std_tcp_listen,
   __std_tcp_server_accept,
   __std_tcp_server_close,
-} from "vole:raw:tcp";
+} from "vole:raw:net/tcp";
 
 export async function connect(host, port) {
   const info = await __std_tcp_connect(host, port);

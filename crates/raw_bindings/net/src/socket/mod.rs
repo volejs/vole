@@ -6,20 +6,22 @@ use rquickjs::{
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Mutex as TokioMutex;
 
-static SOCKETS: std::sync::OnceLock<Mutex<HashMap<u64, Arc<TokioMutex<TcpStream>>>>> =
+#[cfg(unix)]
+use tokio::net::{UnixListener, UnixStream};
+
+static SOCKETS: std::sync::OnceLock<Mutex<HashMap<u64, Arc<TokioMutex<UnixStream>>>>> =
     std::sync::OnceLock::new();
-static SERVERS: std::sync::OnceLock<Mutex<HashMap<u64, Arc<TokioMutex<TcpListener>>>>> =
+static SERVERS: std::sync::OnceLock<Mutex<HashMap<u64, Arc<TokioMutex<UnixListener>>>>> =
     std::sync::OnceLock::new();
 static NEXT_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
 
-fn sockets() -> &'static Mutex<HashMap<u64, Arc<TokioMutex<TcpStream>>>> {
+fn sockets() -> &'static Mutex<HashMap<u64, Arc<TokioMutex<UnixStream>>>> {
     SOCKETS.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
-fn servers() -> &'static Mutex<HashMap<u64, Arc<TokioMutex<TcpListener>>>> {
+fn servers() -> &'static Mutex<HashMap<u64, Arc<TokioMutex<UnixListener>>>> {
     SERVERS.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
@@ -27,11 +29,12 @@ fn next_id() -> u64 {
     NEXT_ID.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
 }
 
-fn tcp_connect<'js>(ctx: Ctx<'js>, host: String, port: u16) -> Result<Promise<'js>> {
+#[cfg(unix)]
+fn socket_connect<'js>(ctx: Ctx<'js>, path: String) -> Result<Promise<'js>> {
     let (promise, resolve, reject) = ctx.promise()?;
     let ctx_clone = ctx.clone();
     ctx.spawn(async move {
-        match TcpStream::connect((host, port)).await {
+        match UnixStream::connect(&path).await {
             Ok(stream) => {
                 let id = next_id();
                 sockets()
@@ -40,6 +43,7 @@ fn tcp_connect<'js>(ctx: Ctx<'js>, host: String, port: u16) -> Result<Promise<'j
                     .insert(id, Arc::new(TokioMutex::new(stream)));
                 let obj = Object::new(ctx_clone).unwrap();
                 let _ = obj.set("_id", id);
+                let _ = obj.set("path", path);
                 let _ = resolve.call::<_, ()>((obj,));
             }
             Err(e) => {
@@ -50,7 +54,14 @@ fn tcp_connect<'js>(ctx: Ctx<'js>, host: String, port: u16) -> Result<Promise<'j
     Ok(promise)
 }
 
-fn tcp_socket_read<'js>(
+#[cfg(not(unix))]
+fn socket_connect<'js>(ctx: Ctx<'js>, _path: String) -> Result<Promise<'js>> {
+    let (promise, _resolve, reject) = ctx.promise()?;
+    let _ = reject.call::<_, ()>(("Unix sockets are not supported on this platform",));
+    Ok(promise)
+}
+
+fn socket_read<'js>(
     ctx: Ctx<'js>,
     id: u64,
     size: Opt<u32>,
@@ -85,7 +96,7 @@ fn tcp_socket_read<'js>(
     Ok(promise)
 }
 
-fn tcp_socket_write<'js>(
+fn socket_write<'js>(
     ctx: Ctx<'js>,
     id: u64,
     data: TypedArray<'js, u8>,
@@ -115,46 +126,29 @@ fn tcp_socket_write<'js>(
     Ok(promise)
 }
 
-fn tcp_socket_close<'js>(ctx: Ctx<'js>, id: u64) -> Result<Promise<'js>> {
-    let stream = sockets()
-        .lock()
-        .unwrap()
-        .remove(&id);
+fn socket_close<'js>(ctx: Ctx<'js>, id: u64) -> Result<Promise<'js>> {
+    let _ = sockets().lock().unwrap().remove(&id);
     let (promise, resolve, _reject) = ctx.promise()?;
-    if let Some(stream) = stream {
-        ctx.spawn(async move {
-            let _ = stream.lock().await.shutdown().await;
-            let _ = resolve.call::<_, ()>(((),));
-        });
-    } else {
-        let _ = resolve.call::<_, ()>(((),));
-    }
+    let _ = resolve.call::<_, ()>(((),));
     Ok(promise)
 }
 
-fn tcp_listen<'js>(
-    ctx: Ctx<'js>,
-    port: u16,
-    host: Opt<String>,
-) -> Result<Promise<'js>> {
-    let host = host.0.unwrap_or_else(|| "0.0.0.0".to_string());
+#[cfg(unix)]
+fn socket_listen<'js>(ctx: Ctx<'js>, path: String) -> Result<Promise<'js>> {
     let (promise, resolve, reject) = ctx.promise()?;
     let ctx_clone = ctx.clone();
     ctx.spawn(async move {
-        match TcpListener::bind((host, port)).await {
+        let _ = std::fs::remove_file(&path);
+        match UnixListener::bind(&path) {
             Ok(listener) => {
                 let id = next_id();
-                let addr = listener.local_addr().unwrap();
                 servers()
                     .lock()
                     .unwrap()
                     .insert(id, Arc::new(TokioMutex::new(listener)));
-                let obj = Object::new(ctx_clone.clone()).unwrap();
+                let obj = Object::new(ctx_clone).unwrap();
                 let _ = obj.set("_id", id);
-                let addr_obj = Object::new(ctx_clone).unwrap();
-                let _ = addr_obj.set("host", addr.ip().to_string());
-                let _ = addr_obj.set("port", addr.port() as f64);
-                let _ = obj.set("address", addr_obj);
+                let _ = obj.set("path", path);
                 let _ = resolve.call::<_, ()>((obj,));
             }
             Err(e) => {
@@ -165,7 +159,14 @@ fn tcp_listen<'js>(
     Ok(promise)
 }
 
-fn tcp_server_accept<'js>(ctx: Ctx<'js>, id: u64) -> Result<Promise<'js>> {
+#[cfg(not(unix))]
+fn socket_listen<'js>(ctx: Ctx<'js>, _path: String) -> Result<Promise<'js>> {
+    let (promise, _resolve, reject) = ctx.promise()?;
+    let _ = reject.call::<_, ()>(("Unix sockets are not supported on this platform",));
+    Ok(promise)
+}
+
+fn socket_server_accept<'js>(ctx: Ctx<'js>, id: u64) -> Result<Promise<'js>> {
     let server = servers()
         .lock()
         .unwrap()
@@ -194,42 +195,42 @@ fn tcp_server_accept<'js>(ctx: Ctx<'js>, id: u64) -> Result<Promise<'js>> {
     Ok(promise)
 }
 
-fn tcp_server_close<'js>(ctx: Ctx<'js>, id: u64) -> Result<Promise<'js>> {
+fn socket_server_close<'js>(ctx: Ctx<'js>, id: u64) -> Result<Promise<'js>> {
     let _ = servers().lock().unwrap().remove(&id);
     let (promise, resolve, _reject) = ctx.promise()?;
     let _ = resolve.call::<_, ()>(((),));
     Ok(promise)
 }
 
-/// Native module exposing the low-level TCP operations used by the `vole:tcp` JS shim.
-pub struct TcpRawModule;
+/// Native module exposing the low-level Unix socket operations used by the `vole:net/socket` JS shim.
+pub struct SocketRawModule;
 
-impl ModuleDef for TcpRawModule {
+impl ModuleDef for SocketRawModule {
     fn declare<'js>(decl: &Declarations<'js>) -> Result<()> {
-        decl.declare("__std_tcp_connect")?;
-        decl.declare("__std_tcp_socket_read")?;
-        decl.declare("__std_tcp_socket_write")?;
-        decl.declare("__std_tcp_socket_close")?;
-        decl.declare("__std_tcp_listen")?;
-        decl.declare("__std_tcp_server_accept")?;
-        decl.declare("__std_tcp_server_close")?;
+        decl.declare("__std_socket_connect")?;
+        decl.declare("__std_socket_read")?;
+        decl.declare("__std_socket_write")?;
+        decl.declare("__std_socket_close")?;
+        decl.declare("__std_socket_listen")?;
+        decl.declare("__std_socket_server_accept")?;
+        decl.declare("__std_socket_server_close")?;
         Ok(())
     }
 
     fn evaluate<'js>(ctx: &Ctx<'js>, exports: &Exports<'js>) -> Result<()> {
-        exports.export("__std_tcp_connect", Function::new(ctx.clone(), tcp_connect))?;
-        exports.export("__std_tcp_socket_read", Function::new(ctx.clone(), tcp_socket_read))?;
-        exports.export("__std_tcp_socket_write", Function::new(ctx.clone(), tcp_socket_write))?;
-        exports.export("__std_tcp_socket_close", Function::new(ctx.clone(), tcp_socket_close))?;
-        exports.export("__std_tcp_listen", Function::new(ctx.clone(), tcp_listen))?;
-        exports.export("__std_tcp_server_accept", Function::new(ctx.clone(), tcp_server_accept))?;
-        exports.export("__std_tcp_server_close", Function::new(ctx.clone(), tcp_server_close))?;
+        exports.export("__std_socket_connect", Function::new(ctx.clone(), socket_connect))?;
+        exports.export("__std_socket_read", Function::new(ctx.clone(), socket_read))?;
+        exports.export("__std_socket_write", Function::new(ctx.clone(), socket_write))?;
+        exports.export("__std_socket_close", Function::new(ctx.clone(), socket_close))?;
+        exports.export("__std_socket_listen", Function::new(ctx.clone(), socket_listen))?;
+        exports.export("__std_socket_server_accept", Function::new(ctx.clone(), socket_server_accept))?;
+        exports.export("__std_socket_server_close", Function::new(ctx.clone(), socket_server_close))?;
         Ok(())
     }
 }
 
-/// Legacy global init is now a no-op for `vole:tcp`.
-/// All TCP helpers are provided through the native module `vole:raw:tcp`.
+/// Legacy global init is now a no-op for `vole:net/socket`.
+/// All Unix socket helpers are provided through the native module `vole:raw:net/socket`.
 pub fn init(_ctx: &Ctx) -> Result<()> {
     Ok(())
 }

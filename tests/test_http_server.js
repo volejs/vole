@@ -1,9 +1,9 @@
-import { serve } from "vole:http";
+import { serve } from "vole:net/http";
 
 const server = serve((req) => {
   console.log("request:", req.method, req.url);
   if (req.url === "/hello") {
-    return new Response("Hello from vole:http server", { status: 200 });
+    return new Response("Hello from vole:net/http server", { status: 200 });
   }
   return new Response("Not found", { status: 404 });
 }, { port: 8765, hostname: "127.0.0.1" });
@@ -20,13 +20,13 @@ async function test() {
   const text = await resp.text();
   console.log("client body:", text);
 
-  if (resp.status !== 200 || text !== "Hello from vole:http server") {
+  if (resp.status !== 200 || text !== "Hello from vole:net/http server") {
     throw new Error("HTTP server test failed");
   }
 
   await server.shutdown();
   console.log("server shutdown");
-  console.log("=== vole:http server test passed ===");
+  console.log("=== vole:net/http server test passed ===");
 }
 
 test();

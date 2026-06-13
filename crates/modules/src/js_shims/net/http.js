@@ -1,7 +1,7 @@
 import {
   __std_http_serve,
   __std_http_server_shutdown,
-} from "vole:raw:http";
+} from "vole:raw:net/http";
 
 export async function request(url, options) {
   return fetch(url, options);
@@ -81,7 +81,7 @@ globalThis.__vole_http_dispatcher = async function (handlerId, method, url, head
 export class Server {
   constructor(handler, options) {
     if (typeof handler !== "function") {
-      throw new TypeError("vole:http.Server handler must be a function");
+      throw new TypeError("vole:net/http.Server handler must be a function");
     }
     this.handler = handler;
     this.port = options?.port ?? 8080;

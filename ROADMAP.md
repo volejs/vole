@@ -193,22 +193,22 @@
 | `vole:env`     |  ✅  | get/set/has/delete/getAll                                                      |
 | `vole:process` |  ✅  | exit/abort/cwd/argv/stdout/stderr/stdin/pid/platform                           |
 | `vole:test`    |  ✅  | test/describe/it/beforeAll/afterAll/beforeEach/afterEach/run + CLI `vole test` |
-| `vole:http`    |  ✅  | client: request/fetch；server: serve/Server（axum + JS handler 回调）          |
+| `vole:net/http`    |  ✅  | client: request/fetch；server: serve/Server（axum + JS handler 回调）          |
 
 ### 2.2 其他模块
 
 | 模块                | 状态 | 计划 | 说明                                                                       |
 | ------------------- | :--: | :--: | -------------------------------------------------------------------------- |
-| `vole:tcp`           |  ✅  |  —   | `connect()` / `listen()` / `Server` — 用 tokio::net::TcpStream/TcpListener |
-| `vole:udp`           |  ✅  |  —   | `createSocket()` — 用 tokio::net::UdpSocket                                |
-| `vole:socket` (Unix) |  ✅  |  —   | Unix domain socket — 用 tokio::net::UnixStream（Unix only）                |
+| `vole:net/tcp`           |  ✅  |  —   | `connect()` / `listen()` / `Server` — 用 tokio::net::TcpStream/TcpListener |
+| `vole:net/udp`           |  ✅  |  —   | `createSocket()` — 用 tokio::net::UdpSocket                                |
+| `vole:net/socket` (Unix) |  ✅  |  —   | Unix domain socket — 用 tokio::net::UnixStream（Unix only）                |
 | `vole:shell`         |  ✅  |  —   | `exec()` / `execSync()` — 基于 process.rs 实现                             |
 | `vole:spawn`         |  ✅  |  —   | `spawn()` — 基于 process.rs 实现                                           |
 | `vole:ffi`           |  ✅  |  —   | 动态库加载、C ABI 调用，支持整数/浮点/指针/字符串类型                      |
 
 ### 2.3 已注册但未绑定底层函数的模块
 
-> `vole:udp` / `vole:socket` 已实现底层绑定。
+> `vole:net/udp` / `vole:net/socket` 已实现底层绑定。
 > `vole:ffi` 已实现底层绑定。
 
 ---
@@ -279,7 +279,7 @@ P3 (已完成 ✅)
   ├─ ReadableStreamDefaultReader + Controller
   ├─ WritableStream + WritableStreamDefaultWriter + Controller
   ├─ TransformStream
-  ├─ vole:tcp (connect/listen/Server)
+  ├─ vole:net/tcp (connect/listen/Server)
   ├─ CryptoKey + importKey/exportKey (raw/jwk/pkcs8/spki)
   ├─ SubtleCrypto 对象暴露
   ├─ JSON modules / 通用配置导入 (`import ... with { type: "..." }`)
@@ -290,7 +290,7 @@ P3 (已完成 ✅)
 
 P4 (已完成 ✅)
   ├─ CompressionStream / DecompressionStream
-  ├─ vole:udp + vole:socket (Unix)
+  ├─ vole:net/udp + vole:net/socket (Unix)
   ├─ TextEncoderStream / TextDecoderStream
   ├─ ByteLengthQueuingStrategy / CountQueuingStrategy
   ├─ Crypto RSA (`RSASSA-PKCS1-v1.5` / `RSA-PSS`) pkcs8/spki sign/verify

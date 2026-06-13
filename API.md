@@ -13,8 +13,8 @@
   - [vole:path](#stdpath)
   - [vole:env](#stdenv)
   - [vole:process](#stdprocess)
-  - [vole:http](#stdhttp)
-  - [vole:tcp / vole:udp / vole:socket](#stdtcp--stdudp--stdsocket)
+  - [vole:net/http](#stdhttp)
+  - [vole:net/tcp / vole:net/udp / vole:net/socket](#stdtcp--stdudp--stdsocket)
   - [vole:ffi](#stdffi)
   - [vole:test](#stdtest)
 - [CLI 命令](#cli-命令)
@@ -51,7 +51,7 @@
 | ------------------------------------- | --------------------------- | ---------------------------------------------------------------------- |
 | **AWS LLRT** `llrt_modules::crypto`   | `crypto` 全局 API           | **极高**。SHA、AES、HMAC、RSA 的 rquickjs 绑定方式                     |
 | **AWS LLRT** `llrt_modules::fs`       | `vole:fs`                    | **高**。文件操作 Rust → JS 的异步封装模式                              |
-| **AWS LLRT** `llrt_modules::fetch`    | `fetch` / `vole:http`        | **高**。`reqwest` + rquickjs `Response` 对象封装                       |
+| **AWS LLRT** `llrt_modules::fetch`    | `fetch` / `vole:net/http`        | **高**。`reqwest` + rquickjs `Response` 对象封装                       |
 | **AWS LLRT** `llrt_modules::timers`   | `setTimeout` 等             | **中**。tokio timer + rquickjs callback 调度                           |
 | **AWS LLRT** `llrt_modules::encoding` | `TextEncoder`/`TextDecoder` | **中**。字符串 ↔ Uint8Array 转换                                       |
 | **AWS LLRT** `llrt_modules::streams`  | `ReadableStream` 等         | **中**。流式数据在 rquickjs 中的表达                                   |
@@ -120,7 +120,7 @@ AWS LLRT 的模块实现方式和我们"Rust 原生实现 → JS shim 封装 →
 
 | API                   | 说明                 | 实现方式                                          |
 | --------------------- | -------------------- | ------------------------------------------------- |
-| `fetch(input, init?)` | 发起 HTTP/HTTPS 请求 | Rust：`reqwest`（和 `vole:http` 客户端共享连接池） |
+| `fetch(input, init?)` | 发起 HTTP/HTTPS 请求 | Rust：`reqwest`（和 `vole:net/http` 客户端共享连接池） |
 | `Request`             | Request 对象         | Rust：`reqwest::Request` 包装                     |
 | `Response`            | Response 对象        | Rust：`reqwest::Response` 包装                    |
 | `Headers`             | HTTP 头集合          | Rust：`reqwest::header::HeaderMap` 包装           |
@@ -192,7 +192,7 @@ import { something } from "unregistered"; // ❌ 报错：未在 vole.json 中�
 
 | 前缀         | 来源                      | 示例                             | 状态                |
 | ------------ | ------------------------- | -------------------------------- | ------------------- |
-| `vole:`       | 内置标准库                | `vole:fs`、`vole:tcp`、`vole:udp`   | ✅ 已有             |
+| `vole:`       | 内置标准库                | `vole:fs`、`vole:net/tcp`、`vole:net/udp`   | ✅ 已有             |
 | `./` / `../` | 相对路径                  | `./utils.js`                     | ✅ 已有             |
 | `npm:`       | npm 注册表                | `npm:lodash@4.17.21`             | 🔵 未来             |
 | `jsr:`       | JSR (JavaScript Registry) | `jsr:@std/path@1.0.0`            | 🔵 未来             |
@@ -247,10 +247,10 @@ import.meta.main; // true | false
 | `vole:path`    | `std::path`                         | 路径处理，纯计算                       |
 | `vole:env`     | `std::env`                          | 环境变量与运行时信息                   |
 | `vole:process` | `std::process` / `tokio::process`   | 进程控制、Shell、子进程                |
-| `vole:http`    | `reqwest` / `hyper` / `axum`        | HTTP 客户端（reqwest）+ 服务端（axum） |
-| `vole:tcp`     | `tokio::net::TcpStream/TcpListener` | TCP connect/listen/Server              |
-| `vole:udp`     | `tokio::net::UdpSocket`             | UDP socket                             |
-| `vole:socket`  | `tokio::net::UnixStream`            | Unix domain socket（Unix only）        |
+| `vole:net/http`    | `reqwest` / `hyper` / `axum`        | HTTP 客户端（reqwest）+ 服务端（axum） |
+| `vole:net/tcp`     | `tokio::net::TcpStream/TcpListener` | TCP connect/listen/Server              |
+| `vole:net/udp`     | `tokio::net::UdpSocket`             | UDP socket                             |
+| `vole:net/socket`  | `tokio::net::UnixStream`            | Unix domain socket（Unix only）        |
 | `vole:ffi`     | `libloading` / `dlopen`             | 动态链接库调用                         |
 | `vole:test`    | 自定义测试运行器                    | 类似 Deno test，基于 Rust 调度         |
 
@@ -512,7 +512,7 @@ export function on(
 ): void;
 ```
 
-### vole:http
+### vole:net/http
 
 HTTP 服务端与客户端。
 
@@ -545,9 +545,9 @@ export function serve(
 export function request(url: string, options?: RequestInit): Promise<Response>;
 ```
 
-### vole:tcp / vole:udp / vole:socket
+### vole:net/tcp / vole:net/udp / vole:net/socket
 
-底层网络通信能力，实际拆分为三个模块：`vole:tcp`、`vole:udp`、`vole:socket`（Unix only）。HTTP 应用层能力见 `vole:http`。
+底层网络通信能力，实际拆分为三个模块：`vole:net/tcp`、`vole:net/udp`、`vole:net/socket`（Unix only）。HTTP 应用层能力见 `vole:net/http`。
 
 ```typescript
 export interface ListenOptions {
@@ -741,8 +741,8 @@ vole <file>                           # vole index.js 的快捷形式，等价�
 | **Phase 0** | `console` 补全；`performance.now()`；Timers；`atob`/`btoa`；`DOMException`；`reportError`            | `vole:env`；`vole:process`                         |  🔴 高  |
 | **Phase 1** | `TextEncoder`/`TextDecoder`；`URL`/`URLSearchParams`/`URLPattern`；`Blob`/`File`；`structuredClone`  | `vole:fs` 异步扩展；`vole:path` 扩展               |  🟡 中  |
 | **Phase 2** | `Event`/`EventTarget`/`CustomEvent`；`AbortController`/`AbortSignal`；`MessageChannel`/`MessagePort` | —                                                |  🟡 中  |
-| **Phase 3** | `fetch`/`Request`/`Response`/`Headers`/`FormData`                                                    | `vole:http` 服务端/客户端                         |  🟡 中  |
-| **Phase 4** | `crypto` / `Crypto` / `SubtleCrypto` / `CryptoKey` 全套（含 RSA pkcs8/spki）                         | `vole:tcp` / `vole:udp` / `vole:socket`；`vole:test` |  🟢 低  |
+| **Phase 3** | `fetch`/`Request`/`Response`/`Headers`/`FormData`                                                    | `vole:net/http` 服务端/客户端                         |  🟡 中  |
+| **Phase 4** | `crypto` / `Crypto` / `SubtleCrypto` / `CryptoKey` 全套（含 RSA pkcs8/spki）                         | `vole:net/tcp` / `vole:net/udp` / `vole:net/socket`；`vole:test` |  🟢 低  |
 | **Phase 5** | —                                                                                                    | `vole:ffi`                                        | 🔵 未来 |
 
 ---
@@ -751,9 +751,9 @@ vole <file>                           # vole index.js 的快捷形式，等价�
 
 1. **HTTP 实现策略** ✅ 已决策
    - `fetch` 基于 `reqwest` 实现
-   - `vole:http` 客户端基于 `reqwest`，与 `fetch` 共享全局 `reqwest::Client` 连接池
-   - `vole:http` 服务端基于 `axum`，可接受 `vole:tcp::listen()` 作为入口（共享 socket endpoint）
-   - `vole:tcp` / `vole:udp` / `vole:socket` 独立基于 `tokio::net`，与 `vole:http` 不共享连接池
+   - `vole:net/http` 客户端基于 `reqwest`，与 `fetch` 共享全局 `reqwest::Client` 连接池
+   - `vole:net/http` 服务端基于 `axum`，可接受 `vole:net/tcp::listen()` 作为入口（共享 socket endpoint）
+   - `vole:net/tcp` / `vole:net/udp` / `vole:net/socket` 独立基于 `tokio::net`，与 `vole:net/http` 不共享连接池
 
 2. **模块加载策略** ✅ 已决策
    - `vole.json` 显式声明所有依赖，零幽灵依赖

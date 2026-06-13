@@ -26,10 +26,8 @@ vole-global-url = { path = "../global_bindings/url" }
 vole-raw-env = { path = "../raw_bindings/env" }
 vole-raw-ffi = { path = "../raw_bindings/ffi" }
 vole-raw-fs = { path = "../raw_bindings/fs" }
-vole-raw-http_server = { path = "../raw_bindings/http_server" }
+vole-raw-net = { path = "../raw_bindings/net" }
 vole-raw-path = { path = "../raw_bindings/path" }
 vole-raw-process = { path = "../raw_bindings/process" }
-vole-raw-socket = { path = "../raw_bindings/socket" }
-vole-raw-tcp = { path = "../raw_bindings/tcp" }
-vole-raw-udp = { path = "../raw_bindings/udp" }
+
 vole-raw-wasm = { path = "../raw_bindings/wasm" }

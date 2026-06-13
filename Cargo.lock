@@ -3161,7 +3161,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "vole-raw-http_server"
+name = "vole-raw-net"
 version = "0.1.0"
 dependencies = [
  "axum",
@@ -3178,30 +3178,6 @@ dependencies = [
 
 [[package]]
 name = "vole-raw-process"
-version = "0.1.0"
-dependencies = [
- "rquickjs",
- "tokio",
-]
-
-[[package]]
-name = "vole-raw-socket"
-version = "0.1.0"
-dependencies = [
- "rquickjs",
- "tokio",
-]
-
-[[package]]
-name = "vole-raw-tcp"
-version = "0.1.0"
-dependencies = [
- "rquickjs",
- "tokio",
-]
-
-[[package]]
-name = "vole-raw-udp"
 version = "0.1.0"
 dependencies = [
  "rquickjs",
@@ -3242,12 +3218,9 @@ dependencies = [
  "vole-raw-env",
  "vole-raw-ffi",
  "vole-raw-fs",
- "vole-raw-http_server",
+ "vole-raw-net",
  "vole-raw-path",
  "vole-raw-process",
- "vole-raw-socket",
- "vole-raw-tcp",
- "vole-raw-udp",
  "vole-raw-wasm",
 ]
 

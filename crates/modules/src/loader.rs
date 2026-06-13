@@ -19,27 +19,28 @@ impl ModuleLoader {
         let mut vole_modules = HashMap::new();
 
         macro_rules! insert_shim {
-            ($map:ident, $name:ident) => {
+            ($map:ident, $path:literal) => {
                 $map.insert(
-                    vole_mod!($name).to_string(),
-                    include_str!(concat!("js_shims/", stringify!($name), ".js")).to_string(),
+                    vole_mod!($path).to_string(),
+                    include_str!(concat!("js_shims/", $path, ".js")).to_string(),
                 );
             };
         }
 
-        insert_shim!(vole_modules, env);
-        insert_shim!(vole_modules, ffi);
-        insert_shim!(vole_modules, fs);
-        insert_shim!(vole_modules, http);
-        insert_shim!(vole_modules, path);
-        insert_shim!(vole_modules, process);
-        insert_shim!(vole_modules, shell);
-        insert_shim!(vole_modules, socket);
-        insert_shim!(vole_modules, spawn);
-        insert_shim!(vole_modules, tcp);
-        insert_shim!(vole_modules, test);
-        insert_shim!(vole_modules, udp);
-        insert_shim!(vole_modules, wasm);
+        insert_shim!(vole_modules, "env");
+        insert_shim!(vole_modules, "ffi");
+        insert_shim!(vole_modules, "fs");
+        insert_shim!(vole_modules, "path");
+        insert_shim!(vole_modules, "process");
+        insert_shim!(vole_modules, "shell");
+        insert_shim!(vole_modules, "spawn");
+        insert_shim!(vole_modules, "test");
+        insert_shim!(vole_modules, "wasm");
+        // Network namespace
+        insert_shim!(vole_modules, "net/http");
+        insert_shim!(vole_modules, "net/socket");
+        insert_shim!(vole_modules, "net/tcp");
+        insert_shim!(vole_modules, "net/udp");
 
         ModuleLoader {
             vole_modules,

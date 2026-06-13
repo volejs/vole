@@ -1,8 +1,9 @@
 [package]
-name = "vole-raw-udp"
+name = "vole-raw-net"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 rquickjs = { workspace = true, features = ["futures", "loader"] }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time", "net"] }
+axum = { workspace = true }

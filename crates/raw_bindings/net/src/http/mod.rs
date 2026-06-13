@@ -264,7 +264,7 @@ async fn handle_request<'js>(
     }
 }
 
-/// Native module exposing the low-level HTTP server operations used by the `vole:http` JS shim.
+/// Native module exposing the low-level HTTP server operations used by the `vole:net/http` JS shim.
 pub struct HttpRawModule;
 
 impl ModuleDef for HttpRawModule {
@@ -282,7 +282,7 @@ impl ModuleDef for HttpRawModule {
 }
 
 /// Legacy global init is now a no-op for the HTTP server backend.
-/// Server lifecycle helpers are provided through `vole:raw:http`; the request dispatcher
+/// Server lifecycle helpers are provided through `vole:raw:net/http`; the request dispatcher
 /// remains a private JS global (`__vole_http_dispatcher`) because the Rust backend
 /// needs a stable callback entry point across async request handling.
 pub fn init(_ctx: &Ctx) -> Result<()> {
