@@ -23,7 +23,7 @@ pub enum VmError {
 
 impl Vm {
     pub async fn new() -> Result<Self, VmError> {
-        crate::raw_bindings::env::load_dotenv();
+        vole_raw_env::load_dotenv();
 
         let runtime = AsyncRuntime::new().map_err(|e| VmError::CreationFailed(e.to_string()))?;
 
@@ -66,7 +66,7 @@ impl Vm {
                 Ok(result) => Ok::<_, rquickjs::Error>(format_js_value(&result)),
                 Err(e) => {
                     let err = ctx.catch();
-                    let _ = crate::global_bindings::events::dispatch_error_event(&ctx, err);
+                    let _ = vole_global_events::dispatch_error_event(&ctx, err);
                     Err(e)
                 }
             })
@@ -94,7 +94,7 @@ impl Vm {
                     Ok(v) => v,
                     Err(e) => {
                         let err = ctx.catch();
-                        let _ = crate::global_bindings::events::dispatch_error_event(&ctx, err);
+                        let _ = vole_global_events::dispatch_error_event(&ctx, err);
                         return Err(e);
                     }
                 };
@@ -104,7 +104,7 @@ impl Vm {
                     tokio::task::yield_now().await;
                 }
                 let mut waited = 0u64;
-                while !crate::global_bindings::timers::is_idle() && waited < 30_000 {
+                while !vole_global_timers::is_idle() && waited < 30_000 {
                     ctx.execute_pending_job();
                     tokio::time::sleep(Duration::from_millis(10)).await;
                     waited += 10;
@@ -199,7 +199,7 @@ impl Vm {
                     tokio::task::yield_now().await;
                 }
                 let mut waited = 0u64;
-                while !crate::global_bindings::timers::is_idle() && waited < 60_000 {
+                while !vole_global_timers::is_idle() && waited < 60_000 {
                     ctx.execute_pending_job();
                     tokio::time::sleep(Duration::from_millis(10)).await;
                     waited += 10;

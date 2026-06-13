@@ -1,3 +1,39 @@
 [workspace]
-members = ["crates/*"]
+members = [
+    "crates/cmd",
+    "crates/core",
+    "crates/modules",
+    "crates/package",
+    "crates/global_bindings/*",
+    "crates/raw_bindings/*",
+]
 resolver = "2"
+
+[workspace.dependencies]
+rquickjs = "0.12"
+tokio = "1"
+thiserror = "1.0"
+vole-module = { path = "crates/modules" }
+base64 = "0.22"
+sha1 = "0.10"
+sha2 = "0.10"
+hmac = "0.12"
+aes = "0.8"
+cbc = "0.1"
+aes-gcm = "0.10"
+cipher = "0.4"
+rand = "0.8"
+getrandom = "0.2"
+rquickjs-serde = "0.6.1"
+url = "2.5"
+percent-encoding = "2.3"
+serde_json = "1.0"
+flate2 = "1.0"
+reqwest = "0.12"
+axum = "0.8"
+libffi = "4.1"
+libloading = "0.8"
+wasmi = "2.0.0-beta.2"
+rsa = "0.9"
+pkcs8 = "0.10"
+spki = "0.7"

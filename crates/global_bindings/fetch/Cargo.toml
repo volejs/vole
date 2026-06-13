@@ -1,0 +1,10 @@
+[package]
+name = "vole-global-fetch"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rquickjs = { workspace = true, features = ["futures"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }
+reqwest = { workspace = true }
+vole-global-timers = { path = "../timers" }

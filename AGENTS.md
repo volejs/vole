@@ -10,12 +10,14 @@
 
 Cargo workspace with `resolver = "2"`, members under `crates/`:
 
-| Crate            | Package Name   | Type          | Purpose                           |
-| ---------------- | -------------- | ------------- | --------------------------------- |
-| `crates/core`    | `vole-runtime` | Library       | VM (async), bindings, extensions  |
-| `crates/modules` | `vole-module`  | Library       | Module resolver, loader, JS shims |
-| `crates/package` | `vole-package` | Library       | Package system                    |
-| `crates/cmd`     | `vole-cli`     | Binary `vole` | CLI entrypoint                    |
+| Crate                           | Package Name         | Type          | Purpose                                   |
+| ------------------------------- | -------------------- | ------------- | ----------------------------------------- |
+| `crates/core`                   | `vole-runtime`       | Library       | VM (async), extension registry, lifecycle |
+| `crates/modules`                | `vole-module`        | Library       | Module resolver, loader, JS shims         |
+| `crates/package`                | `vole-package`       | Library       | Package system                            |
+| `crates/cmd`                    | `vole-cli`           | Binary `vole` | CLI entrypoint                            |
+| `crates/global_bindings/<name>` | `vole-global-<name>` | Library       | Individual global Web API binding crate   |
+| `crates/raw_bindings/<name>`    | `vole-raw-<name>`    | Library       | Individual `std:raw:*` backend crate      |
 
 ---
 
@@ -95,8 +97,8 @@ known runtime differences.
 - Edition 2021.
 - Error types use `thiserror`.
 - Module system rejects bare specifiers (e.g. `"lodash"`) to prevent ghost dependencies.
-- Web API implementations live in `crates/core/src/global_bindings/`.
-- System-capability bindings live in `crates/core/src/raw_bindings/` and are exposed via `std:raw:*` native modules.
+- Web API implementations live in `crates/global_bindings/<name>/src/lib.rs` as `vole-global-<name>` crates.
+- System-capability bindings live in `crates/raw_bindings/<name>/src/lib.rs` as `vole-raw-<name>` crates and are exposed via `std:raw:*` native modules.
 
 ---
 

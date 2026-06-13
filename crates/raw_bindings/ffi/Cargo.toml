@@ -1,0 +1,9 @@
+[package]
+name = "vole-raw-ffi"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rquickjs = { workspace = true, features = ["futures", "loader"] }
+libffi = { workspace = true, features = ["system"] }
+libloading = { workspace = true }

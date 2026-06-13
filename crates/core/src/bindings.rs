@@ -6,31 +6,31 @@ use crate::extensions::ExtensionRegistry;
 pub fn registry() -> ExtensionRegistry {
     ExtensionRegistry::new()
         // global_bindings: Web APIs exposed directly on globalThis
-        .with(crate::global_bindings::timers::init)
-        .with(crate::global_bindings::performance::init)
-        .with(crate::global_bindings::base64::init)
-        .with(crate::global_bindings::dom_exception::init)
-        .with(crate::global_bindings::report_error::init)
-        .with(crate::global_bindings::encoding::init)
-        .with(crate::global_bindings::url::init)
-        .with(crate::global_bindings::blob::init)
-        .with(crate::global_bindings::crypto::init)
-        .with(crate::global_bindings::structured_clone::init)
-        .with(crate::global_bindings::events::init)
-        .with(crate::global_bindings::fetch::init)
-        .with(crate::global_bindings::console::init)
-        .with(crate::global_bindings::streams::init)
-        .with(crate::global_bindings::compression::init)
+        .with(vole_global_timers::init)
+        .with(vole_global_performance::init)
+        .with(vole_global_base64::init)
+        .with(vole_global_dom_exception::init)
+        .with(vole_global_report_error::init)
+        .with(vole_global_encoding::init)
+        .with(vole_global_url::init)
+        .with(vole_global_blob::init)
+        .with(vole_global_crypto::init)
+        .with(vole_global_structured_clone::init)
+        .with(vole_global_events::init)
+        .with(vole_global_fetch::init)
+        .with(vole_global_console::init)
+        .with(vole_global_streams::init)
+        .with(vole_global_compression::init)
         // raw_bindings: low-level Rust backends exposed via std:raw:*
-        .with(crate::raw_bindings::env::init)
-        .with(crate::raw_bindings::ffi::init)
-        .with(crate::raw_bindings::process::init)
-        .with(crate::raw_bindings::path::init)
-        .with(crate::raw_bindings::http_server::init)
-        .with(crate::raw_bindings::tcp::init)
-        .with(crate::raw_bindings::udp::init)
-        .with(crate::raw_bindings::socket::init)
-        .with(crate::raw_bindings::wasm::init)
+        .with(vole_raw_env::init)
+        .with(vole_raw_ffi::init)
+        .with(vole_raw_process::init)
+        .with(vole_raw_path::init)
+        .with(vole_raw_http_server::init)
+        .with(vole_raw_tcp::init)
+        .with(vole_raw_udp::init)
+        .with(vole_raw_socket::init)
+        .with(vole_raw_wasm::init)
 }
 
 /// Initialize all bindings.
@@ -48,7 +48,7 @@ pub async fn init(ctx: &AsyncContext) -> Result<(), rquickjs::Error> {
 
     init_async(ctx).await?;
 
-    crate::global_bindings::timers::init_registry();
+    vole_global_timers::init_registry();
 
     Ok(())
 }

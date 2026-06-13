@@ -1,7 +1,5 @@
 pub mod bindings;
 pub mod extensions;
-pub mod global_bindings;
-pub mod raw_bindings;
 pub mod native_modules;
 pub mod runtime;
 pub mod value;

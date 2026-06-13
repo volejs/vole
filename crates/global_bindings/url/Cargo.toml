@@ -1,0 +1,9 @@
+[package]
+name = "vole-global-url"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rquickjs = { workspace = true }
+url = { workspace = true }
+percent-encoding = { workspace = true }

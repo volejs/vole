@@ -1,0 +1,22 @@
+[package]
+name = "vole-global-crypto"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rquickjs = { workspace = true, features = ["futures"] }
+base64 = { workspace = true }
+sha1 = { workspace = true, features = ["oid"] }
+sha2 = { workspace = true, features = ["oid"] }
+hmac = { workspace = true }
+aes = { workspace = true }
+cbc = { workspace = true, features = ["alloc"] }
+aes-gcm = { workspace = true }
+cipher = { workspace = true }
+rand = { workspace = true }
+getrandom = { workspace = true }
+rsa = { workspace = true, features = ["getrandom"] }
+pkcs8 = { workspace = true, features = ["encryption"] }
+spki = { workspace = true }
+serde_json = { workspace = true }
+vole-global-timers = { path = "../timers" }

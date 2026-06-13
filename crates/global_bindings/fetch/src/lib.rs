@@ -305,13 +305,13 @@ fn fetch_impl<'js>(
     let (promise, resolve, reject) = ctx.promise()?;
     let ctx_clone = ctx.clone();
 
-    crate::global_bindings::timers::task_begin();
+    vole_global_timers::task_begin();
 
     ctx.spawn(async move {
         struct TaskGuard;
         impl Drop for TaskGuard {
             fn drop(&mut self) {
-                crate::global_bindings::timers::task_end();
+                vole_global_timers::task_end();
             }
         }
         let _guard = TaskGuard;

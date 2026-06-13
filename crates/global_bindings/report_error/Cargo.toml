@@ -1,0 +1,7 @@
+[package]
+name = "vole-global-report_error"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rquickjs = { workspace = true }

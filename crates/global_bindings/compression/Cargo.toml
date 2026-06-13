@@ -1,0 +1,8 @@
+[package]
+name = "vole-global-compression"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rquickjs = { workspace = true }
+flate2 = { workspace = true }

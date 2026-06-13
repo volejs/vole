@@ -4,30 +4,32 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-rquickjs = { version = "0.12", features = ["futures", "loader"] }
-vole-module = { path = "../modules" }
-thiserror = "1.0"
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "process", "fs"] }
-reqwest = "0.12"
-axum = "0.8"
-base64 = "0.22"
-sha1 = { version = "0.10", features = ["oid"] }
-sha2 = { version = "0.10", features = ["oid"] }
-hmac = "0.12"
-aes = "0.8"
-cbc = { version = "0.1", features = ["alloc"] }
-aes-gcm = "0.10"
-cipher = "0.4"
-rand = "0.8"
-getrandom = "0.2"
-rquickjs-serde = "0.6.1"
-url = "2.5"
-percent-encoding = "2.3"
-serde_json = "1.0"
-flate2 = "1.0"
-libffi = { version = "4.1", features = ["system"] }
-libloading = "0.8"
-wasmi = "2.0.0-beta.2"
-rsa = { version = "0.9", features = ["getrandom"] }
-pkcs8 = { version = "0.10", features = ["encryption"] }
-spki = "0.7"
+rquickjs = { workspace = true, features = ["futures", "loader"] }
+vole-module = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }
+vole-global-base64 = { path = "../global_bindings/base64" }
+vole-global-blob = { path = "../global_bindings/blob" }
+vole-global-compression = { path = "../global_bindings/compression" }
+vole-global-console = { path = "../global_bindings/console" }
+vole-global-crypto = { path = "../global_bindings/crypto" }
+vole-global-dom_exception = { path = "../global_bindings/dom_exception" }
+vole-global-encoding = { path = "../global_bindings/encoding" }
+vole-global-events = { path = "../global_bindings/events" }
+vole-global-fetch = { path = "../global_bindings/fetch" }
+vole-global-performance = { path = "../global_bindings/performance" }
+vole-global-report_error = { path = "../global_bindings/report_error" }
+vole-global-streams = { path = "../global_bindings/streams" }
+vole-global-structured_clone = { path = "../global_bindings/structured_clone" }
+vole-global-timers = { path = "../global_bindings/timers" }
+vole-global-url = { path = "../global_bindings/url" }
+vole-raw-env = { path = "../raw_bindings/env" }
+vole-raw-ffi = { path = "../raw_bindings/ffi" }
+vole-raw-fs = { path = "../raw_bindings/fs" }
+vole-raw-http_server = { path = "../raw_bindings/http_server" }
+vole-raw-path = { path = "../raw_bindings/path" }
+vole-raw-process = { path = "../raw_bindings/process" }
+vole-raw-socket = { path = "../raw_bindings/socket" }
+vole-raw-tcp = { path = "../raw_bindings/tcp" }
+vole-raw-udp = { path = "../raw_bindings/udp" }
+vole-raw-wasm = { path = "../raw_bindings/wasm" }

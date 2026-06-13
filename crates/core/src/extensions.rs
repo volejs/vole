@@ -12,8 +12,8 @@ use rquickjs::{Ctx, Result};
 ///
 /// ```ignore
 /// ExtensionRegistry::new()
-///     .with(crate::global_bindings::console::init)
-///     .with(crate::global_bindings::timers::init)
+///     .with(vole_global_console::init)
+///     .with(vole_global_timers::init)
 ///     .init(ctx)?;
 /// ```
 pub struct ExtensionRegistry {
