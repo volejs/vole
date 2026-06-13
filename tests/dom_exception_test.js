@@ -1,4 +1,4 @@
-import { test } from "std:test";
+import { test } from "vole:test";
 
 const assert = {
   equal(actual, expected) {

@@ -50,17 +50,17 @@ console.log("DOMException message:", err.message);
 console.log("=== reportError ===");
 reportError(new Error("reported error"));
 
-// 7. std:env
-console.log("=== std:env ===");
-import { get, set, has, remove, entries, env } from "std:env";
+// 7. vole:env
+console.log("=== vole:env ===");
+import { get, set, has, remove, entries, env } from "vole:env";
 console.log("HOME:", get("HOME"));
 console.log("PATH exists:", has("PATH"));
 console.log("env.entries keys count:", Object.keys(entries()).length);
 console.log("env.HOME:", env.get("HOME"));
 
-// 8. std:process
-console.log("=== std:process ===");
-import { pid, platform, arch, version, args, cwd, stdout, stderr } from "std:process";
+// 8. vole:process
+console.log("=== vole:process ===");
+import { pid, platform, arch, version, args, cwd, stdout, stderr } from "vole:process";
 console.log("pid:", pid);
 console.log("platform:", platform);
 console.log("arch:", arch);
@@ -70,17 +70,17 @@ console.log("cwd:", cwd());
 stdout.write("stdout write test\n");
 stderr.write("stderr write test\n");
 
-// 9. std:fs
-console.log("=== std:fs ===");
-import { readFileSync, readTextFileSync, writeFileSync, existsSync } from "std:fs";
+// 9. vole:fs
+console.log("=== vole:fs ===");
+import { readFileSync, readTextFileSync, writeFileSync, existsSync } from "vole:fs";
 writeFileSync("/tmp/test_phase0.txt", "hello from phase 0");
 console.log("file exists:", existsSync("/tmp/test_phase0.txt"));
 const text = readTextFileSync("/tmp/test_phase0.txt");
 console.log("file content:", text);
 
-// 10. std:path
-console.log("=== std:path ===");
-import { join, resolve, dirname, basename, extname } from "std:path";
+// 10. vole:path
+console.log("=== vole:path ===");
+import { join, resolve, dirname, basename, extname } from "vole:path";
 console.log("join:", join("a", "b", "c"));
 console.log("dirname:", dirname("/a/b/c.txt"));
 console.log("basename:", basename("/a/b/c.txt"));

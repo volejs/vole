@@ -2,7 +2,7 @@ use rquickjs::{loader::Resolver, Ctx, Error};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use crate::{MODULE_PREFIX, PUBLIC_STD_MODULES};
+use crate::PUBLIC_VOLE_MODULES;
 
 pub struct ModuleResolver {
     base_dir: PathBuf,
@@ -61,25 +61,25 @@ impl ModuleResolver {
         name.starts_with("./") || name.starts_with("../")
     }
 
-    fn is_std_module(&self, name: &str) -> bool {
-        name.starts_with(MODULE_PREFIX)
+    fn is_vole_module(&self, name: &str) -> bool {
+        name.starts_with("vole:")
     }
 
     fn is_internal_raw_module(&self, name: &str) -> bool {
-        name.starts_with("std:raw:")
+        name.starts_with("vole:raw:")
     }
 
-    fn is_public_std_module(&self, name: &str) -> bool {
-        PUBLIC_STD_MODULES.contains(&name)
+    fn is_public_vole_module(&self, name: &str) -> bool {
+        PUBLIC_VOLE_MODULES.contains(&name)
     }
 }
 
 impl Resolver for ModuleResolver {
     fn resolve<'js>(&mut self, _ctx: &Ctx<'js>, base: &str, name: &str, _attrs: Option<rquickjs::loader::ImportAttributes<'js>>) -> Result<String, Error> {
-        // std: modules (public std:xxx and internal raw std:raw:xxx)
-        if self.is_std_module(name) {
-            // Internal raw modules are only importable by public std:* modules.
-            if self.is_internal_raw_module(name) && !self.is_public_std_module(base) {
+        // vole: modules (public vole:xxx and internal raw vole:raw:xxx)
+        if self.is_vole_module(name) {
+            // Internal raw modules are only importable by public vole:* modules.
+            if self.is_internal_raw_module(name) && !self.is_public_vole_module(base) {
                 return Err(Error::Exception);
             }
             return Ok(name.to_string());

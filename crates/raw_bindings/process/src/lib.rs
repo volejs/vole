@@ -157,8 +157,8 @@ fn spawn_impl<'js>(ctx: Ctx<'js>, command: String, args: Opt<Vec<String>>, optio
     Ok(obj)
 }
 
-/// Native module exposing the low-level process operations used by the `std:process` JS shim
-/// and related modules (`std:shell`, `std:spawn`).
+/// Native module exposing the low-level process operations used by the `vole:process` JS shim
+/// and related modules (`vole:shell`, `vole:spawn`).
 pub struct ProcessRawModule;
 
 impl ModuleDef for ProcessRawModule {
@@ -217,8 +217,8 @@ impl ModuleDef for ProcessRawModule {
     }
 }
 
-/// Legacy global init is now a no-op for `std:process`.
-/// All process helpers are provided through the native module `std:raw:process`.
+/// Legacy global init is now a no-op for `vole:process`.
+/// All process helpers are provided through the native module `vole:raw:process`.
 pub fn init(_ctx: &Ctx) -> Result<()> {
     Ok(())
 }

@@ -1,4 +1,4 @@
-import { test } from "std:test";
+import { test } from "vole:test";
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));

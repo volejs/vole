@@ -182,34 +182,34 @@
 
 ---
 
-## 二、标准模块 `std:`
+## 二、标准模块 `vole:`
 
 ### 2.1 已实现模块
 
 | 模块          | 状态 | 说明                                                                           |
 | ------------- | :--: | ------------------------------------------------------------------------------ |
-| `std:fs`      |  ✅  | 同步/异步路径操作 + `open()` 文件句柄（read/write/seek/close）                 |
-| `std:path`    |  ✅  | join/resolve/dirname/basename/extname/isAbsolute/relative/parse/format         |
-| `std:env`     |  ✅  | get/set/has/delete/getAll                                                      |
-| `std:process` |  ✅  | exit/abort/cwd/argv/stdout/stderr/stdin/pid/platform                           |
-| `std:test`    |  ✅  | test/describe/it/beforeAll/afterAll/beforeEach/afterEach/run + CLI `vole test` |
-| `std:http`    |  ✅  | client: request/fetch；server: serve/Server（axum + JS handler 回调）          |
+| `vole:fs`      |  ✅  | 同步/异步路径操作 + `open()` 文件句柄（read/write/seek/close）                 |
+| `vole:path`    |  ✅  | join/resolve/dirname/basename/extname/isAbsolute/relative/parse/format         |
+| `vole:env`     |  ✅  | get/set/has/delete/getAll                                                      |
+| `vole:process` |  ✅  | exit/abort/cwd/argv/stdout/stderr/stdin/pid/platform                           |
+| `vole:test`    |  ✅  | test/describe/it/beforeAll/afterAll/beforeEach/afterEach/run + CLI `vole test` |
+| `vole:http`    |  ✅  | client: request/fetch；server: serve/Server（axum + JS handler 回调）          |
 
 ### 2.2 其他模块
 
 | 模块                | 状态 | 计划 | 说明                                                                       |
 | ------------------- | :--: | :--: | -------------------------------------------------------------------------- |
-| `std:tcp`           |  ✅  |  —   | `connect()` / `listen()` / `Server` — 用 tokio::net::TcpStream/TcpListener |
-| `std:udp`           |  ✅  |  —   | `createSocket()` — 用 tokio::net::UdpSocket                                |
-| `std:socket` (Unix) |  ✅  |  —   | Unix domain socket — 用 tokio::net::UnixStream（Unix only）                |
-| `std:shell`         |  ✅  |  —   | `exec()` / `execSync()` — 基于 process.rs 实现                             |
-| `std:spawn`         |  ✅  |  —   | `spawn()` — 基于 process.rs 实现                                           |
-| `std:ffi`           |  ✅  |  —   | 动态库加载、C ABI 调用，支持整数/浮点/指针/字符串类型                      |
+| `vole:tcp`           |  ✅  |  —   | `connect()` / `listen()` / `Server` — 用 tokio::net::TcpStream/TcpListener |
+| `vole:udp`           |  ✅  |  —   | `createSocket()` — 用 tokio::net::UdpSocket                                |
+| `vole:socket` (Unix) |  ✅  |  —   | Unix domain socket — 用 tokio::net::UnixStream（Unix only）                |
+| `vole:shell`         |  ✅  |  —   | `exec()` / `execSync()` — 基于 process.rs 实现                             |
+| `vole:spawn`         |  ✅  |  —   | `spawn()` — 基于 process.rs 实现                                           |
+| `vole:ffi`           |  ✅  |  —   | 动态库加载、C ABI 调用，支持整数/浮点/指针/字符串类型                      |
 
 ### 2.3 已注册但未绑定底层函数的模块
 
-> `std:udp` / `std:socket` 已实现底层绑定。
-> `std:ffi` 已实现底层绑定。
+> `vole:udp` / `vole:socket` 已实现底层绑定。
+> `vole:ffi` 已实现底层绑定。
 
 ---
 
@@ -258,7 +258,7 @@
 | `vole bundle`                 |  ➖  |  —   | 打包，远期                                |
 | `--inspect` / `--inspect-brk` |  ➖  |  —   | 调试协议，远期                            |
 | TypeScript 直接执行           |  ✅  |  —   | `vole run index.ts` — 集成 oxc 转译       |
-| `.env` 自动加载               |  ✅  |  —   | 启动时自动加载 `.env` 文件到 `std:env`    |
+| `.env` 自动加载               |  ✅  |  —   | 启动时自动加载 `.env` 文件到 `vole:env`    |
 | `--allow-*` 权限标记          |  ➖  |  —   | Deno 风格的权限系统，远期                 |
 
 ---
@@ -268,7 +268,7 @@
 ```
 P1 (当前冲刺)
   ├─ 继续扩展外部测试集（Node/Deno/Bun 通用用例）
-  └─ std:ffi 高级能力（Pointer 内存读写 / struct 布局 / 回调）
+  └─ vole:ffi 高级能力（Pointer 内存读写 / struct 布局 / 回调）
 
 P2 (下一冲刺)
   ├─ 包系统增强（独立全局缓存、私有 registry）
@@ -279,18 +279,18 @@ P3 (已完成 ✅)
   ├─ ReadableStreamDefaultReader + Controller
   ├─ WritableStream + WritableStreamDefaultWriter + Controller
   ├─ TransformStream
-  ├─ std:tcp (connect/listen/Server)
+  ├─ vole:tcp (connect/listen/Server)
   ├─ CryptoKey + importKey/exportKey (raw/jwk/pkcs8/spki)
   ├─ SubtleCrypto 对象暴露
   ├─ JSON modules / 通用配置导入 (`import ... with { type: "..." }`)
   ├─ TypeScript 直接执行（oxc 转译）
   ├─ CLI `.env` 自动加载
   ├─ `vole run` 显式子命令
-  └─ std:shell (exec) + std:spawn
+  └─ vole:shell (exec) + vole:spawn
 
 P4 (已完成 ✅)
   ├─ CompressionStream / DecompressionStream
-  ├─ std:udp + std:socket (Unix)
+  ├─ vole:udp + vole:socket (Unix)
   ├─ TextEncoderStream / TextDecoderStream
   ├─ ByteLengthQueuingStrategy / CountQueuingStrategy
   ├─ Crypto RSA (`RSASSA-PKCS1-v1.5` / `RSA-PSS`) pkcs8/spki sign/verify

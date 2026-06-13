@@ -1,5 +1,5 @@
-import { test } from "std:test";
-import { open, close, call, define } from "std:ffi";
+import { test } from "vole:test";
+import { open, close, call, define } from "vole:ffi";
 
 const LIB_PATH = "tests/fixtures/libffi_test.dylib";
 
@@ -11,7 +11,7 @@ function assertEqual(actual, expected, message) {
   }
 }
 
-test("std:ffi open and close", () => {
+test("vole:ffi open and close", () => {
   const handle = open(LIB_PATH);
   if (typeof handle !== "bigint") {
     throw new Error("expected handle to be bigint");
@@ -19,7 +19,7 @@ test("std:ffi open and close", () => {
   close(handle);
 });
 
-test("std:ffi call integer function", () => {
+test("vole:ffi call integer function", () => {
   const handle = open(LIB_PATH);
   try {
     const result = call(
@@ -34,7 +34,7 @@ test("std:ffi call integer function", () => {
   }
 });
 
-test("std:ffi call double function", () => {
+test("vole:ffi call double function", () => {
   const handle = open(LIB_PATH);
   try {
     const result = call(
@@ -49,7 +49,7 @@ test("std:ffi call double function", () => {
   }
 });
 
-test("std:ffi call string length function", () => {
+test("vole:ffi call string length function", () => {
   const handle = open(LIB_PATH);
   try {
     const result = call(
@@ -64,7 +64,7 @@ test("std:ffi call string length function", () => {
   }
 });
 
-test("std:ffi define reusable function", () => {
+test("vole:ffi define reusable function", () => {
   const handle = open(LIB_PATH);
   try {
     const add = define(handle, "add_ints", {
@@ -78,7 +78,7 @@ test("std:ffi define reusable function", () => {
   }
 });
 
-test("std:ffi call returns string", () => {
+test("vole:ffi call returns string", () => {
   const handle = open(LIB_PATH);
   try {
     const result = call(

@@ -19,7 +19,7 @@ import {
   __std_process_stderr_write,
   __std_process_stderr_writeAsync,
   __std_process_stderr_flush,
-} from "std:raw:process";
+} from "vole:raw:process";
 
 export function exit(code) {
   return __std_process_exit(code);

@@ -1,4 +1,4 @@
-import { __ffi_open, __ffi_close, __ffi_call } from "std:raw:ffi";
+import { __ffi_open, __ffi_close, __ffi_call } from "vole:raw:ffi";
 
 const handles = new Map();
 

@@ -1,6 +1,6 @@
 # Vole Runtime API 规划
 
-> 本文档定义 `vole` JavaScript/TypeScript 运行时的公开 API，包括全局 Web API、内置模块 `std:` 命名空间以及 CLI 命令接口。
+> 本文档定义 `vole` JavaScript/TypeScript 运行时的公开 API，包括全局 Web API、内置模块 `vole:` 命名空间以及 CLI 命令接口。
 
 ---
 
@@ -8,15 +8,15 @@
 
 - [设计原则](#设计原则)
 - [全局 Web API](#全局-web-api)
-- [内置模块 `std:`](#内置模块-std)
-  - [std:fs](#stdfs)
-  - [std:path](#stdpath)
-  - [std:env](#stdenv)
-  - [std:process](#stdprocess)
-  - [std:http](#stdhttp)
-  - [std:tcp / std:udp / std:socket](#stdtcp--stdudp--stdsocket)
-  - [std:ffi](#stdffi)
-  - [std:test](#stdtest)
+- [内置模块 `vole:`](#内置模块-std)
+  - [vole:fs](#stdfs)
+  - [vole:path](#stdpath)
+  - [vole:env](#stdenv)
+  - [vole:process](#stdprocess)
+  - [vole:http](#stdhttp)
+  - [vole:tcp / vole:udp / vole:socket](#stdtcp--stdudp--stdsocket)
+  - [vole:ffi](#stdffi)
+  - [vole:test](#stdtest)
 - [CLI 命令](#cli-命令)
 - [实现路线图](#实现路线图)
 - [待讨论议题](#待讨论议题)
@@ -27,7 +27,7 @@
 
 1. **Web 标准优先**：首要对齐 TC39 ECMAScript 规范、WinterCG 运行时共识规范以及浏览器 Web API。不追求与 Node.js API 兼容，Node.js 仅作设计参考。
 2. **分层实现**：底层 Rust 原生实现 → JavaScript shim 封装 → 用户代码。
-3. **命名空间隔离**：系统级能力置于 `std:` 前缀模块中；Web 标准 API 直接挂载于 `globalThis`。
+3. **命名空间隔离**：系统级能力置于 `vole:` 前缀模块中；Web 标准 API 直接挂载于 `globalThis`。
 4. **异步优先**：I/O 操作以 `Promise` 为基础 API，保留必要的 `*Sync` 同步版本用于启动时配置等场景。
 5. **类型友好**：API 签名设计时同步考虑 TypeScript 类型声明的可表达性。
 
@@ -50,8 +50,8 @@
 | 来源                                  | 对应模块                    | 参考价值                                                               |
 | ------------------------------------- | --------------------------- | ---------------------------------------------------------------------- |
 | **AWS LLRT** `llrt_modules::crypto`   | `crypto` 全局 API           | **极高**。SHA、AES、HMAC、RSA 的 rquickjs 绑定方式                     |
-| **AWS LLRT** `llrt_modules::fs`       | `std:fs`                    | **高**。文件操作 Rust → JS 的异步封装模式                              |
-| **AWS LLRT** `llrt_modules::fetch`    | `fetch` / `std:http`        | **高**。`reqwest` + rquickjs `Response` 对象封装                       |
+| **AWS LLRT** `llrt_modules::fs`       | `vole:fs`                    | **高**。文件操作 Rust → JS 的异步封装模式                              |
+| **AWS LLRT** `llrt_modules::fetch`    | `fetch` / `vole:http`        | **高**。`reqwest` + rquickjs `Response` 对象封装                       |
 | **AWS LLRT** `llrt_modules::timers`   | `setTimeout` 等             | **中**。tokio timer + rquickjs callback 调度                           |
 | **AWS LLRT** `llrt_modules::encoding` | `TextEncoder`/`TextDecoder` | **中**。字符串 ↔ Uint8Array 转换                                       |
 | **AWS LLRT** `llrt_modules::streams`  | `ReadableStream` 等         | **中**。流式数据在 rquickjs 中的表达                                   |
@@ -120,7 +120,7 @@ AWS LLRT 的模块实现方式和我们"Rust 原生实现 → JS shim 封装 →
 
 | API                   | 说明                 | 实现方式                                          |
 | --------------------- | -------------------- | ------------------------------------------------- |
-| `fetch(input, init?)` | 发起 HTTP/HTTPS 请求 | Rust：`reqwest`（和 `std:http` 客户端共享连接池） |
+| `fetch(input, init?)` | 发起 HTTP/HTTPS 请求 | Rust：`reqwest`（和 `vole:http` 客户端共享连接池） |
 | `Request`             | Request 对象         | Rust：`reqwest::Request` 包装                     |
 | `Response`            | Response 对象        | Rust：`reqwest::Response` 包装                    |
 | `Headers`             | HTTP 头集合          | Rust：`reqwest::header::HeaderMap` 包装           |
@@ -160,7 +160,7 @@ AWS LLRT 的模块实现方式和我们"Rust 原生实现 → JS shim 封装 →
 
 ### 核心原则：零幽灵依赖
 
-**外部模块**必须通过 `vole.json` 显式声明。`std:` 内置模块和 `./` / `../` 相对路径模块无需声明，直接可用。运行时对未声明的外部 import 直接报错。
+**外部模块**必须通过 `vole.json` 显式声明。`vole:` 内置模块和 `./` / `../` 相对路径模块无需声明，直接可用。运行时对未声明的外部 import 直接报错。
 
 ```json
 // vole.json
@@ -182,7 +182,7 @@ AWS LLRT 的模块实现方式和我们"Rust 原生实现 → JS shim 封装 →
 
 ```javascript
 // app.js
-import { readFile } from "std:fs"; // ✅ 内置模块，直接使用 std: 前缀
+import { readFile } from "vole:fs"; // ✅ 内置模块，直接使用 vole: 前缀
 import _ from "lodash"; // ✅ 映射到 npm:lodash（需在 vole.json 中声明）
 import { helper } from "utils"; // ✅ 映射到 gh:mycompany/utils（需在 vole.json 中声明）
 import { something } from "unregistered"; // ❌ 报错：未在 vole.json 中声明
@@ -192,7 +192,7 @@ import { something } from "unregistered"; // ❌ 报错：未在 vole.json 中�
 
 | 前缀         | 来源                      | 示例                             | 状态                |
 | ------------ | ------------------------- | -------------------------------- | ------------------- |
-| `std:`       | 内置标准库                | `std:fs`、`std:tcp`、`std:udp`   | ✅ 已有             |
+| `vole:`       | 内置标准库                | `vole:fs`、`vole:tcp`、`vole:udp`   | ✅ 已有             |
 | `./` / `../` | 相对路径                  | `./utils.js`                     | ✅ 已有             |
 | `npm:`       | npm 注册表                | `npm:lodash@4.17.21`             | 🔵 未来             |
 | `jsr:`       | JSR (JavaScript Registry) | `jsr:@std/path@1.0.0`            | 🔵 未来             |
@@ -200,7 +200,7 @@ import { something } from "unregistered"; // ❌ 报错：未在 vole.json 中�
 | `https://`   | 直接 URL                  | `https://cdn.example.com/lib.js` | 🔵 未来（暂不实现） |
 | 自定义       | 私有注册表                | `corp:internal-lib@1.0.0`        | 🔵 未来             |
 
-内置模块 `std:` 只是预配置的默认注册表，加载机制与外部模块统一。
+内置模块 `vole:` 只是预配置的默认注册表，加载机制与外部模块统一。
 
 ### `import.meta`
 
@@ -237,24 +237,24 @@ import.meta.main; // true | false
 
 ---
 
-## 内置模块 `std:`
+## 内置模块 `vole:`
 
 ### 实现方式总览
 
 | 模块          | 核心 Rust 依赖                      | 说明                                   |
 | ------------- | ----------------------------------- | -------------------------------------- |
-| `std:fs`      | `std::fs` / `tokio::fs`             | 文件系统操作                           |
-| `std:path`    | `std::path`                         | 路径处理，纯计算                       |
-| `std:env`     | `std::env`                          | 环境变量与运行时信息                   |
-| `std:process` | `std::process` / `tokio::process`   | 进程控制、Shell、子进程                |
-| `std:http`    | `reqwest` / `hyper` / `axum`        | HTTP 客户端（reqwest）+ 服务端（axum） |
-| `std:tcp`     | `tokio::net::TcpStream/TcpListener` | TCP connect/listen/Server              |
-| `std:udp`     | `tokio::net::UdpSocket`             | UDP socket                             |
-| `std:socket`  | `tokio::net::UnixStream`            | Unix domain socket（Unix only）        |
-| `std:ffi`     | `libloading` / `dlopen`             | 动态链接库调用                         |
-| `std:test`    | 自定义测试运行器                    | 类似 Deno test，基于 Rust 调度         |
+| `vole:fs`      | `std::fs` / `tokio::fs`             | 文件系统操作                           |
+| `vole:path`    | `std::path`                         | 路径处理，纯计算                       |
+| `vole:env`     | `std::env`                          | 环境变量与运行时信息                   |
+| `vole:process` | `std::process` / `tokio::process`   | 进程控制、Shell、子进程                |
+| `vole:http`    | `reqwest` / `hyper` / `axum`        | HTTP 客户端（reqwest）+ 服务端（axum） |
+| `vole:tcp`     | `tokio::net::TcpStream/TcpListener` | TCP connect/listen/Server              |
+| `vole:udp`     | `tokio::net::UdpSocket`             | UDP socket                             |
+| `vole:socket`  | `tokio::net::UnixStream`            | Unix domain socket（Unix only）        |
+| `vole:ffi`     | `libloading` / `dlopen`             | 动态链接库调用                         |
+| `vole:test`    | 自定义测试运行器                    | 类似 Deno test，基于 Rust 调度         |
 
-### std:fs
+### vole:fs
 
 文件系统操作模块，同时提供同步与异步 API。
 
@@ -312,7 +312,7 @@ export function rename(oldPath: string, newPath: string): Promise<void>;
 export function copyFile(src: string, dest: string): Promise<void>;
 ```
 
-### std:path
+### vole:path
 
 跨平台路径处理模块。
 
@@ -363,7 +363,7 @@ export const sep: string;
 export const delimiter: string;
 ```
 
-### std:env
+### vole:env
 
 环境变量操作模块。仅提供环境变量的读写能力，不涉及进程控制。
 
@@ -393,7 +393,7 @@ export const env: {
 };
 ```
 
-### std:process
+### vole:process
 
 进程控制与生命周期管理。参考 POSIX 进程语义，非 Node.js `process` 对象兼容。
 
@@ -512,7 +512,7 @@ export function on(
 ): void;
 ```
 
-### std:http
+### vole:http
 
 HTTP 服务端与客户端。
 
@@ -545,9 +545,9 @@ export function serve(
 export function request(url: string, options?: RequestInit): Promise<Response>;
 ```
 
-### std:tcp / std:udp / std:socket
+### vole:tcp / vole:udp / vole:socket
 
-底层网络通信能力，实际拆分为三个模块：`std:tcp`、`std:udp`、`std:socket`（Unix only）。HTTP 应用层能力见 `std:http`。
+底层网络通信能力，实际拆分为三个模块：`vole:tcp`、`vole:udp`、`vole:socket`（Unix only）。HTTP 应用层能力见 `vole:http`。
 
 ```typescript
 export interface ListenOptions {
@@ -598,7 +598,7 @@ export class UnixSocket {
 }
 ```
 
-### std:ffi
+### vole:ffi
 
 外部函数接口（FFI），基于 `libffi` + `libloading` 调用动态链接库。
 
@@ -649,7 +649,7 @@ export function define(
 示例：
 
 ```js
-import { open, close, call, define } from "std:ffi";
+import { open, close, call, define } from "vole:ffi";
 
 const lib = open("./libexample.dylib");
 
@@ -668,7 +668,7 @@ console.log(len); // 5
 close(lib);
 ```
 
-### std:test
+### vole:test
 
 内置测试框架。参考 Web Platform Tests 与 Deno Test 的设计，零配置即可运行。
 
@@ -736,14 +736,14 @@ vole <file>                           # vole index.js 的快捷形式，等价�
 
 ## 实现路线图
 
-| 阶段        | 全局 Web API                                                                                         | 内置模块 `std:`                                  | 优先级  |
+| 阶段        | 全局 Web API                                                                                         | 内置模块 `vole:`                                  | 优先级  |
 | ----------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------ | :-----: |
-| **Phase 0** | `console` 补全；`performance.now()`；Timers；`atob`/`btoa`；`DOMException`；`reportError`            | `std:env`；`std:process`                         |  🔴 高  |
-| **Phase 1** | `TextEncoder`/`TextDecoder`；`URL`/`URLSearchParams`/`URLPattern`；`Blob`/`File`；`structuredClone`  | `std:fs` 异步扩展；`std:path` 扩展               |  🟡 中  |
+| **Phase 0** | `console` 补全；`performance.now()`；Timers；`atob`/`btoa`；`DOMException`；`reportError`            | `vole:env`；`vole:process`                         |  🔴 高  |
+| **Phase 1** | `TextEncoder`/`TextDecoder`；`URL`/`URLSearchParams`/`URLPattern`；`Blob`/`File`；`structuredClone`  | `vole:fs` 异步扩展；`vole:path` 扩展               |  🟡 中  |
 | **Phase 2** | `Event`/`EventTarget`/`CustomEvent`；`AbortController`/`AbortSignal`；`MessageChannel`/`MessagePort` | —                                                |  🟡 中  |
-| **Phase 3** | `fetch`/`Request`/`Response`/`Headers`/`FormData`                                                    | `std:http` 服务端/客户端                         |  🟡 中  |
-| **Phase 4** | `crypto` / `Crypto` / `SubtleCrypto` / `CryptoKey` 全套（含 RSA pkcs8/spki）                         | `std:tcp` / `std:udp` / `std:socket`；`std:test` |  🟢 低  |
-| **Phase 5** | —                                                                                                    | `std:ffi`                                        | 🔵 未来 |
+| **Phase 3** | `fetch`/`Request`/`Response`/`Headers`/`FormData`                                                    | `vole:http` 服务端/客户端                         |  🟡 中  |
+| **Phase 4** | `crypto` / `Crypto` / `SubtleCrypto` / `CryptoKey` 全套（含 RSA pkcs8/spki）                         | `vole:tcp` / `vole:udp` / `vole:socket`；`vole:test` |  🟢 低  |
+| **Phase 5** | —                                                                                                    | `vole:ffi`                                        | 🔵 未来 |
 
 ---
 
@@ -751,19 +751,19 @@ vole <file>                           # vole index.js 的快捷形式，等价�
 
 1. **HTTP 实现策略** ✅ 已决策
    - `fetch` 基于 `reqwest` 实现
-   - `std:http` 客户端基于 `reqwest`，与 `fetch` 共享全局 `reqwest::Client` 连接池
-   - `std:http` 服务端基于 `axum`，可接受 `std:tcp::listen()` 作为入口（共享 socket endpoint）
-   - `std:tcp` / `std:udp` / `std:socket` 独立基于 `tokio::net`，与 `std:http` 不共享连接池
+   - `vole:http` 客户端基于 `reqwest`，与 `fetch` 共享全局 `reqwest::Client` 连接池
+   - `vole:http` 服务端基于 `axum`，可接受 `vole:tcp::listen()` 作为入口（共享 socket endpoint）
+   - `vole:tcp` / `vole:udp` / `vole:socket` 独立基于 `tokio::net`，与 `vole:http` 不共享连接池
 
 2. **模块加载策略** ✅ 已决策
    - `vole.json` 显式声明所有依赖，零幽灵依赖
-   - 注册表体系：`std:`（内置）、`npm:`、`jsr:`、`gh:`、自定义私有注册表
+   - 注册表体系：`vole:`（内置）、`npm:`、`jsr:`、`gh:`、自定义私有注册表
    - URL import（`https://`）暂不实现，作为未来特性
    - 不引入独立包管理器 CLI，依赖声明即包管理
 
 3. **权限模型** ✅ 已决策
    - **完全开放**，不内置权限控制
-   - 移除 `std:permissions` 模块
+   - 移除 `vole:permissions` 模块
    - 不引入 `--allow` / `--deny` CLI 参数
    - 信任开发者，类似 Node.js / Bun 策略
 
@@ -780,7 +780,7 @@ vole <file>                           # vole index.js 的快捷形式，等价�
 5. **错误处理风格** ✅ 已决策
    - JS 层统一 `throw` 标准 `Error` 对象，带 `.code` 属性（如 `ENOENT`、`EACCES`）
    - Rust 实现层内部使用 `Result<T, rquickjs::Error>`
-   - 不需要独立的 `std:errors` 模块
+   - 不需要独立的 `vole:errors` 模块
 
 6. **`import.meta` 属性** ✅ 已决策
    - `import.meta.url` — 当前模块的绝对 `file:///` URL

@@ -201,7 +201,7 @@ fn tcp_server_close<'js>(ctx: Ctx<'js>, id: u64) -> Result<Promise<'js>> {
     Ok(promise)
 }
 
-/// Native module exposing the low-level TCP operations used by the `std:tcp` JS shim.
+/// Native module exposing the low-level TCP operations used by the `vole:tcp` JS shim.
 pub struct TcpRawModule;
 
 impl ModuleDef for TcpRawModule {
@@ -228,8 +228,8 @@ impl ModuleDef for TcpRawModule {
     }
 }
 
-/// Legacy global init is now a no-op for `std:tcp`.
-/// All TCP helpers are provided through the native module `std:raw:tcp`.
+/// Legacy global init is now a no-op for `vole:tcp`.
+/// All TCP helpers are provided through the native module `vole:raw:tcp`.
 pub fn init(_ctx: &Ctx) -> Result<()> {
     Ok(())
 }

@@ -1,4 +1,4 @@
-import { test } from "std:test";
+import { test } from "vole:test";
 
 function assertEqual(actual, expected, message) {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {

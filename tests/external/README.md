@@ -16,10 +16,10 @@ runtimes and standard test suites.
 
 Most upstream tests use framework-specific APIs (`expect`, `node:assert`,
 `Deno.test`, etc.). When bringing them in, convert them to the project's
-`std:test` API:
+`vole:test` API:
 
 ```js
-import { test } from "std:test";
+import { test } from "vole:test";
 
 test("description", () => {
   if (actual !== expected) {

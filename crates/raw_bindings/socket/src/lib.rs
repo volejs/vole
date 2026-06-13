@@ -202,7 +202,7 @@ fn socket_server_close<'js>(ctx: Ctx<'js>, id: u64) -> Result<Promise<'js>> {
     Ok(promise)
 }
 
-/// Native module exposing the low-level Unix socket operations used by the `std:socket` JS shim.
+/// Native module exposing the low-level Unix socket operations used by the `vole:socket` JS shim.
 pub struct SocketRawModule;
 
 impl ModuleDef for SocketRawModule {
@@ -229,8 +229,8 @@ impl ModuleDef for SocketRawModule {
     }
 }
 
-/// Legacy global init is now a no-op for `std:socket`.
-/// All Unix socket helpers are provided through the native module `std:raw:socket`.
+/// Legacy global init is now a no-op for `vole:socket`.
+/// All Unix socket helpers are provided through the native module `vole:raw:socket`.
 pub fn init(_ctx: &Ctx) -> Result<()> {
     Ok(())
 }

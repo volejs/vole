@@ -163,7 +163,7 @@ WinterTC 要求以下方法和属性暴露在 `globalThis` 上。
 | `btoa()`               |   ✅   | —                                                                                                                |
 | `clearTimeout()`       |   ✅   | —                                                                                                                |
 | `clearInterval()`      |   ✅   | —                                                                                                                |
-| `navigator.userAgent`  |   ➖   | 浏览器 `navigator` 概念；vole 已移除 `navigator`，运行时信息通过 `process` / `std:env` 等机制提供                |
+| `navigator.userAgent`  |   ➖   | 浏览器 `navigator` 概念；vole 已移除 `navigator`，运行时信息通过 `process` / `vole:env` 等机制提供                |
 | `onerror`              |   ➖   | HTML `Window` / `WorkerGlobalScope` 事件处理器；vole 不实现该属性，错误通过 `"error"` 事件在 `globalThis` 上派发 |
 | `onunhandledrejection` |   ➖   | HTML 属性；已用 `globalThis` 的 `"unhandledrejection"` 事件替代                                                  |
 | `onrejectionhandled`   |   ➖   | HTML 属性；已用 `globalThis` 的 `"rejectionhandled"` 事件替代                                                    |

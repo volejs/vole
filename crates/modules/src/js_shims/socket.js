@@ -6,7 +6,7 @@ import {
   __std_socket_listen,
   __std_socket_server_accept,
   __std_socket_server_close,
-} from "std:raw:socket";
+} from "vole:raw:socket";
 
 export async function connect(path) {
   const info = await __std_socket_connect(path);

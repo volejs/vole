@@ -187,7 +187,7 @@ impl Vm {
             self.eval_file(file).await?;
         }
 
-        let code = r#"import { run } from "std:test"; await run();"#;
+        let code = r#"import { run } from "vole:test"; await run();"#;
         self.ctx
             .async_with(async |ctx| {
                 let mut options = EvalOptions::default();

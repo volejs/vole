@@ -128,7 +128,7 @@ fn format(path_obj: Object) -> Result<String> {
     }
 }
 
-/// Native module exposing the low-level path operations used by the `std:path` JS shim.
+/// Native module exposing the low-level path operations used by the `vole:path` JS shim.
 /// The functions here take the same shapes as the legacy `globalThis.__path_*` helpers
 /// (e.g. `__path_join` receives an array of strings), so the JS shim can simply import
 /// and re-export them without touching `globalThis`.
@@ -166,9 +166,9 @@ impl ModuleDef for PathRawModule {
     }
 }
 
-/// Legacy global init is now a no-op for `std:path`.
-/// All path helpers are provided through the native module `std:raw:path` and consumed by
-/// the `std:path` JS shim via ES module imports.
+/// Legacy global init is now a no-op for `vole:path`.
+/// All path helpers are provided through the native module `vole:raw:path` and consumed by
+/// the `vole:path` JS shim via ES module imports.
 pub fn init(_ctx: &Ctx) -> Result<()> {
     Ok(())
 }

@@ -1,4 +1,4 @@
-import { __std_process_exec, __std_process_execSync } from "std:raw:process";
+import { __std_process_exec, __std_process_execSync } from "vole:raw:process";
 
 export function exec(command, options) {
   return __std_process_exec(command, options ?? undefined);

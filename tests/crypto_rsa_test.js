@@ -1,4 +1,4 @@
-import { test } from "std:test";
+import { test } from "vole:test";
 
 test("RSASSA-PKCS1-v1.5 generateKey, sign and verify", async () => {
   const algorithm = {

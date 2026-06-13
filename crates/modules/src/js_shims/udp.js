@@ -4,7 +4,7 @@ import {
   __std_udp_socket_recv,
   __std_udp_socket_close,
   __std_udp_socket_local_address,
-} from "std:raw:udp";
+} from "vole:raw:udp";
 
 export async function createSocket(port, host) {
   const info = await __std_udp_create_socket(port, host);

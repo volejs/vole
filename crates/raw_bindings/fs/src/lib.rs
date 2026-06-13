@@ -334,7 +334,7 @@ async fn fs_real_path(_ctx: Ctx<'_>, path: String) -> Result<String> {
 }
 
 // =============================================================================
-// File-handle helpers (merged from the old std:file module)
+// File-handle helpers (merged from the old vole:file module)
 // =============================================================================
 
 static FILES: std::sync::OnceLock<Mutex<HashMap<u64, Arc<TokioMutex<tokio::fs::File>>>>> =
@@ -545,7 +545,7 @@ async fn fs_open<'js>(
 // Native module definition
 // =============================================================================
 
-/// Native module exposing all low-level fs operations used by the `std:fs` JS shim.
+/// Native module exposing all low-level fs operations used by the `vole:fs` JS shim.
 pub struct FsRawModule;
 
 impl ModuleDef for FsRawModule {
@@ -692,7 +692,7 @@ impl ModuleDef for FsRawModule {
 }
 
 /// Legacy global init: the native `FileHandle` class is registered when the
-/// `std:raw:fs` module is loaded, so this hook is a no-op.
+/// `vole:raw:fs` module is loaded, so this hook is a no-op.
 pub fn init(_ctx: &Ctx) -> Result<()> {
     Ok(())
 }

@@ -1,4 +1,4 @@
-import { test, describe, it, beforeAll, afterAll, beforeEach, afterEach } from "std:test";
+import { test, describe, it, beforeAll, afterAll, beforeEach, afterEach } from "vole:test";
 
 test("simple addition", () => {
   if (1 + 1 !== 2) {

@@ -21,7 +21,7 @@ pub fn registry() -> ExtensionRegistry {
         .with(vole_global_console::init)
         .with(vole_global_streams::init)
         .with(vole_global_compression::init)
-        // raw_bindings: low-level Rust backends exposed via std:raw:*
+        // raw_bindings: low-level Rust backends exposed via vole:raw:*
         .with(vole_raw_env::init)
         .with(vole_raw_ffi::init)
         .with(vole_raw_process::init)
@@ -36,8 +36,8 @@ pub fn registry() -> ExtensionRegistry {
 /// Initialize all bindings.
 ///
 /// This is the single entry point for VM initialization. It:
-/// 1. Registers global Web APIs and std: module low-level functions
-/// 2. Asynchronously loads Web API shims that depend on std:raw:* native modules
+/// 1. Registers global Web APIs and vole: module low-level functions
+/// 2. Asynchronously loads Web API shims that depend on vole:raw:* native modules
 /// 3. Initializes the timer task registry
 pub async fn init(ctx: &AsyncContext) -> Result<(), rquickjs::Error> {
     ctx.with(|ctx| {
@@ -62,7 +62,7 @@ pub async fn init_async(ctx: &AsyncContext) -> Result<(), rquickjs::Error> {
     ctx.async_with(async |ctx| {
         let wasm = rquickjs::Module::evaluate(
             ctx.clone(),
-            "std:wasm",
+            "vole:wasm",
             include_str!("../../modules/src/js_shims/wasm.js"),
         )?;
         wasm.finish::<()>()?;

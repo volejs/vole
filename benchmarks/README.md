@@ -1,7 +1,7 @@
 # Benchmarks
 
 Pure JavaScript micro-benchmarks used to measure runtime performance.
-These benchmarks do not depend on Web APIs or `std:*` modules and can be
+These benchmarks do not depend on Web APIs or `vole:*` modules and can be
 compared across JavaScript runtimes (Node.js, Deno, Bun, LLRT, etc.).
 
 ## Running

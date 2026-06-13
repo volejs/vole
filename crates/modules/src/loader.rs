@@ -1,86 +1,53 @@
 use rquickjs::{loader::Loader, module::ModuleDef, Ctx, Error, Module};
 use std::collections::HashMap;
 
-use crate::{
-    MODULE_ENV, MODULE_FFI, MODULE_FS, MODULE_HTTP, MODULE_PATH, MODULE_PREFIX, MODULE_PROCESS,
-    MODULE_SHELL, MODULE_SOCKET, MODULE_SPAWN, MODULE_TCP, MODULE_TEST, MODULE_UDP, MODULE_WASM,
-};
+use crate::vole_mod;
 
-/// Allows the embedding runtime to provide Rust-native modules for `std:*` specifiers.
+/// Allows the embedding runtime to provide Rust-native modules for `vole:*` specifiers.
 pub trait NativeModuleProvider: Send + Sync {
     /// Attempt to load a native module by name. Returns `None` to fall back to JS shim loading.
     fn load<'js>(&self, ctx: &Ctx<'js>, name: &str) -> Option<Result<Module<'js>, Error>>;
 }
 
 pub struct ModuleLoader {
-    std_modules: HashMap<String, String>,
+    vole_modules: HashMap<String, String>,
     native_providers: Vec<Box<dyn NativeModuleProvider>>,
 }
 
 impl ModuleLoader {
     pub fn new() -> Self {
-        let mut std_modules = HashMap::new();
+        let mut vole_modules = HashMap::new();
 
-        std_modules.insert(
-            MODULE_ENV.to_string(),
-            include_str!("js_shims/env.js").to_string(),
-        );
-        std_modules.insert(
-            MODULE_FFI.to_string(),
-            include_str!("js_shims/ffi.js").to_string(),
-        );
-        std_modules.insert(
-            MODULE_FS.to_string(),
-            include_str!("js_shims/fs.js").to_string(),
-        );
-        std_modules.insert(
-            MODULE_HTTP.to_string(),
-            include_str!("js_shims/http.js").to_string(),
-        );
-        std_modules.insert(
-            MODULE_PATH.to_string(),
-            include_str!("js_shims/path.js").to_string(),
-        );
-        std_modules.insert(
-            MODULE_PROCESS.to_string(),
-            include_str!("js_shims/process.js").to_string(),
-        );
-        std_modules.insert(
-            MODULE_SHELL.to_string(),
-            include_str!("js_shims/shell.js").to_string(),
-        );
-        std_modules.insert(
-            MODULE_SOCKET.to_string(),
-            include_str!("js_shims/socket.js").to_string(),
-        );
-        std_modules.insert(
-            MODULE_SPAWN.to_string(),
-            include_str!("js_shims/spawn.js").to_string(),
-        );
-        std_modules.insert(
-            MODULE_TCP.to_string(),
-            include_str!("js_shims/tcp.js").to_string(),
-        );
-        std_modules.insert(
-            MODULE_TEST.to_string(),
-            include_str!("js_shims/test.js").to_string(),
-        );
-        std_modules.insert(
-            MODULE_UDP.to_string(),
-            include_str!("js_shims/udp.js").to_string(),
-        );
-        std_modules.insert(
-            MODULE_WASM.to_string(),
-            include_str!("js_shims/wasm.js").to_string(),
-        );
+        macro_rules! insert_shim {
+            ($map:ident, $name:ident) => {
+                $map.insert(
+                    vole_mod!($name).to_string(),
+                    include_str!(concat!("js_shims/", stringify!($name), ".js")).to_string(),
+                );
+            };
+        }
+
+        insert_shim!(vole_modules, env);
+        insert_shim!(vole_modules, ffi);
+        insert_shim!(vole_modules, fs);
+        insert_shim!(vole_modules, http);
+        insert_shim!(vole_modules, path);
+        insert_shim!(vole_modules, process);
+        insert_shim!(vole_modules, shell);
+        insert_shim!(vole_modules, socket);
+        insert_shim!(vole_modules, spawn);
+        insert_shim!(vole_modules, tcp);
+        insert_shim!(vole_modules, test);
+        insert_shim!(vole_modules, udp);
+        insert_shim!(vole_modules, wasm);
 
         ModuleLoader {
-            std_modules,
+            vole_modules,
             native_providers: Vec::new(),
         }
     }
 
-    /// Register a provider for Rust-native modules (e.g. `std:path`).
+    /// Register a provider for Rust-native modules (e.g. `vole:path`).
     /// Providers are consulted in registration order before falling back to bundled JS shims.
     pub fn add_native_provider(&mut self, provider: Box<dyn NativeModuleProvider>) {
         self.native_providers.push(provider);
@@ -112,12 +79,12 @@ impl ModuleLoader {
         self.native_providers.push(Box::new(provider));
     }
 
-    fn is_std_module(&self, name: &str) -> bool {
-        name.starts_with(MODULE_PREFIX)
+    fn is_vole_module(&self, name: &str) -> bool {
+        name.starts_with("vole:")
     }
 
-    fn load_std_module<'js>(&self, ctx: &Ctx<'js>, name: &str) -> Result<Module<'js>, Error> {
-        let source = self.std_modules.get(name).ok_or(Error::Exception)?;
+    fn load_vole_module<'js>(&self, ctx: &Ctx<'js>, name: &str) -> Result<Module<'js>, Error> {
+        let source = self.vole_modules.get(name).ok_or(Error::Exception)?;
         Module::declare(ctx.clone(), name, source.as_bytes().to_vec())
     }
 
@@ -148,13 +115,13 @@ impl Loader for ModuleLoader {
         name: &str,
         attrs: Option<rquickjs::loader::ImportAttributes<'js>>,
     ) -> Result<Module<'js>, Error> {
-        if self.is_std_module(name) {
+        if self.is_vole_module(name) {
             for provider in &self.native_providers {
                 if let Some(result) = provider.load(ctx, name) {
                     return result;
                 }
             }
-            self.load_std_module(ctx, name)
+            self.load_vole_module(ctx, name)
         } else {
             let format = attrs
                 .and_then(|a| a.get_type().ok().flatten())

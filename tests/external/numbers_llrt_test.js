@@ -2,7 +2,7 @@
 // Original license: Apache-2.0
 // https://github.com/awslabs/llrt
 
-import { test } from "std:test";
+import { test } from "vole:test";
 
 function assertEqual(actual, expected, message) {
   if (actual !== expected) {

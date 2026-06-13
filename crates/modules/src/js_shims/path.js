@@ -10,7 +10,7 @@ import {
   __path_format,
   __path_sep,
   __path_delimiter,
-} from "std:raw:path";
+} from "vole:raw:path";
 
 export function join(...parts) {
   return __path_join(parts);

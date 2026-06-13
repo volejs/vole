@@ -4,7 +4,7 @@ import {
   __std_env_has,
   __std_env_remove,
   __std_env_entries,
-} from "std:raw:env";
+} from "vole:raw:env";
 
 export function get(name) {
   return __std_env_get(name);

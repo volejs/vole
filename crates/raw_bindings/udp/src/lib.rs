@@ -162,7 +162,7 @@ fn udp_socket_local_address<'js>(ctx: Ctx<'js>, id: u64) -> Result<Promise<'js>>
     Ok(promise)
 }
 
-/// Native module exposing the low-level UDP operations used by the `std:udp` JS shim.
+/// Native module exposing the low-level UDP operations used by the `vole:udp` JS shim.
 pub struct UdpRawModule;
 
 impl ModuleDef for UdpRawModule {
@@ -185,8 +185,8 @@ impl ModuleDef for UdpRawModule {
     }
 }
 
-/// Legacy global init is now a no-op for `std:udp`.
-/// All UDP helpers are provided through the native module `std:raw:udp`.
+/// Legacy global init is now a no-op for `vole:udp`.
+/// All UDP helpers are provided through the native module `vole:raw:udp`.
 pub fn init(_ctx: &Ctx) -> Result<()> {
     Ok(())
 }

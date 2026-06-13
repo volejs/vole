@@ -62,7 +62,7 @@ fn env_entries() -> HashMap<String, String> {
     std::env::vars().collect()
 }
 
-/// Native module exposing the low-level env operations used by the `std:env` JS shim.
+/// Native module exposing the low-level env operations used by the `vole:env` JS shim.
 pub struct EnvRawModule;
 
 impl ModuleDef for EnvRawModule {
@@ -85,8 +85,8 @@ impl ModuleDef for EnvRawModule {
     }
 }
 
-/// Legacy global init is now a no-op for `std:env`.
-/// All env helpers are provided through the native module `std:raw:env`.
+/// Legacy global init is now a no-op for `vole:env`.
+/// All env helpers are provided through the native module `vole:raw:env`.
 pub fn init(_ctx: &Ctx) -> Result<()> {
     Ok(())
 }

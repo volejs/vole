@@ -1,5 +1,5 @@
 use rquickjs::{Ctx, Error, Module};
-use vole_module::NativeModuleProvider;
+use vole_module::{vole_raw_mod, NativeModuleProvider};
 
 use vole_raw_env::EnvRawModule as env;
 use vole_raw_ffi::FfiRawModule as ffi;
@@ -17,22 +17,22 @@ pub struct RuntimeNativeModuleProvider;
 impl NativeModuleProvider for RuntimeNativeModuleProvider {
     fn load<'js>(&self, ctx: &Ctx<'js>, name: &str) -> Option<Result<Module<'js>, Error>> {
         match name {
-            "std:raw:env" => Some(Module::declare_def::<env, _>(ctx.clone(), name)),
-            "std:raw:ffi" => Some(Module::declare_def::<ffi, _>(ctx.clone(), name)),
-            "std:raw:fs" => Some(Module::declare_def::<fs, _>(ctx.clone(), name)),
-            "std:raw:http" => Some(Module::declare_def::<http_server, _>(ctx.clone(), name)),
-            "std:raw:path" => Some(Module::declare_def::<path, _>(ctx.clone(), name)),
-            "std:raw:process" => Some(Module::declare_def::<process, _>(ctx.clone(), name)),
-            "std:raw:socket" => Some(Module::declare_def::<socket, _>(ctx.clone(), name)),
-            "std:raw:tcp" => Some(Module::declare_def::<tcp, _>(ctx.clone(), name)),
-            "std:raw:udp" => Some(Module::declare_def::<udp, _>(ctx.clone(), name)),
-            "std:raw:wasm" => Some(Module::declare_def::<wasm, _>(ctx.clone(), name)),
+            vole_raw_mod!(env) => Some(Module::declare_def::<env, _>(ctx.clone(), name)),
+            vole_raw_mod!(ffi) => Some(Module::declare_def::<ffi, _>(ctx.clone(), name)),
+            vole_raw_mod!(fs) => Some(Module::declare_def::<fs, _>(ctx.clone(), name)),
+            vole_raw_mod!(http) => Some(Module::declare_def::<http_server, _>(ctx.clone(), name)),
+            vole_raw_mod!(path) => Some(Module::declare_def::<path, _>(ctx.clone(), name)),
+            vole_raw_mod!(process) => Some(Module::declare_def::<process, _>(ctx.clone(), name)),
+            vole_raw_mod!(socket) => Some(Module::declare_def::<socket, _>(ctx.clone(), name)),
+            vole_raw_mod!(tcp) => Some(Module::declare_def::<tcp, _>(ctx.clone(), name)),
+            vole_raw_mod!(udp) => Some(Module::declare_def::<udp, _>(ctx.clone(), name)),
+            vole_raw_mod!(wasm) => Some(Module::declare_def::<wasm, _>(ctx.clone(), name)),
             _ => None,
         }
     }
 }
 
-/// Register all Rust-native `std:*` modules.
+/// Register all Rust-native `vole:*` modules.
 pub fn provider() -> RuntimeNativeModuleProvider {
     RuntimeNativeModuleProvider
 }

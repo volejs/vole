@@ -26,7 +26,7 @@ import {
   __fs_open,
   FileHandle,
   Stats,
-} from "std:raw:fs";
+} from "vole:raw:fs";
 
 function encodeData(data) {
   if (data instanceof Uint8Array) {
@@ -144,7 +144,7 @@ export async function realPath(path) {
   return __fs_realPath(path);
 }
 
-// --- File-handle API (merged from the old std:file module) ---
+// --- File-handle API (merged from the old vole:file module) ---
 
 export async function open(path, options = {}) {
   return __fs_open(path, options);

@@ -148,7 +148,7 @@ pub struct CryptoKey<'js> {
 | `fetch` / `Request` / `Response` | `llrt_fetch`      | `rquickjs::class` 宏封装、Promise::wrap_future、Body 懒加载 |
 | `URL` / `URLSearchParams`        | `llrt_url`        | `url` crate 使用、Rc<RefCell<Url>> 共享状态                 |
 | `crypto.subtle.*`                | `llrt_crypto`     | `CryptoProvider` trait 多后端、`CryptoKey` 封装             |
-| `std:fs`                         | `llrt_fs`         | `tokio::fs` 桥接、同步/异步复用、`Stats` 类封装             |
+| `vole:fs`                         | `llrt_fs`         | `tokio::fs` 桥接、同步/异步复用、`Stats` 类封装             |
 | `Event` / `EventTarget`          | `llrt_events`     | `Emitter` trait、事件存储模型、defer 模式                   |
 | `ReadableStream`（远期）         | `llrt_stream_web` | 状态机、背压控制、QueueWithSizes                            |
 

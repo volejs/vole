@@ -296,7 +296,7 @@ fn ffi_call<'js>(
     unsafe { result_to_value(&ctx, result, &ret_type) }
 }
 
-/// Native module exposing the low-level FFI operations used by the `std:ffi` JS shim.
+/// Native module exposing the low-level FFI operations used by the `vole:ffi` JS shim.
 pub struct FfiRawModule;
 
 impl ModuleDef for FfiRawModule {
@@ -315,8 +315,8 @@ impl ModuleDef for FfiRawModule {
     }
 }
 
-/// Legacy global init is now a no-op for `std:ffi`.
-/// All FFI helpers are provided through the native module `std:raw:ffi`.
+/// Legacy global init is now a no-op for `vole:ffi`.
+/// All FFI helpers are provided through the native module `vole:raw:ffi`.
 pub fn init(_ctx: &Ctx) -> Result<()> {
     Ok(())
 }

@@ -5,7 +5,7 @@ import {
   __wasm_call_function,
   __wasm_memory_read,
   __wasm_memory_write,
-} from "std:raw:wasm";
+} from "vole:raw:wasm";
 
 class CompileError extends Error {
   constructor(message) {

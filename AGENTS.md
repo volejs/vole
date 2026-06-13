@@ -17,7 +17,7 @@ Cargo workspace with `resolver = "2"`, members under `crates/`:
 | `crates/package`                | `vole-package`       | Library       | Package system                            |
 | `crates/cmd`                    | `vole-cli`           | Binary `vole` | CLI entrypoint                            |
 | `crates/global_bindings/<name>` | `vole-global-<name>` | Library       | Individual global Web API binding crate   |
-| `crates/raw_bindings/<name>`    | `vole-raw-<name>`    | Library       | Individual `std:raw:*` backend crate      |
+| `crates/raw_bindings/<name>`    | `vole-raw-<name>`    | Library       | Individual `vole:raw:*` backend crate     |
 
 ---
 
@@ -85,7 +85,7 @@ known runtime differences.
 
 - `Vm` wraps `rquickjs::AsyncRuntime` + `rquickjs::AsyncContext`. All `Vm` methods are async and require a tokio runtime.
 - `Runtime` is the legacy synchronous wrapper (stateless, one context per `eval`). Prefer `Vm` for new code.
-- Built-in modules use `"std:"` prefix (e.g. `std:console`, `std:fs`, `std:http`).
+- Built-in modules use `"vole:"` prefix (e.g. `vole:console`, `vole:fs`, `vole:http`).
 - JS shim files in `crates/modules/src/js_shims/` provide the JS API for built-in modules, delegating to `globalThis.__*` Rust functions.
 - rquickjs `IntoJs<'js>` lifetime bounds prevent generic `set_global`; type-specific setters (`set_global_string`, `set_global_number`, `set_global_bool`) are used instead.
 - `with_context` callback must return `Result<R, rquickjs::Error>` (not `VmError`).
@@ -98,27 +98,27 @@ known runtime differences.
 - Error types use `thiserror`.
 - Module system rejects bare specifiers (e.g. `"lodash"`) to prevent ghost dependencies.
 - Web API implementations live in `crates/global_bindings/<name>/src/lib.rs` as `vole-global-<name>` crates.
-- System-capability bindings live in `crates/raw_bindings/<name>/src/lib.rs` as `vole-raw-<name>` crates and are exposed via `std:raw:*` native modules.
+- System-capability bindings live in `crates/raw_bindings/<name>/src/lib.rs` as `vole-raw-<name>` crates and are exposed via `vole:raw:*` native modules.
 
 ---
 
-## Built-in Modules (`std:*`)
+## Built-in Modules (`vole:*`)
 
-| Module  | Prefix      | Status      | Notes                                                    |
-| ------- | ----------- | ----------- | -------------------------------------------------------- |
-| env     | std:env     | Implemented |                                                          |
-| ffi     | std:ffi     | Implemented | Dynamic library calls via libffi/libloading              |
-| fs      | std:fs      | Implemented | Path-based sync/async + file-handle open/read/write/seek |
-| http    | std:http    | Implemented | Client request + axum server with JS handler callbacks   |
-| path    | std:path    | Implemented | Cross-platform path helpers                              |
-| process | std:process | Implemented | exit/abort/cwd/argv/stdout/stderr/stdin/pid/platform     |
-| shell   | std:shell   | Implemented | `exec()` / `execSync()`                                  |
-| socket  | std:socket  | Implemented | Unix domain socket (Unix only)                           |
-| spawn   | std:spawn   | Implemented | `spawn()` child process                                  |
-| tcp     | std:tcp     | Implemented | `connect()` / `listen()` / `Server`                      |
-| test    | std:test    | Implemented | Built-in test framework used by `vole test`              |
-| udp     | std:udp     | Implemented | `createSocket()`                                         |
-| wasm    | std:wasm    | Implemented | WebAssembly loader helpers                               |
+| Module  | Prefix       | Status      | Notes                                                    |
+| ------- | ------------ | ----------- | -------------------------------------------------------- |
+| env     | vole:env     | Implemented |                                                          |
+| ffi     | vole:ffi     | Implemented | Dynamic library calls via libffi/libloading              |
+| fs      | vole:fs      | Implemented | Path-based sync/async + file-handle open/read/write/seek |
+| http    | vole:http    | Implemented | Client request + axum server with JS handler callbacks   |
+| path    | vole:path    | Implemented | Cross-platform path helpers                              |
+| process | vole:process | Implemented | exit/abort/cwd/argv/stdout/stderr/stdin/pid/platform     |
+| shell   | vole:shell   | Implemented | `exec()` / `execSync()`                                  |
+| socket  | vole:socket  | Implemented | Unix domain socket (Unix only)                           |
+| spawn   | vole:spawn   | Implemented | `spawn()` child process                                  |
+| tcp     | vole:tcp     | Implemented | `connect()` / `listen()` / `Server`                      |
+| test    | vole:test    | Implemented | Built-in test framework used by `vole test`              |
+| udp     | vole:udp     | Implemented | `createSocket()`                                         |
+| wasm    | vole:wasm    | Implemented | WebAssembly loader helpers                               |
 
 ---
 
@@ -126,7 +126,7 @@ known runtime differences.
 
 > 立场：vole 是**纯粹的 ECMAScript 运行时**，不是浏览器。Web API 以 WinterTC Minimum Common Web Platform API 为参考，但会对浏览器、DOM、HTML、CSS 专属概念进行甄别和替代；无法替代的不予实现。
 
-Located in `crates/core/src/global_bindings/`. Registered via `ExtensionRegistry` builder in `bindings/mod.rs`.
+Located in `crates/global_bindings/`. Registered via `ExtensionRegistry` builder in `crates/core/src/bindings.rs`.
 
 - **Phase 0**: console, timers, performance, base64, DOMException, reportError
 - **Phase 1**: TextEncoder/TextDecoder, URL/URLSearchParams, Blob/File, CompressionStream/DecompressionStream, structuredClone
@@ -137,14 +137,14 @@ Located in `crates/core/src/global_bindings/`. Registered via `ExtensionRegistry
 - **Phase 4**: Web Crypto (`crypto`, `CryptoKey`, `SubtleCrypto`)
 - **Streams**: ReadableStream/WritableStream/TransformStream and readers/writers/controllers
 - **Encoding streams**: TextEncoderStream/TextDecoderStream
-- **Compression**: `CompressionStream` / `DecompressionStream` are global bindings defined in `global_bindings/compression.rs`; no `std:compression` shim module
+- **Compression**: `CompressionStream` / `DecompressionStream` are global bindings defined in `global_bindings/compression.rs`; no `vole:compression` shim module
 - **Performance**: `Performance` constructor exposed; `performance` is an instance of `Performance`
 - **Blob**: `Blob.prototype.stream()` returns a real `ReadableStream`
 - **WebAssembly**: global `WebAssembly` object based on `wasmi` (partial: missing `Global` / `Table` / `Tag` / `Exception` / `LinkError` and streaming API)
 
 > 详细状态（含缺失接口列表）见 `ROADMAP.md` 第一章。
 
-`env`, `process`, `fs`, `path` are also exposed as low-level globals for the corresponding `std:*` modules.
+`env`, `process`, `fs`, `path` are also exposed as low-level globals for the corresponding `vole:*` modules.
 
 ---
 
