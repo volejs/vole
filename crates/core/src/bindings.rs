@@ -14,15 +14,15 @@ pub fn registry() -> ExtensionRegistry {
         .with(crate::global_bindings::encoding::init)
         .with(crate::global_bindings::url::init)
         .with(crate::global_bindings::blob::init)
+        .with(crate::global_bindings::crypto::init)
         .with(crate::global_bindings::structured_clone::init)
         .with(crate::global_bindings::events::init)
         .with(crate::global_bindings::fetch::init)
         // raw_bindings: low-level Rust backends exposed via std:raw:*
-        .with(crate::raw_bindings::console::init)
+        .with(crate::global_bindings::console::init)
         .with(crate::raw_bindings::env::init)
         .with(crate::raw_bindings::ffi::init)
         .with(crate::raw_bindings::process::init)
-        .with(crate::raw_bindings::fs::init)
         .with(crate::raw_bindings::path::init)
         .with(crate::raw_bindings::http_server::init)
         .with(crate::global_bindings::streams::init)
@@ -30,10 +30,7 @@ pub fn registry() -> ExtensionRegistry {
         .with(crate::raw_bindings::tcp::init)
         .with(crate::raw_bindings::udp::init)
         .with(crate::raw_bindings::socket::init)
-        .with(crate::raw_bindings::tracing::init)
         .with(crate::raw_bindings::wasm::init)
-        .with(crate::raw_bindings::file::init)
-        .with(crate::raw_bindings::crypto::init)
 }
 
 /// Initialize all bindings.
@@ -69,13 +66,6 @@ pub async fn init_async(ctx: &AsyncContext) -> Result<(), rquickjs::Error> {
             include_str!("../../modules/src/js_shims/wasm.js"),
         )?;
         wasm.finish::<()>()?;
-
-        let crypto = rquickjs::Module::evaluate(
-            ctx.clone(),
-            "std:crypto",
-            include_str!("../../modules/src/js_shims/crypto.js"),
-        )?;
-        crypto.finish::<()>()?;
 
         Ok::<_, rquickjs::Error>(())
     })

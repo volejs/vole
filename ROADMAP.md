@@ -186,14 +186,14 @@
 
 ### 2.1 已实现模块
 
-| 模块          | 状态 | 说明                                                                                                 |
-| ------------- | :--: | ---------------------------------------------------------------------------------------------------- |
-| `std:fs`      |  ✅  | 同步/异步：readFile/readTextFile/writeFile/exists/mkdir/readdir/stat/remove/rename/copyFile/realPath |
-| `std:path`    |  ✅  | join/resolve/dirname/basename/extname/isAbsolute/relative/parse/format                               |
-| `std:env`     |  ✅  | get/set/has/delete/getAll                                                                            |
-| `std:process` |  ✅  | exit/abort/cwd/argv/stdout/stderr/stdin/pid/platform                                                 |
-| `std:test`    |  ✅  | test/describe/it/beforeAll/afterAll/beforeEach/afterEach/run + CLI `vole test`                       |
-| `std:http`    |  ✅  | client: request/fetch；server: serve/Server（axum + JS handler 回调）                                |
+| 模块          | 状态 | 说明                                                                           |
+| ------------- | :--: | ------------------------------------------------------------------------------ |
+| `std:fs`      |  ✅  | 同步/异步路径操作 + `open()` 文件句柄（read/write/seek/close）                 |
+| `std:path`    |  ✅  | join/resolve/dirname/basename/extname/isAbsolute/relative/parse/format         |
+| `std:env`     |  ✅  | get/set/has/delete/getAll                                                      |
+| `std:process` |  ✅  | exit/abort/cwd/argv/stdout/stderr/stdin/pid/platform                           |
+| `std:test`    |  ✅  | test/describe/it/beforeAll/afterAll/beforeEach/afterEach/run + CLI `vole test` |
+| `std:http`    |  ✅  | client: request/fetch；server: serve/Server（axum + JS handler 回调）          |
 
 ### 2.2 其他模块
 
@@ -204,9 +204,7 @@
 | `std:socket` (Unix) |  ✅  |  —   | Unix domain socket — 用 tokio::net::UnixStream（Unix only）                |
 | `std:shell`         |  ✅  |  —   | `exec()` / `execSync()` — 基于 process.rs 实现                             |
 | `std:spawn`         |  ✅  |  —   | `spawn()` — 基于 process.rs 实现                                           |
-| `std:file`          |  ✅  |  —   | `open()` — 文件句柄/seek/read/write                                        |
 | `std:ffi`           |  ✅  |  —   | 动态库加载、C ABI 调用，支持整数/浮点/指针/字符串类型                      |
-| `std:tracing`       |  ✅  |  —   | 日志函数（info/warn/error/debug/trace），Phase 5 已完成                    |
 
 ### 2.3 已注册但未绑定底层函数的模块
 
@@ -282,7 +280,6 @@ P3 (已完成 ✅)
   ├─ WritableStream + WritableStreamDefaultWriter + Controller
   ├─ TransformStream
   ├─ std:tcp (connect/listen/Server)
-  ├─ std:file (open/seek/read/write)
   ├─ CryptoKey + importKey/exportKey (raw/jwk/pkcs8/spki)
   ├─ SubtleCrypto 对象暴露
   ├─ JSON modules / 通用配置导入 (`import ... with { type: "..." }`)
@@ -301,8 +298,7 @@ P4 (已完成 ✅)
 
 P5 (已完成 ✅)
   ├─ WebAssembly 暴露（Module/Instance/Memory/函数调用/内存读写）
-  ├─ WebAssembly import 对象支持 JS 函数回调
-  └─ std:tracing
+  └─ WebAssembly import 对象支持 JS 函数回调
 
 P6+ (远期)
   ├─ CLI fmt/lint/bundle

@@ -102,26 +102,21 @@ known runtime differences.
 
 ## Built-in Modules (`std:*`)
 
-| Module      | Prefix          | Status      | Notes                                                      |
-| ----------- | --------------- | ----------- | ---------------------------------------------------------- |
-| compression | std:compression | Implemented | `CompressionStream` / `DecompressionStream`，已全局暴露    |
-| console     | std:console     | Implemented |                                                            |
-| crypto      | std:crypto      | Implemented | Web Crypto shim                                            |
-| env         | std:env         | Implemented |                                                            |
-| ffi         | std:ffi         | Implemented | Dynamic library calls via libffi/libloading                |
-| file        | std:file        | Implemented | File handle open/seek/read/write                           |
-| fs          | std:fs          | Implemented | Sync/async read/write/stat/mkdir/readdir/remove/rename/... |
-| http        | std:http        | Implemented | Client request + axum server with JS handler callbacks     |
-| path        | std:path        | Implemented | Cross-platform path helpers                                |
-| process     | std:process     | Implemented | exit/abort/cwd/argv/stdout/stderr/stdin/pid/platform       |
-| shell       | std:shell       | Implemented | `exec()` / `execSync()`                                    |
-| socket      | std:socket      | Implemented | Unix domain socket (Unix only)                             |
-| spawn       | std:spawn       | Implemented | `spawn()` child process                                    |
-| tcp         | std:tcp         | Implemented | `connect()` / `listen()` / `Server`                        |
-| test        | std:test        | Implemented | Built-in test framework used by `vole test`                |
-| tracing     | std:tracing     | Implemented | Logging functions: info/warn/error/debug/trace             |
-| udp         | std:udp         | Implemented | `createSocket()`                                           |
-| wasm        | std:wasm        | Implemented | WebAssembly loader helpers                                 |
+| Module  | Prefix      | Status      | Notes                                                    |
+| ------- | ----------- | ----------- | -------------------------------------------------------- |
+| env     | std:env     | Implemented |                                                          |
+| ffi     | std:ffi     | Implemented | Dynamic library calls via libffi/libloading              |
+| fs      | std:fs      | Implemented | Path-based sync/async + file-handle open/read/write/seek |
+| http    | std:http    | Implemented | Client request + axum server with JS handler callbacks   |
+| path    | std:path    | Implemented | Cross-platform path helpers                              |
+| process | std:process | Implemented | exit/abort/cwd/argv/stdout/stderr/stdin/pid/platform     |
+| shell   | std:shell   | Implemented | `exec()` / `execSync()`                                  |
+| socket  | std:socket  | Implemented | Unix domain socket (Unix only)                           |
+| spawn   | std:spawn   | Implemented | `spawn()` child process                                  |
+| tcp     | std:tcp     | Implemented | `connect()` / `listen()` / `Server`                      |
+| test    | std:test    | Implemented | Built-in test framework used by `vole test`              |
+| udp     | std:udp     | Implemented | `createSocket()`                                         |
+| wasm    | std:wasm    | Implemented | WebAssembly loader helpers                               |
 
 ---
 

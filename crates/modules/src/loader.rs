@@ -2,9 +2,8 @@ use rquickjs::{loader::Loader, module::ModuleDef, Ctx, Error, Module};
 use std::collections::HashMap;
 
 use crate::{
-    MODULE_CONSOLE, MODULE_CRYPTO, MODULE_ENV, MODULE_FFI, MODULE_FILE, MODULE_FS, MODULE_HTTP,
-    MODULE_PATH, MODULE_PREFIX, MODULE_PROCESS, MODULE_SHELL, MODULE_SOCKET, MODULE_SPAWN,
-    MODULE_TCP, MODULE_TEST, MODULE_TRACING, MODULE_UDP, MODULE_WASM,
+    MODULE_ENV, MODULE_FFI, MODULE_FS, MODULE_HTTP, MODULE_PATH, MODULE_PREFIX, MODULE_PROCESS,
+    MODULE_SHELL, MODULE_SOCKET, MODULE_SPAWN, MODULE_TCP, MODULE_TEST, MODULE_UDP, MODULE_WASM,
 };
 
 /// Allows the embedding runtime to provide Rust-native modules for `std:*` specifiers.
@@ -23,24 +22,12 @@ impl ModuleLoader {
         let mut std_modules = HashMap::new();
 
         std_modules.insert(
-            MODULE_CONSOLE.to_string(),
-            include_str!("js_shims/console.js").to_string(),
-        );
-        std_modules.insert(
-            MODULE_CRYPTO.to_string(),
-            include_str!("js_shims/crypto.js").to_string(),
-        );
-        std_modules.insert(
             MODULE_ENV.to_string(),
             include_str!("js_shims/env.js").to_string(),
         );
         std_modules.insert(
             MODULE_FFI.to_string(),
             include_str!("js_shims/ffi.js").to_string(),
-        );
-        std_modules.insert(
-            MODULE_FILE.to_string(),
-            include_str!("js_shims/file.js").to_string(),
         );
         std_modules.insert(
             MODULE_FS.to_string(),
@@ -77,10 +64,6 @@ impl ModuleLoader {
         std_modules.insert(
             MODULE_TEST.to_string(),
             include_str!("js_shims/test.js").to_string(),
-        );
-        std_modules.insert(
-            MODULE_TRACING.to_string(),
-            include_str!("js_shims/tracing.js").to_string(),
         );
         std_modules.insert(
             MODULE_UDP.to_string(),

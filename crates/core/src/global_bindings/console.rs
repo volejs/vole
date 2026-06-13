@@ -1,5 +1,4 @@
 use rquickjs::function::Rest;
-use rquickjs::module::{Declarations, Exports, ModuleDef};
 use rquickjs::{Ctx, Function, Object, Value};
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
@@ -247,51 +246,5 @@ fn format_js_value(value: &Value) -> String {
         "[object Object]".to_string()
     } else {
         "unknown".to_string()
-    }
-}
-
-pub struct ConsoleRawModule;
-
-impl ModuleDef for ConsoleRawModule {
-    fn declare<'js>(decl: &Declarations<'js>) -> rquickjs::Result<()> {
-        decl.declare("__console_log")?;
-        decl.declare("__console_error")?;
-        decl.declare("__console_warn")?;
-        decl.declare("__console_info")?;
-        decl.declare("__console_debug")?;
-        decl.declare("__console_time")?;
-        decl.declare("__console_time_log")?;
-        decl.declare("__console_time_end")?;
-        decl.declare("__console_count")?;
-        decl.declare("__console_count_reset")?;
-        decl.declare("__console_assert")?;
-        Ok(())
-    }
-
-    fn evaluate<'js>(ctx: &Ctx<'js>, exports: &Exports<'js>) -> rquickjs::Result<()> {
-        exports.export("__console_log", Function::new(ctx.clone(), console_log))?;
-        exports.export("__console_error", Function::new(ctx.clone(), console_error))?;
-        exports.export("__console_warn", Function::new(ctx.clone(), console_error))?;
-        exports.export("__console_info", Function::new(ctx.clone(), console_log))?;
-        exports.export("__console_debug", Function::new(ctx.clone(), console_log))?;
-        exports.export("__console_time", Function::new(ctx.clone(), console_time))?;
-        exports.export(
-            "__console_time_log",
-            Function::new(ctx.clone(), console_time_log),
-        )?;
-        exports.export(
-            "__console_time_end",
-            Function::new(ctx.clone(), console_time_end),
-        )?;
-        exports.export("__console_count", Function::new(ctx.clone(), console_count))?;
-        exports.export(
-            "__console_count_reset",
-            Function::new(ctx.clone(), console_count_reset),
-        )?;
-        exports.export(
-            "__console_assert",
-            Function::new(ctx.clone(), console_assert),
-        )?;
-        Ok(())
     }
 }

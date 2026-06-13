@@ -12,7 +12,7 @@ use rquickjs::{Ctx, Result};
 ///
 /// ```ignore
 /// ExtensionRegistry::new()
-///     .with(crate::raw_bindings::console::init)
+///     .with(crate::global_bindings::console::init)
 ///     .with(crate::global_bindings::timers::init)
 ///     .init(ctx)?;
 /// ```

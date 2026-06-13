@@ -11,9 +11,53 @@ import {
   __fs_renameSync,
   __fs_copyFileSync,
   __fs_realPathSync,
+  __fs_readFile,
+  __fs_readTextFile,
+  __fs_writeFile,
+  __fs_writeFileBuf,
+  __fs_exists,
+  __fs_mkdir,
+  __fs_readdir,
+  __fs_stat,
+  __fs_remove,
+  __fs_rename,
+  __fs_copyFile,
+  __fs_realPath,
+  __fs_open,
+  __fs_fread,
+  __fs_fwrite,
+  __fs_fseek,
+  __fs_fclose,
 } from "std:raw:fs";
 
-// --- 同步 API ---
+function normalizeStat(s) {
+  return {
+    size: s.size,
+    isFile: s.isFile,
+    isDirectory: s.isDirectory,
+    isSymlink: s.isSymlink,
+    mtime: s.mtime != null ? new Date(s.mtime) : undefined,
+    ctime: s.ctime != null ? new Date(s.ctime) : undefined,
+  };
+}
+
+function encodeData(data) {
+  if (data instanceof Uint8Array) {
+    return data;
+  }
+  if (data instanceof ArrayBuffer) {
+    return new Uint8Array(data);
+  }
+  if (typeof data === "string") {
+    return new TextEncoder().encode(data);
+  }
+  if (data != null) {
+    return new TextEncoder().encode(String(data));
+  }
+  return new Uint8Array(0);
+}
+
+// --- Synchronous path-based API ---
 
 export function readFileSync(path) {
   return __fs_readFileSync(path);
@@ -24,8 +68,9 @@ export function readTextFileSync(path) {
 }
 
 export function writeFileSync(path, data) {
-  if (data instanceof Uint8Array) {
-    return __fs_writeFileSyncBuf(path, data);
+  const buf = encodeData(data);
+  if (buf instanceof Uint8Array) {
+    return __fs_writeFileSyncBuf(path, buf);
   }
   return __fs_writeFileSync(path, String(data));
 }
@@ -43,14 +88,7 @@ export function readdirSync(path) {
 }
 
 export function statSync(path) {
-  const s = __fs_statSync(path);
-  return {
-    size: s.size,
-    isFile: s.isFile,
-    isDirectory: s.isDirectory,
-    mtime: new Date(s.mtime),
-    ctime: new Date(s.ctime),
-  };
+  return normalizeStat(__fs_statSync(path));
 }
 
 export function removeSync(path) {
@@ -69,40 +107,109 @@ export function realPathSync(path) {
   return __fs_realPathSync(path);
 }
 
-// --- 异步 API（基于同步实现的简化版本）---
+// --- Asynchronous path-based API (real async tokio::fs implementations) ---
 
 export async function readFile(path) {
-  return readFileSync(path);
+  return __fs_readFile(path);
 }
 
 export async function readTextFile(path) {
-  return readTextFileSync(path);
+  return __fs_readTextFile(path);
 }
 
 export async function writeFile(path, data) {
-  return writeFileSync(path, data);
+  const buf = encodeData(data);
+  if (buf instanceof Uint8Array) {
+    return __fs_writeFileBuf(path, buf);
+  }
+  return __fs_writeFile(path, String(data));
+}
+
+export async function exists(path) {
+  return __fs_exists(path);
 }
 
 export async function mkdir(path, options) {
-  return mkdirSync(path, options);
+  return __fs_mkdir(path, options?.recursive ?? false);
 }
 
 export async function readdir(path) {
-  return readdirSync(path);
+  return __fs_readdir(path);
 }
 
 export async function stat(path) {
-  return statSync(path);
+  return normalizeStat(await __fs_stat(path));
 }
 
 export async function remove(path) {
-  return removeSync(path);
+  return __fs_remove(path);
 }
 
 export async function rename(oldPath, newPath) {
-  return renameSync(oldPath, newPath);
+  return __fs_rename(oldPath, newPath);
 }
 
 export async function copyFile(src, dest) {
-  return copyFileSync(src, dest);
+  return __fs_copyFile(src, dest);
 }
+
+export async function realPath(path) {
+  return __fs_realPath(path);
+}
+
+// --- File-handle API (merged from the old std:file module) ---
+
+export class FileHandle {
+  constructor(inner) {
+    this._inner = inner;
+  }
+
+  async read(size) {
+    return __fs_fread(this._inner._id, size);
+  }
+
+  async write(data) {
+    const buf = encodeData(data);
+    return __fs_fwrite(this._inner._id, buf);
+  }
+
+  async seek(offset, whence = "start") {
+    return __fs_fseek(this._inner._id, offset, whence);
+  }
+
+  async close() {
+    return __fs_fclose(this._inner._id);
+  }
+}
+
+export async function open(path, options = {}) {
+  const inner = await __fs_open(path, options);
+  return new FileHandle(inner);
+}
+
+export default {
+  readFileSync,
+  readTextFileSync,
+  writeFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  statSync,
+  removeSync,
+  renameSync,
+  copyFileSync,
+  realPathSync,
+  readFile,
+  readTextFile,
+  writeFile,
+  exists,
+  mkdir,
+  readdir,
+  stat,
+  remove,
+  rename,
+  copyFile,
+  realPath,
+  open,
+  FileHandle,
+};

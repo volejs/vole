@@ -17,7 +17,6 @@
   - [std:tcp / std:udp / std:socket](#stdtcp--stdudp--stdsocket)
   - [std:ffi](#stdffi)
   - [std:test](#stdtest)
-  - [std:tracing](#stdtracing)
 - [CLI 命令](#cli-命令)
 - [实现路线图](#实现路线图)
 - [待讨论议题](#待讨论议题)
@@ -254,7 +253,6 @@ import.meta.main; // true | false
 | `std:socket`  | `tokio::net::UnixStream`            | Unix domain socket（Unix only）        |
 | `std:ffi`     | `libloading` / `dlopen`             | 动态链接库调用                         |
 | `std:test`    | 自定义测试运行器                    | 类似 Deno test，基于 Rust 调度         |
-| `std:tracing` | `tracing` + `opentelemetry`         | Span 创建与导出                        |
 
 ### std:fs
 
@@ -714,91 +712,6 @@ vole test --watch          # 监听模式
 vole test ./foo_test.js    # 运行指定文件
 ```
 
-### std:tracing
-
-分布式追踪与性能分析模块，替代引擎级 AsyncContext 的上下文传播能力。基于 Rust `tokio-tracing` + `opentelemetry` 实现，支持跨异步边界自动传播 Span。
-
-```typescript
-/** 追踪导出器接口 */
-export interface Exporter {
-  export(spans: SpanData[]): void;
-  shutdown(): Promise<void>;
-}
-
-/** Span 数据快照 */
-export interface SpanData {
-  id: string;
-  traceId: string;
-  parentId?: string;
-  name: string;
-  startTime: number;
-  endTime?: number;
-  attributes: Record<string, unknown>;
-  events: SpanEvent[];
-  status: "ok" | "error";
-}
-
-export interface SpanEvent {
-  name: string;
-  timestamp: number;
-  attributes?: Record<string, unknown>;
-}
-
-/** 活跃的 Span 句柄 */
-export interface Span {
-  readonly id: string;
-  readonly name: string;
-  readonly traceId: string;
-  setAttribute(key: string, value: unknown): void;
-  addEvent(name: string, attributes?: Record<string, unknown>): void;
-  setStatus(status: "ok" | "error", description?: string): void;
-  end(): void;
-}
-
-/** Tracer 配置选项 */
-export interface TraceOptions {
-  /** 父 Span */
-  parent?: Span;
-  /** 初始属性 */
-  attributes?: Record<string, unknown>;
-  /** 超时时间（毫秒） */
-  timeout?: number;
-}
-
-/** Tracer 实例 */
-export interface Tracer {
-  readonly name: string;
-
-  /** 创建一个新的 Span 并自动管理其生命周期 */
-  trace<T>(name: string, fn: (span: Span) => T | Promise<T>, options?: TraceOptions): Promise<T>;
-
-  /** 手动启动一个 Span（需自行调用 end()） */
-  startSpan(name: string, options?: TraceOptions): Span;
-}
-
-/** 获取或创建指定名称的 Tracer */
-export function tracer(name: string): Tracer;
-
-/** 获取当前执行上下文中的活跃 Span（若不存在则返回 undefined） */
-export function currentSpan(): Span | undefined;
-
-/** 设置全局追踪导出器 */
-export function setGlobalExporter(exporter: Exporter): void;
-
-/** 预设导出器：控制台 pretty-print */
-export function consoleExporter(): Exporter;
-
-/** 预设导出器：JSON Lines 到文件 */
-export function fileExporter(path: string): Exporter;
-
-/** 预设导出器：OpenTelemetry OTLP HTTP */
-export function otlpExporter(options: { url: string; headers?: Record<string, string> }): Exporter;
-```
-
-**上下文传播说明**：`trace()` 方法创建的 Span 会自动绑定到当前异步执行流。在 `trace()` 回调内部调用的所有异步操作（`await Promise`、`fetch`、`setTimeout` 等）都会自动继承该 Span 作为当前上下文，无需手动传递。
-
----
-
 ## CLI 命令
 
 ```
@@ -830,8 +743,7 @@ vole <file>                           # vole index.js 的快捷形式，等价�
 | **Phase 2** | `Event`/`EventTarget`/`CustomEvent`；`AbortController`/`AbortSignal`；`MessageChannel`/`MessagePort` | —                                                |  🟡 中  |
 | **Phase 3** | `fetch`/`Request`/`Response`/`Headers`/`FormData`                                                    | `std:http` 服务端/客户端                         |  🟡 中  |
 | **Phase 4** | `crypto` / `Crypto` / `SubtleCrypto` / `CryptoKey` 全套（含 RSA pkcs8/spki）                         | `std:tcp` / `std:udp` / `std:socket`；`std:test` |  🟢 低  |
-| **Phase 5** | `std:tracing`                                                                                        | `std:tracing`                                    |  🟢 低  |
-| **Phase 6** | —                                                                                                    | `std:ffi`                                        | 🔵 未来 |
+| **Phase 5** | —                                                                                                    | `std:ffi`                                        | 🔵 未来 |
 
 ---
 

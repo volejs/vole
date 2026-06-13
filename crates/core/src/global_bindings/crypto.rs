@@ -1,5 +1,4 @@
 use rquickjs::{Array, ArrayBuffer, Ctx, Function, Object, Promise, Result, TypedArray, Value};
-use rquickjs::module::{Declarations, Exports, ModuleDef};
 use rsa::pkcs8::{DecodePrivateKey, DecodePublicKey, EncodePrivateKey, EncodePublicKey};
 use sha1::{Digest, Sha1};
 use sha2::{Sha256, Sha384, Sha512};
@@ -68,16 +67,174 @@ pub fn init(ctx: &Ctx) -> Result<()> {
     )?;
 
     let subtle = Object::new(ctx.clone())?;
-    subtle.set(
-        "digest",
-        Function::new(ctx.clone(), crypto_subtle_digest)?,
-    )?;
+    subtle.set("digest", Function::new(ctx.clone(), crypto_subtle_digest)?)?;
     crypto.set("subtle", subtle)?;
 
     globals.set("crypto", crypto)?;
 
+    // Expose the heavy crypto primitives as temporary globals so the JS shim
+    // can build the full Web Crypto API without needing a `std:crypto` module.
+    globals.set(
+        "__crypto_generate_key",
+        Function::new(ctx.clone(), crypto_subtle_generate_key)?,
+    )?;
+    globals.set(
+        "__crypto_encrypt",
+        Function::new(ctx.clone(), crypto_subtle_encrypt)?,
+    )?;
+    globals.set(
+        "__crypto_decrypt",
+        Function::new(ctx.clone(), crypto_subtle_decrypt)?,
+    )?;
+    globals.set(
+        "__crypto_sign",
+        Function::new(ctx.clone(), crypto_subtle_sign)?,
+    )?;
+    globals.set(
+        "__crypto_verify",
+        Function::new(ctx.clone(), crypto_subtle_verify)?,
+    )?;
+    globals.set(
+        "__crypto_import_key",
+        Function::new(ctx.clone(), crypto_subtle_import_key)?,
+    )?;
+    globals.set(
+        "__crypto_export_key",
+        Function::new(ctx.clone(), crypto_subtle_export_key)?,
+    )?;
+
+    ctx.eval::<(), _>(CRYPTO_SHIM)?;
+
+    // Clean up the temporary helpers; they are implementation details.
+    let _ = globals.remove("__crypto_generate_key");
+    let _ = globals.remove("__crypto_encrypt");
+    let _ = globals.remove("__crypto_decrypt");
+    let _ = globals.remove("__crypto_sign");
+    let _ = globals.remove("__crypto_verify");
+    let _ = globals.remove("__crypto_import_key");
+    let _ = globals.remove("__crypto_export_key");
+
     Ok(())
 }
+
+const CRYPTO_SHIM: &str = r#"
+(function() {
+    "use strict";
+
+    const __crypto_generate_key = globalThis.__crypto_generate_key;
+    const __crypto_encrypt = globalThis.__crypto_encrypt;
+    const __crypto_decrypt = globalThis.__crypto_decrypt;
+    const __crypto_sign = globalThis.__crypto_sign;
+    const __crypto_verify = globalThis.__crypto_verify;
+    const __crypto_import_key = globalThis.__crypto_import_key;
+    const __crypto_export_key = globalThis.__crypto_export_key;
+
+    const originalDigest = crypto.subtle.digest.bind(crypto.subtle);
+    crypto.subtle.digest = function (algorithm, data) {
+        if (data instanceof DataView) {
+            data = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+        }
+        return originalDigest(algorithm, data);
+    };
+
+    class CryptoKey {
+        constructor(id, type, extractable, algorithm, usages) {
+            this._id = id;
+            this.type = type;
+            this.extractable = extractable;
+            this.algorithm = algorithm;
+            this.usages = usages;
+        }
+    }
+
+    globalThis.CryptoKey = CryptoKey;
+
+    function makeCryptoKey(key, algorithm) {
+        try {
+            if (key && typeof key === "object") {
+                key.algorithm = algorithm;
+            }
+        } catch (e) {
+            console.error("makeCryptoKey error:", e && (e.stack || e.message || e));
+        }
+        return key;
+    }
+
+    function serializeAlgorithm(alg) {
+        const copy = {};
+        for (const key in alg) {
+            if (alg[key] instanceof Uint8Array || alg[key] instanceof Int8Array) {
+                copy[key] = Array.from(alg[key]);
+            } else {
+                copy[key] = alg[key];
+            }
+        }
+        return JSON.stringify(copy);
+    }
+
+    crypto.subtle.generateKey = function (algorithm, extractable, keyUsages) {
+        return __crypto_generate_key(JSON.stringify(algorithm), extractable, keyUsages).then(function (result) {
+            if (result && result.privateKey && result.publicKey) {
+                makeCryptoKey(result.privateKey, algorithm);
+                makeCryptoKey(result.publicKey, algorithm);
+            } else {
+                makeCryptoKey(result, algorithm);
+            }
+            return result;
+        });
+    };
+
+    crypto.subtle.encrypt = function (algorithm, key, data) {
+        if (data instanceof DataView) {
+            data = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+        }
+        return __crypto_encrypt(serializeAlgorithm(algorithm), key._id, data);
+    };
+
+    crypto.subtle.decrypt = function (algorithm, key, data) {
+        if (data instanceof DataView) {
+            data = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+        }
+        return __crypto_decrypt(serializeAlgorithm(algorithm), key._id, data);
+    };
+
+    crypto.subtle.sign = function (algorithm, key, data) {
+        if (data instanceof DataView) {
+            data = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+        }
+        return __crypto_sign(JSON.stringify(algorithm), key._id, data);
+    };
+
+    crypto.subtle.verify = function (algorithm, key, signature, data) {
+        if (data instanceof DataView) {
+            data = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+        }
+        if (signature instanceof ArrayBuffer) {
+            signature = new Uint8Array(signature);
+        }
+        return __crypto_verify(JSON.stringify(algorithm), key._id, signature, data);
+    };
+
+    crypto.subtle.importKey = function (format, keyData, algorithm, extractable, keyUsages) {
+        let data = keyData;
+        if (format === "jwk") {
+            data = JSON.stringify(keyData);
+        }
+        const key = __crypto_import_key(format, data, JSON.stringify(algorithm), extractable, keyUsages);
+        makeCryptoKey(key, algorithm);
+        return Promise.resolve(key);
+    };
+
+    crypto.subtle.exportKey = function (format, key) {
+        return Promise.resolve(__crypto_export_key(format, key._id));
+    };
+
+    globalThis.Crypto = function () { };
+    globalThis.SubtleCrypto = function SubtleCrypto() { };
+    crypto.subtle.constructor = SubtleCrypto;
+    Object.setPrototypeOf(crypto.subtle, SubtleCrypto.prototype);
+})();
+"#;
 
 fn crypto_random_uuid() -> String {
     let mut bytes = [0u8; 16];
@@ -170,8 +327,8 @@ fn crypto_subtle_generate_key<'js>(
     extractable: bool,
     usages: Array<'js>,
 ) -> Result<Promise<'js>> {
-    let algorithm: serde_json::Value = serde_json::from_str(&algorithm_json)
-        .map_err(|_| rquickjs::Error::Exception)?;
+    let algorithm: serde_json::Value =
+        serde_json::from_str(&algorithm_json).map_err(|_| rquickjs::Error::Exception)?;
 
     let usages_vec: Vec<String> = (0..usages.len())
         .map(|i| usages.get::<String>(i as usize).unwrap_or_default())
@@ -300,8 +457,8 @@ fn crypto_subtle_encrypt<'js>(
         Vec::new()
     };
 
-    let algorithm: serde_json::Value = serde_json::from_str(&algorithm_json)
-        .map_err(|_| rquickjs::Error::Exception)?;
+    let algorithm: serde_json::Value =
+        serde_json::from_str(&algorithm_json).map_err(|_| rquickjs::Error::Exception)?;
     let key_info = get_key(key_id).ok_or(rquickjs::Error::Exception)?;
 
     let (promise, resolve, reject) = ctx.promise()?;
@@ -310,13 +467,17 @@ fn crypto_subtle_encrypt<'js>(
     ctx.spawn(async move {
         let result = do_encrypt(&key_info, &algorithm, &plaintext);
         match result {
-            Ok(ciphertext) => {
-                match TypedArray::new_copy(ctx_clone, ciphertext) {
-                    Ok(ta) => { let _ = resolve.call::<_, ()>((ta,)); }
-                    Err(_) => { let _ = reject.call::<_, ()>(("encrypt output failed",)); }
+            Ok(ciphertext) => match TypedArray::new_copy(ctx_clone, ciphertext) {
+                Ok(ta) => {
+                    let _ = resolve.call::<_, ()>((ta,));
                 }
+                Err(_) => {
+                    let _ = reject.call::<_, ()>(("encrypt output failed",));
+                }
+            },
+            Err(e) => {
+                let _ = reject.call::<_, ()>((e,));
             }
-            Err(e) => { let _ = reject.call::<_, ()>((e,)); }
         }
     });
 
@@ -335,8 +496,8 @@ fn crypto_subtle_decrypt<'js>(
         Vec::new()
     };
 
-    let algorithm: serde_json::Value = serde_json::from_str(&algorithm_json)
-        .map_err(|_| rquickjs::Error::Exception)?;
+    let algorithm: serde_json::Value =
+        serde_json::from_str(&algorithm_json).map_err(|_| rquickjs::Error::Exception)?;
     let key_info = get_key(key_id).ok_or(rquickjs::Error::Exception)?;
 
     let (promise, resolve, reject) = ctx.promise()?;
@@ -345,26 +506,35 @@ fn crypto_subtle_decrypt<'js>(
     ctx.spawn(async move {
         let result = do_decrypt(&key_info, &algorithm, &ciphertext);
         match result {
-            Ok(plaintext) => {
-                match TypedArray::new_copy(ctx_clone, plaintext) {
-                    Ok(ta) => { let _ = resolve.call::<_, ()>((ta,)); }
-                    Err(_) => { let _ = reject.call::<_, ()>(("decrypt output failed",)); }
+            Ok(plaintext) => match TypedArray::new_copy(ctx_clone, plaintext) {
+                Ok(ta) => {
+                    let _ = resolve.call::<_, ()>((ta,));
                 }
+                Err(_) => {
+                    let _ = reject.call::<_, ()>(("decrypt output failed",));
+                }
+            },
+            Err(e) => {
+                let _ = reject.call::<_, ()>((e,));
             }
-            Err(e) => { let _ = reject.call::<_, ()>((e,)); }
         }
     });
 
     Ok(promise)
 }
 
-fn do_encrypt(key_info: &KeyInfo, algorithm: &serde_json::Value, plaintext: &[u8]) -> std::result::Result<Vec<u8>, &'static str> {
+fn do_encrypt(
+    key_info: &KeyInfo,
+    algorithm: &serde_json::Value,
+    plaintext: &[u8],
+) -> std::result::Result<Vec<u8>, &'static str> {
     match &key_info.material {
         KeyMaterial::Aes(key_bytes) => {
             let name = algorithm["name"].as_str().unwrap_or("");
             match name {
                 "AES-CBC" => {
-                    let iv = algorithm["iv"].as_array()
+                    let iv = algorithm["iv"]
+                        .as_array()
                         .ok_or("Missing iv")?
                         .iter()
                         .map(|v| v.as_u64().unwrap_or(0) as u8)
@@ -401,7 +571,8 @@ fn do_encrypt(key_info: &KeyInfo, algorithm: &serde_json::Value, plaintext: &[u8
                     Ok(ciphertext)
                 }
                 "AES-GCM" => {
-                    let iv = algorithm["iv"].as_array()
+                    let iv = algorithm["iv"]
+                        .as_array()
                         .ok_or("Missing iv")?
                         .iter()
                         .map(|v| v.as_u64().unwrap_or(0) as u8)
@@ -409,19 +580,26 @@ fn do_encrypt(key_info: &KeyInfo, algorithm: &serde_json::Value, plaintext: &[u8
                     if iv.len() != 12 {
                         return Err("IV must be 12 bytes for GCM");
                     }
-                    use aes_gcm::{Aes128Gcm, Aes256Gcm, aead::{Aead, KeyInit}};
+                    use aes_gcm::{
+                        aead::{Aead, KeyInit},
+                        Aes128Gcm, Aes256Gcm,
+                    };
                     let ciphertext = match key_bytes.len() {
                         16 => {
                             let key = aes_gcm::Key::<Aes128Gcm>::from_slice(key_bytes);
                             let cipher = Aes128Gcm::new(key);
                             let nonce = aes_gcm::Nonce::from_slice(&iv);
-                            cipher.encrypt(nonce, plaintext).map_err(|_| "Encrypt failed")?
+                            cipher
+                                .encrypt(nonce, plaintext)
+                                .map_err(|_| "Encrypt failed")?
                         }
                         32 => {
                             let key = aes_gcm::Key::<Aes256Gcm>::from_slice(key_bytes);
                             let cipher = Aes256Gcm::new(key);
                             let nonce = aes_gcm::Nonce::from_slice(&iv);
-                            cipher.encrypt(nonce, plaintext).map_err(|_| "Encrypt failed")?
+                            cipher
+                                .encrypt(nonce, plaintext)
+                                .map_err(|_| "Encrypt failed")?
                         }
                         _ => return Err("Invalid AES-GCM key length"),
                     };
@@ -434,13 +612,18 @@ fn do_encrypt(key_info: &KeyInfo, algorithm: &serde_json::Value, plaintext: &[u8
     }
 }
 
-fn do_decrypt(key_info: &KeyInfo, algorithm: &serde_json::Value, ciphertext: &[u8]) -> std::result::Result<Vec<u8>, &'static str> {
+fn do_decrypt(
+    key_info: &KeyInfo,
+    algorithm: &serde_json::Value,
+    ciphertext: &[u8],
+) -> std::result::Result<Vec<u8>, &'static str> {
     match &key_info.material {
         KeyMaterial::Aes(key_bytes) => {
             let name = algorithm["name"].as_str().unwrap_or("");
             match name {
                 "AES-CBC" => {
-                    let iv = algorithm["iv"].as_array()
+                    let iv = algorithm["iv"]
+                        .as_array()
                         .ok_or("Missing iv")?
                         .iter()
                         .map(|v| v.as_u64().unwrap_or(0) as u8)
@@ -480,7 +663,8 @@ fn do_decrypt(key_info: &KeyInfo, algorithm: &serde_json::Value, ciphertext: &[u
                     Ok(plaintext)
                 }
                 "AES-GCM" => {
-                    let iv = algorithm["iv"].as_array()
+                    let iv = algorithm["iv"]
+                        .as_array()
                         .ok_or("Missing iv")?
                         .iter()
                         .map(|v| v.as_u64().unwrap_or(0) as u8)
@@ -488,19 +672,26 @@ fn do_decrypt(key_info: &KeyInfo, algorithm: &serde_json::Value, ciphertext: &[u
                     if iv.len() != 12 {
                         return Err("IV must be 12 bytes for GCM");
                     }
-                    use aes_gcm::{Aes128Gcm, Aes256Gcm, aead::{Aead, KeyInit}};
+                    use aes_gcm::{
+                        aead::{Aead, KeyInit},
+                        Aes128Gcm, Aes256Gcm,
+                    };
                     let plaintext = match key_bytes.len() {
                         16 => {
                             let key = aes_gcm::Key::<Aes128Gcm>::from_slice(key_bytes);
                             let cipher = Aes128Gcm::new(key);
                             let nonce = aes_gcm::Nonce::from_slice(&iv);
-                            cipher.decrypt(nonce, ciphertext).map_err(|_| "Decrypt failed")?
+                            cipher
+                                .decrypt(nonce, ciphertext)
+                                .map_err(|_| "Decrypt failed")?
                         }
                         32 => {
                             let key = aes_gcm::Key::<Aes256Gcm>::from_slice(key_bytes);
                             let cipher = Aes256Gcm::new(key);
                             let nonce = aes_gcm::Nonce::from_slice(&iv);
-                            cipher.decrypt(nonce, ciphertext).map_err(|_| "Decrypt failed")?
+                            cipher
+                                .decrypt(nonce, ciphertext)
+                                .map_err(|_| "Decrypt failed")?
                         }
                         _ => return Err("Invalid AES-GCM key length"),
                     };
@@ -527,8 +718,8 @@ fn crypto_subtle_sign<'js>(
         Vec::new()
     };
 
-    let algorithm: serde_json::Value = serde_json::from_str(&algorithm_json)
-        .map_err(|_| rquickjs::Error::Exception)?;
+    let algorithm: serde_json::Value =
+        serde_json::from_str(&algorithm_json).map_err(|_| rquickjs::Error::Exception)?;
     let key_info = get_key(key_id).ok_or(rquickjs::Error::Exception)?;
 
     let (promise, resolve, reject) = ctx.promise()?;
@@ -547,13 +738,17 @@ fn crypto_subtle_sign<'js>(
 
         let result = do_sign(&key_info, &algorithm, &message);
         match result {
-            Ok(sig) => {
-                match ArrayBuffer::new_copy(ctx_clone, sig) {
-                    Ok(ab) => { let _ = resolve.call::<_, ()>((ab,)); }
-                    Err(_) => { let _ = reject.call::<_, ()>(("sign output failed",)); }
+            Ok(sig) => match ArrayBuffer::new_copy(ctx_clone, sig) {
+                Ok(ab) => {
+                    let _ = resolve.call::<_, ()>((ab,));
                 }
+                Err(_) => {
+                    let _ = reject.call::<_, ()>(("sign output failed",));
+                }
+            },
+            Err(e) => {
+                let _ = reject.call::<_, ()>((e,));
             }
-            Err(e) => { let _ = reject.call::<_, ()>((e,)); }
         }
     });
 
@@ -578,8 +773,8 @@ fn crypto_subtle_verify<'js>(
         Vec::new()
     };
 
-    let algorithm: serde_json::Value = serde_json::from_str(&algorithm_json)
-        .map_err(|_| rquickjs::Error::Exception)?;
+    let algorithm: serde_json::Value =
+        serde_json::from_str(&algorithm_json).map_err(|_| rquickjs::Error::Exception)?;
     let key_info = get_key(key_id).ok_or(rquickjs::Error::Exception)?;
 
     let (promise, resolve, reject) = ctx.promise()?;
@@ -600,7 +795,9 @@ fn crypto_subtle_verify<'js>(
             Ok(valid) => {
                 let _ = resolve.call::<_, ()>((valid,));
             }
-            Err(e) => { let _ = reject.call::<_, ()>((e,)); }
+            Err(e) => {
+                let _ = reject.call::<_, ()>((e,));
+            }
         }
     });
 
@@ -628,8 +825,8 @@ fn do_sign(
             hmac_sign(key_bytes, hash_name, message)
         }
         KeyMaterial::RsaPrivate(der) => {
-            let private_key = rsa::RsaPrivateKey::from_pkcs8_der(der)
-                .map_err(|_| "invalid RSA private key")?;
+            let private_key =
+                rsa::RsaPrivateKey::from_pkcs8_der(der).map_err(|_| "invalid RSA private key")?;
             let hash_name = hash_name(algorithm);
             let alg_name = key_info.algorithm.as_str();
             rsa_sign(&private_key, alg_name, hash_name, message)
@@ -658,8 +855,8 @@ fn do_verify(
             rsa_verify(&public_key, alg_name, hash_name, message, signature)
         }
         KeyMaterial::RsaPrivate(der) => {
-            let private_key = rsa::RsaPrivateKey::from_pkcs8_der(der)
-                .map_err(|_| "invalid RSA private key")?;
+            let private_key =
+                rsa::RsaPrivateKey::from_pkcs8_der(der).map_err(|_| "invalid RSA private key")?;
             let public_key = rsa::RsaPublicKey::from(&private_key);
             let hash_name = hash_name(algorithm);
             let alg_name = key_info.algorithm.as_str();
@@ -715,38 +912,62 @@ fn rsa_sign(
         "RSASSA-PKCS1-v1.5" => match hash_name {
             "SHA-1" => {
                 let signing_key = rsa::pkcs1v15::SigningKey::<sha1::Sha1>::new(private_key.clone());
-                Ok(signing_key.try_sign(message).map_err(|_| "sign failed")?.to_vec())
+                Ok(signing_key
+                    .try_sign(message)
+                    .map_err(|_| "sign failed")?
+                    .to_vec())
             }
             "SHA-256" => {
                 let signing_key = rsa::pkcs1v15::SigningKey::<Sha256>::new(private_key.clone());
-                Ok(signing_key.try_sign(message).map_err(|_| "sign failed")?.to_vec())
+                Ok(signing_key
+                    .try_sign(message)
+                    .map_err(|_| "sign failed")?
+                    .to_vec())
             }
             "SHA-384" => {
                 let signing_key = rsa::pkcs1v15::SigningKey::<Sha384>::new(private_key.clone());
-                Ok(signing_key.try_sign(message).map_err(|_| "sign failed")?.to_vec())
+                Ok(signing_key
+                    .try_sign(message)
+                    .map_err(|_| "sign failed")?
+                    .to_vec())
             }
             "SHA-512" => {
                 let signing_key = rsa::pkcs1v15::SigningKey::<Sha512>::new(private_key.clone());
-                Ok(signing_key.try_sign(message).map_err(|_| "sign failed")?.to_vec())
+                Ok(signing_key
+                    .try_sign(message)
+                    .map_err(|_| "sign failed")?
+                    .to_vec())
             }
             _ => Err("unsupported hash algorithm"),
         },
         "RSA-PSS" => match hash_name {
             "SHA-1" => {
                 let signing_key = rsa::pss::SigningKey::<sha1::Sha1>::new(private_key.clone());
-                Ok(signing_key.try_sign(message).map_err(|_| "sign failed")?.to_vec())
+                Ok(signing_key
+                    .try_sign(message)
+                    .map_err(|_| "sign failed")?
+                    .to_vec())
             }
             "SHA-256" => {
                 let signing_key = rsa::pss::SigningKey::<Sha256>::new(private_key.clone());
-                Ok(signing_key.try_sign(message).map_err(|_| "sign failed")?.to_vec())
+                Ok(signing_key
+                    .try_sign(message)
+                    .map_err(|_| "sign failed")?
+                    .to_vec())
             }
             "SHA-384" => {
                 let signing_key = rsa::pss::SigningKey::<Sha384>::new(private_key.clone());
-                Ok(signing_key.try_sign(message).map_err(|_| "sign failed")?.to_vec())
+                Ok(signing_key
+                    .try_sign(message)
+                    .map_err(|_| "sign failed")?
+                    .to_vec())
             }
             "SHA-512" => {
                 let signing_key = rsa::pss::SigningKey::<Sha512>::new(private_key.clone());
-                Ok(signing_key.try_sign(message).map_err(|_| "sign failed")?.to_vec())
+                Ok(signing_key
+                    .try_sign(message)
+                    .map_err(|_| "sign failed")?
+                    .to_vec())
             }
             _ => Err("unsupported hash algorithm"),
         },
@@ -765,7 +986,8 @@ fn rsa_verify(
     let result = match algorithm_name {
         "RSASSA-PKCS1-v1.5" => match hash_name {
             "SHA-1" => {
-                let verifying_key = rsa::pkcs1v15::VerifyingKey::<sha1::Sha1>::new(public_key.clone());
+                let verifying_key =
+                    rsa::pkcs1v15::VerifyingKey::<sha1::Sha1>::new(public_key.clone());
                 let sig = rsa::pkcs1v15::Signature::try_from(signature)
                     .map_err(|_| "invalid signature")?;
                 verifying_key.verify(message, &sig)
@@ -793,26 +1015,26 @@ fn rsa_verify(
         "RSA-PSS" => match hash_name {
             "SHA-1" => {
                 let verifying_key = rsa::pss::VerifyingKey::<sha1::Sha1>::new(public_key.clone());
-                let sig = rsa::pss::Signature::try_from(signature)
-                    .map_err(|_| "invalid signature")?;
+                let sig =
+                    rsa::pss::Signature::try_from(signature).map_err(|_| "invalid signature")?;
                 verifying_key.verify(message, &sig)
             }
             "SHA-256" => {
                 let verifying_key = rsa::pss::VerifyingKey::<Sha256>::new(public_key.clone());
-                let sig = rsa::pss::Signature::try_from(signature)
-                    .map_err(|_| "invalid signature")?;
+                let sig =
+                    rsa::pss::Signature::try_from(signature).map_err(|_| "invalid signature")?;
                 verifying_key.verify(message, &sig)
             }
             "SHA-384" => {
                 let verifying_key = rsa::pss::VerifyingKey::<Sha384>::new(public_key.clone());
-                let sig = rsa::pss::Signature::try_from(signature)
-                    .map_err(|_| "invalid signature")?;
+                let sig =
+                    rsa::pss::Signature::try_from(signature).map_err(|_| "invalid signature")?;
                 verifying_key.verify(message, &sig)
             }
             "SHA-512" => {
                 let verifying_key = rsa::pss::VerifyingKey::<Sha512>::new(public_key.clone());
-                let sig = rsa::pss::Signature::try_from(signature)
-                    .map_err(|_| "invalid signature")?;
+                let sig =
+                    rsa::pss::Signature::try_from(signature).map_err(|_| "invalid signature")?;
                 verifying_key.verify(message, &sig)
             }
             _ => return Err("unsupported hash algorithm"),
@@ -832,8 +1054,8 @@ fn crypto_subtle_import_key<'js>(
     extractable: bool,
     usages: Array<'js>,
 ) -> Result<Object<'js>> {
-    let algorithm: serde_json::Value = serde_json::from_str(&algorithm_json)
-        .map_err(|_| rquickjs::Error::Exception)?;
+    let algorithm: serde_json::Value =
+        serde_json::from_str(&algorithm_json).map_err(|_| rquickjs::Error::Exception)?;
     let name = algorithm["name"].as_str().unwrap_or("");
 
     let usages_vec: Vec<String> = (0..usages.len())
@@ -852,8 +1074,8 @@ fn crypto_subtle_import_key<'js>(
         }
         "jwk" => {
             let jwk_str: String = key_data.get()?;
-            let jwk: serde_json::Value = serde_json::from_str(&jwk_str)
-                .map_err(|_| rquickjs::Error::Exception)?;
+            let jwk: serde_json::Value =
+                serde_json::from_str(&jwk_str).map_err(|_| rquickjs::Error::Exception)?;
             let material = import_jwk(&jwk, name)?;
             (material, "secret")
         }
@@ -888,11 +1110,7 @@ fn crypto_subtle_import_key<'js>(
     Ok(obj)
 }
 
-fn crypto_subtle_export_key<'js>(
-    ctx: Ctx<'js>,
-    format: String,
-    key_id: u64,
-) -> Result<Value<'js>> {
+fn crypto_subtle_export_key<'js>(ctx: Ctx<'js>, format: String, key_id: u64) -> Result<Value<'js>> {
     let key_info = get_key(key_id).ok_or(rquickjs::Error::Exception)?;
 
     match format.as_str() {
@@ -1014,13 +1232,29 @@ fn export_jwk(key_info: &KeyInfo) -> Result<serde_json::Value> {
     };
 
     let mut jwk = serde_json::Map::new();
-    jwk.insert("kty".to_string(), serde_json::Value::String("oct".to_string()));
+    jwk.insert(
+        "kty".to_string(),
+        serde_json::Value::String("oct".to_string()),
+    );
     jwk.insert("k".to_string(), serde_json::Value::String(k));
-    jwk.insert("alg".to_string(), serde_json::Value::String(alg.to_string()));
-    jwk.insert("key_ops".to_string(), serde_json::Value::Array(
-        key_info.usages.iter().map(|u| serde_json::Value::String(u.clone())).collect()
-    ));
-    jwk.insert("ext".to_string(), serde_json::Value::Bool(key_info.extractable));
+    jwk.insert(
+        "alg".to_string(),
+        serde_json::Value::String(alg.to_string()),
+    );
+    jwk.insert(
+        "key_ops".to_string(),
+        serde_json::Value::Array(
+            key_info
+                .usages
+                .iter()
+                .map(|u| serde_json::Value::String(u.clone()))
+                .collect(),
+        ),
+    );
+    jwk.insert(
+        "ext".to_string(),
+        serde_json::Value::Bool(key_info.extractable),
+    );
     Ok(serde_json::Value::Object(jwk))
 }
 
@@ -1036,31 +1270,4 @@ fn value_to_bytes<'js>(value: &Value<'js>) -> Result<Vec<u8>> {
         return Ok(ab.as_bytes().unwrap_or_default().to_vec());
     }
     Err(rquickjs::Error::Exception)
-}
-
-
-pub struct CryptoRawModule;
-
-impl ModuleDef for CryptoRawModule {
-    fn declare<'js>(decl: &Declarations<'js>) -> rquickjs::Result<()> {
-        decl.declare("__crypto_generate_key")?;
-        decl.declare("__crypto_encrypt")?;
-        decl.declare("__crypto_decrypt")?;
-        decl.declare("__crypto_sign")?;
-        decl.declare("__crypto_verify")?;
-        decl.declare("__crypto_import_key")?;
-        decl.declare("__crypto_export_key")?;
-        Ok(())
-    }
-
-    fn evaluate<'js>(ctx: &Ctx<'js>, exports: &Exports<'js>) -> rquickjs::Result<()> {
-        exports.export("__crypto_generate_key", Function::new(ctx.clone(), crypto_subtle_generate_key))?;
-        exports.export("__crypto_encrypt", Function::new(ctx.clone(), crypto_subtle_encrypt))?;
-        exports.export("__crypto_decrypt", Function::new(ctx.clone(), crypto_subtle_decrypt))?;
-        exports.export("__crypto_sign", Function::new(ctx.clone(), crypto_subtle_sign))?;
-        exports.export("__crypto_verify", Function::new(ctx.clone(), crypto_subtle_verify))?;
-        exports.export("__crypto_import_key", Function::new(ctx.clone(), crypto_subtle_import_key))?;
-        exports.export("__crypto_export_key", Function::new(ctx.clone(), crypto_subtle_export_key))?;
-        Ok(())
-    }
 }
