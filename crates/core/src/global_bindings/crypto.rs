@@ -1,4 +1,9 @@
-use rquickjs::{Array, ArrayBuffer, Ctx, Function, Object, Promise, Result, TypedArray, Value};
+use rquickjs::{
+    class::{JsClass, Trace, Tracer, Writable},
+    function::This,
+    Array, ArrayBuffer, Class, Constructor, Ctx, Function, IntoJs, Object, Promise, Result,
+    TypedArray, Value,
+};
 use rsa::pkcs8::{DecodePrivateKey, DecodePublicKey, EncodePrivateKey, EncodePublicKey};
 use sha1::{Digest, Sha1};
 use sha2::{Sha256, Sha384, Sha512};
@@ -16,11 +21,8 @@ enum KeyMaterial {
 #[derive(Clone, Debug)]
 struct KeyInfo {
     material: KeyMaterial,
-    #[allow(dead_code)]
     algorithm: String,
-    #[allow(dead_code)]
     usages: Vec<String>,
-    #[allow(dead_code)]
     extractable: bool,
 }
 
@@ -53,188 +55,220 @@ fn get_key(id: u64) -> Option<KeyInfo> {
     keys().lock().unwrap().get(&id).cloned()
 }
 
+// =============================================================================
+// Native classes
+// =============================================================================
+
+#[derive(Clone, Debug)]
+pub struct Crypto;
+
+unsafe impl<'js> rquickjs::JsLifetime<'js> for Crypto {
+    type Changed<'to> = Crypto;
+}
+
+impl<'js> Trace<'js> for Crypto {
+    fn trace<'a>(&self, _tracer: Tracer<'a, 'js>) {}
+}
+
+impl<'js> IntoJs<'js> for Crypto {
+    fn into_js(self, ctx: &Ctx<'js>) -> Result<Value<'js>> {
+        Class::instance(ctx.clone(), self).into_js(ctx)
+    }
+}
+
+impl<'js> JsClass<'js> for Crypto {
+    const NAME: &'static str = "Crypto";
+    type Mutable = Writable;
+
+    fn prototype(ctx: &Ctx<'js>) -> Result<Option<Object<'js>>> {
+        let proto = Object::new(ctx.clone())?;
+        proto.set(
+            "getRandomValues",
+            Function::new(ctx.clone(), crypto_get_random_values)?,
+        )?;
+        proto.set(
+            "randomUUID",
+            Function::new(ctx.clone(), crypto_random_uuid)?,
+        )?;
+        Ok(Some(proto))
+    }
+
+    fn constructor(ctx: &Ctx<'js>) -> Result<Option<Constructor<'js>>> {
+        fn ctor<'js>(_ctx: Ctx<'js>) -> Result<Crypto> {
+            Ok(Crypto)
+        }
+        let constr = Constructor::new_class::<Crypto, _, _>(ctx.clone(), ctor)?;
+        Ok(Some(constr))
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct SubtleCrypto;
+
+unsafe impl<'js> rquickjs::JsLifetime<'js> for SubtleCrypto {
+    type Changed<'to> = SubtleCrypto;
+}
+
+impl<'js> Trace<'js> for SubtleCrypto {
+    fn trace<'a>(&self, _tracer: Tracer<'a, 'js>) {}
+}
+
+impl<'js> IntoJs<'js> for SubtleCrypto {
+    fn into_js(self, ctx: &Ctx<'js>) -> Result<Value<'js>> {
+        Class::instance(ctx.clone(), self).into_js(ctx)
+    }
+}
+
+impl<'js> JsClass<'js> for SubtleCrypto {
+    const NAME: &'static str = "SubtleCrypto";
+    type Mutable = Writable;
+
+    fn prototype(ctx: &Ctx<'js>) -> Result<Option<Object<'js>>> {
+        let proto = Object::new(ctx.clone())?;
+        proto.set("digest", Function::new(ctx.clone(), crypto_subtle_digest)?)?;
+        proto.set(
+            "generateKey",
+            Function::new(ctx.clone(), crypto_subtle_generate_key)?,
+        )?;
+        proto.set("encrypt", Function::new(ctx.clone(), crypto_subtle_encrypt)?)?;
+        proto.set("decrypt", Function::new(ctx.clone(), crypto_subtle_decrypt)?)?;
+        proto.set("sign", Function::new(ctx.clone(), crypto_subtle_sign)?)?;
+        proto.set("verify", Function::new(ctx.clone(), crypto_subtle_verify)?)?;
+        proto.set(
+            "importKey",
+            Function::new(ctx.clone(), crypto_subtle_import_key)?,
+        )?;
+        proto.set(
+            "exportKey",
+            Function::new(ctx.clone(), crypto_subtle_export_key)?,
+        )?;
+        Ok(Some(proto))
+    }
+
+    fn constructor(ctx: &Ctx<'js>) -> Result<Option<Constructor<'js>>> {
+        fn ctor<'js>(_ctx: Ctx<'js>) -> Result<SubtleCrypto> {
+            Ok(SubtleCrypto)
+        }
+        let constr = Constructor::new_class::<SubtleCrypto, _, _>(ctx.clone(), ctor)?;
+        Ok(Some(constr))
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct CryptoKey {
+    id: u64,
+    key_type: String,
+    extractable: bool,
+    algorithm: serde_json::Value,
+    usages: Vec<String>,
+}
+
+unsafe impl<'js> rquickjs::JsLifetime<'js> for CryptoKey {
+    type Changed<'to> = CryptoKey;
+}
+
+impl<'js> Trace<'js> for CryptoKey {
+    fn trace<'a>(&self, _tracer: Tracer<'a, 'js>) {}
+}
+
+impl<'js> IntoJs<'js> for CryptoKey {
+    fn into_js(self, ctx: &Ctx<'js>) -> Result<Value<'js>> {
+        Class::instance(ctx.clone(), self).into_js(ctx)
+    }
+}
+
+impl<'js> JsClass<'js> for CryptoKey {
+    const NAME: &'static str = "CryptoKey";
+    type Mutable = Writable;
+
+    fn prototype(ctx: &Ctx<'js>) -> Result<Option<Object<'js>>> {
+        let proto = Object::new(ctx.clone())?;
+        proto.set("type", Function::new(ctx.clone(), crypto_key_type)?)?;
+        proto.set(
+            "extractable",
+            Function::new(ctx.clone(), crypto_key_extractable)?,
+        )?;
+        proto.set(
+            "algorithm",
+            Function::new(ctx.clone(), crypto_key_algorithm)?,
+        )?;
+        proto.set("usages", Function::new(ctx.clone(), crypto_key_usages)?)?;
+        proto.set("_id", Function::new(ctx.clone(), crypto_key_id)?)?;
+        Ok(Some(proto))
+    }
+
+    fn constructor(ctx: &Ctx<'js>) -> Result<Option<Constructor<'js>>> {
+        fn ctor<'js>(_ctx: Ctx<'js>) -> Result<CryptoKey> {
+            Err(rquickjs::Error::Exception)
+        }
+        let constr = Constructor::new_class::<CryptoKey, _, _>(ctx.clone(), ctor)?;
+        Ok(Some(constr))
+    }
+}
+
+fn crypto_key_type<'js>(this: This<Class<'js, CryptoKey>>) -> Result<String> {
+    Ok(this.try_borrow()?.key_type.clone())
+}
+
+fn crypto_key_extractable<'js>(this: This<Class<'js, CryptoKey>>) -> Result<bool> {
+    Ok(this.try_borrow()?.extractable)
+}
+
+fn crypto_key_algorithm<'js>(
+    ctx: Ctx<'js>,
+    this: This<Class<'js, CryptoKey>>,
+) -> Result<Value<'js>> {
+    let alg = this.try_borrow()?.algorithm.clone();
+    json_value_to_js_value(&ctx, &alg)
+}
+
+fn crypto_key_usages<'js>(ctx: Ctx<'js>, this: This<Class<'js, CryptoKey>>) -> Result<Array<'js>> {
+    let arr = Array::new(ctx.clone())?;
+    for (i, u) in this.try_borrow()?.usages.iter().enumerate() {
+        arr.set(i, u.clone())?;
+    }
+    Ok(arr)
+}
+
+fn crypto_key_id<'js>(this: This<Class<'js, CryptoKey>>) -> Result<u64> {
+    Ok(this.try_borrow()?.id)
+}
+
 pub fn init(ctx: &Ctx) -> Result<()> {
     let globals = ctx.globals();
 
-    let crypto = Object::new(ctx.clone())?;
-    crypto.set(
-        "getRandomValues",
-        Function::new(ctx.clone(), crypto_get_random_values)?,
-    )?;
-    crypto.set(
-        "randomUUID",
-        Function::new(ctx.clone(), crypto_random_uuid)?,
+    Class::<Crypto>::define(&globals)?;
+    Class::<SubtleCrypto>::define(&globals)?;
+    Class::<CryptoKey>::define(&globals)?;
+
+    // Turn the CryptoKey prototype helper methods into real getters.
+    ctx.eval::<(), _>(
+        r#"
+        (function() {
+            function wrapGetter(proto, name) {
+                const fn = proto[name];
+                Object.defineProperty(proto, name, {
+                    get: function() { return fn.call(this); },
+                    enumerable: true,
+                    configurable: true
+                });
+            }
+            wrapGetter(CryptoKey.prototype, "type");
+            wrapGetter(CryptoKey.prototype, "extractable");
+            wrapGetter(CryptoKey.prototype, "algorithm");
+            wrapGetter(CryptoKey.prototype, "usages");
+            wrapGetter(CryptoKey.prototype, "_id");
+        })();
+    "#,
     )?;
 
-    let subtle = Object::new(ctx.clone())?;
-    subtle.set("digest", Function::new(ctx.clone(), crypto_subtle_digest)?)?;
+    let subtle = Class::instance(ctx.clone(), SubtleCrypto)?;
+    let crypto = Class::instance(ctx.clone(), Crypto)?;
     crypto.set("subtle", subtle)?;
-
     globals.set("crypto", crypto)?;
-
-    // Expose the heavy crypto primitives as temporary globals so the JS shim
-    // can build the full Web Crypto API without needing a `std:crypto` module.
-    globals.set(
-        "__crypto_generate_key",
-        Function::new(ctx.clone(), crypto_subtle_generate_key)?,
-    )?;
-    globals.set(
-        "__crypto_encrypt",
-        Function::new(ctx.clone(), crypto_subtle_encrypt)?,
-    )?;
-    globals.set(
-        "__crypto_decrypt",
-        Function::new(ctx.clone(), crypto_subtle_decrypt)?,
-    )?;
-    globals.set(
-        "__crypto_sign",
-        Function::new(ctx.clone(), crypto_subtle_sign)?,
-    )?;
-    globals.set(
-        "__crypto_verify",
-        Function::new(ctx.clone(), crypto_subtle_verify)?,
-    )?;
-    globals.set(
-        "__crypto_import_key",
-        Function::new(ctx.clone(), crypto_subtle_import_key)?,
-    )?;
-    globals.set(
-        "__crypto_export_key",
-        Function::new(ctx.clone(), crypto_subtle_export_key)?,
-    )?;
-
-    ctx.eval::<(), _>(CRYPTO_SHIM)?;
-
-    // Clean up the temporary helpers; they are implementation details.
-    let _ = globals.remove("__crypto_generate_key");
-    let _ = globals.remove("__crypto_encrypt");
-    let _ = globals.remove("__crypto_decrypt");
-    let _ = globals.remove("__crypto_sign");
-    let _ = globals.remove("__crypto_verify");
-    let _ = globals.remove("__crypto_import_key");
-    let _ = globals.remove("__crypto_export_key");
 
     Ok(())
 }
-
-const CRYPTO_SHIM: &str = r#"
-(function() {
-    "use strict";
-
-    const __crypto_generate_key = globalThis.__crypto_generate_key;
-    const __crypto_encrypt = globalThis.__crypto_encrypt;
-    const __crypto_decrypt = globalThis.__crypto_decrypt;
-    const __crypto_sign = globalThis.__crypto_sign;
-    const __crypto_verify = globalThis.__crypto_verify;
-    const __crypto_import_key = globalThis.__crypto_import_key;
-    const __crypto_export_key = globalThis.__crypto_export_key;
-
-    const originalDigest = crypto.subtle.digest.bind(crypto.subtle);
-    crypto.subtle.digest = function (algorithm, data) {
-        if (data instanceof DataView) {
-            data = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
-        }
-        return originalDigest(algorithm, data);
-    };
-
-    class CryptoKey {
-        constructor(id, type, extractable, algorithm, usages) {
-            this._id = id;
-            this.type = type;
-            this.extractable = extractable;
-            this.algorithm = algorithm;
-            this.usages = usages;
-        }
-    }
-
-    globalThis.CryptoKey = CryptoKey;
-
-    function makeCryptoKey(key, algorithm) {
-        try {
-            if (key && typeof key === "object") {
-                key.algorithm = algorithm;
-            }
-        } catch (e) {
-            console.error("makeCryptoKey error:", e && (e.stack || e.message || e));
-        }
-        return key;
-    }
-
-    function serializeAlgorithm(alg) {
-        const copy = {};
-        for (const key in alg) {
-            if (alg[key] instanceof Uint8Array || alg[key] instanceof Int8Array) {
-                copy[key] = Array.from(alg[key]);
-            } else {
-                copy[key] = alg[key];
-            }
-        }
-        return JSON.stringify(copy);
-    }
-
-    crypto.subtle.generateKey = function (algorithm, extractable, keyUsages) {
-        return __crypto_generate_key(JSON.stringify(algorithm), extractable, keyUsages).then(function (result) {
-            if (result && result.privateKey && result.publicKey) {
-                makeCryptoKey(result.privateKey, algorithm);
-                makeCryptoKey(result.publicKey, algorithm);
-            } else {
-                makeCryptoKey(result, algorithm);
-            }
-            return result;
-        });
-    };
-
-    crypto.subtle.encrypt = function (algorithm, key, data) {
-        if (data instanceof DataView) {
-            data = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
-        }
-        return __crypto_encrypt(serializeAlgorithm(algorithm), key._id, data);
-    };
-
-    crypto.subtle.decrypt = function (algorithm, key, data) {
-        if (data instanceof DataView) {
-            data = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
-        }
-        return __crypto_decrypt(serializeAlgorithm(algorithm), key._id, data);
-    };
-
-    crypto.subtle.sign = function (algorithm, key, data) {
-        if (data instanceof DataView) {
-            data = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
-        }
-        return __crypto_sign(JSON.stringify(algorithm), key._id, data);
-    };
-
-    crypto.subtle.verify = function (algorithm, key, signature, data) {
-        if (data instanceof DataView) {
-            data = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
-        }
-        if (signature instanceof ArrayBuffer) {
-            signature = new Uint8Array(signature);
-        }
-        return __crypto_verify(JSON.stringify(algorithm), key._id, signature, data);
-    };
-
-    crypto.subtle.importKey = function (format, keyData, algorithm, extractable, keyUsages) {
-        let data = keyData;
-        if (format === "jwk") {
-            data = JSON.stringify(keyData);
-        }
-        const key = __crypto_import_key(format, data, JSON.stringify(algorithm), extractable, keyUsages);
-        makeCryptoKey(key, algorithm);
-        return Promise.resolve(key);
-    };
-
-    crypto.subtle.exportKey = function (format, key) {
-        return Promise.resolve(__crypto_export_key(format, key._id));
-    };
-
-    globalThis.Crypto = function () { };
-    globalThis.SubtleCrypto = function SubtleCrypto() { };
-    crypto.subtle.constructor = SubtleCrypto;
-    Object.setPrototypeOf(crypto.subtle, SubtleCrypto.prototype);
-})();
-"#;
 
 fn crypto_random_uuid() -> String {
     let mut bytes = [0u8; 16];
@@ -258,11 +292,21 @@ fn crypto_get_random_values<'js>(array: TypedArray<'js, u8>) -> Result<TypedArra
     Ok(array)
 }
 
+// =============================================================================
+// subtle.digest
+// =============================================================================
+
 fn crypto_subtle_digest<'js>(
     ctx: Ctx<'js>,
-    algorithm: String,
+    algorithm: Value<'js>,
     data: Value<'js>,
 ) -> Result<Promise<'js>> {
+    let alg = js_value_to_json(&ctx, &algorithm)?;
+    let alg_name = match &alg {
+        serde_json::Value::String(s) => s.clone(),
+        _ => alg["name"].as_str().unwrap_or("").to_string(),
+    };
+
     let bytes = value_to_bytes(&data)?;
 
     let (promise, resolve, reject) = ctx.promise()?;
@@ -279,7 +323,7 @@ fn crypto_subtle_digest<'js>(
         }
         let _guard = TaskGuard;
 
-        let result = match algorithm.as_str() {
+        let result = match alg_name.as_str() {
             "SHA-1" => {
                 let mut hasher = Sha1::new();
                 hasher.update(&bytes);
@@ -306,7 +350,7 @@ fn crypto_subtle_digest<'js>(
             }
         };
 
-        match TypedArray::new_copy(ctx_clone.clone(), result) {
+        match ArrayBuffer::new_copy(ctx_clone.clone(), result) {
             Ok(array) => {
                 let _ = resolve.call::<_, ()>((array,));
             }
@@ -319,20 +363,23 @@ fn crypto_subtle_digest<'js>(
     Ok(promise)
 }
 
-// ===== generateKey =====
+// =============================================================================
+// subtle.generateKey
+// =============================================================================
 
 fn crypto_subtle_generate_key<'js>(
     ctx: Ctx<'js>,
-    algorithm_json: String,
+    algorithm: Value<'js>,
     extractable: bool,
     usages: Array<'js>,
 ) -> Result<Promise<'js>> {
-    let algorithm: serde_json::Value =
-        serde_json::from_str(&algorithm_json).map_err(|_| rquickjs::Error::Exception)?;
+    let algorithm_json = js_value_to_json(&ctx, &algorithm)?;
+    let name = algorithm_json["name"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
-    let usages_vec: Vec<String> = (0..usages.len())
-        .map(|i| usages.get::<String>(i as usize).unwrap_or_default())
-        .collect();
+    let usages_vec: Vec<String> = usages.iter::<String>().collect::<Result<Vec<_>>>()?;
 
     let (promise, resolve, reject) = ctx.promise()?;
     let ctx_clone = ctx.clone();
@@ -348,39 +395,58 @@ fn crypto_subtle_generate_key<'js>(
         }
         let _guard = TaskGuard;
 
-        let name = algorithm["name"].as_str().unwrap_or("");
-        let result: std::result::Result<Object, rquickjs::Error> = (|| {
-            let id = match name {
+        let result: std::result::Result<Value<'js>, rquickjs::Error> = (|| {
+            match name.as_str() {
                 "AES-CBC" | "AES-GCM" => {
-                    let length = algorithm["length"].as_u64().unwrap_or(256) as usize;
+                    let length = algorithm_json["length"].as_u64().unwrap_or(256) as usize;
                     let key_len = length / 8;
                     let mut key_bytes = vec![0u8; key_len];
-                    getrandom::getrandom(&mut key_bytes).map_err(|_| rquickjs::Error::Exception)?;
-                    store_key(KeyInfo {
+                    getrandom::getrandom(&mut key_bytes)
+                        .map_err(|_| rquickjs::Error::Exception)?;
+                    let id = store_key(KeyInfo {
                         material: KeyMaterial::Aes(key_bytes),
-                        algorithm: name.to_string(),
+                        algorithm: name.clone(),
                         usages: usages_vec.clone(),
                         extractable,
-                    })
+                    });
+                    let key = CryptoKey {
+                        id,
+                        key_type: "secret".to_string(),
+                        extractable,
+                        algorithm: algorithm_json.clone(),
+                        usages: usages_vec.clone(),
+                    };
+                    Class::instance(ctx_clone.clone(), key).into_js(&ctx_clone)
                 }
                 "HMAC" => {
-                    let hash = algorithm["hash"].as_str().unwrap_or("SHA-256");
+                    let hash = algorithm_json["hash"].as_str().unwrap_or("SHA-256");
                     let key_len = match hash {
                         "SHA-1" | "SHA-256" => 32,
                         "SHA-384" | "SHA-512" => 64,
                         _ => 32,
                     };
                     let mut key_bytes = vec![0u8; key_len];
-                    getrandom::getrandom(&mut key_bytes).map_err(|_| rquickjs::Error::Exception)?;
-                    store_key(KeyInfo {
+                    getrandom::getrandom(&mut key_bytes)
+                        .map_err(|_| rquickjs::Error::Exception)?;
+                    let id = store_key(KeyInfo {
                         material: KeyMaterial::Hmac(key_bytes),
                         algorithm: format!("HMAC-{}", hash),
                         usages: usages_vec.clone(),
                         extractable,
-                    })
+                    });
+                    let key = CryptoKey {
+                        id,
+                        key_type: "secret".to_string(),
+                        extractable,
+                        algorithm: algorithm_json.clone(),
+                        usages: usages_vec.clone(),
+                    };
+                    Class::instance(ctx_clone.clone(), key).into_js(&ctx_clone)
                 }
                 "RSASSA-PKCS1-v1.5" | "RSA-PSS" => {
-                    let bits = algorithm["modulusLength"].as_u64().unwrap_or(2048) as usize;
+                    let bits = algorithm_json["modulusLength"]
+                        .as_u64()
+                        .unwrap_or(2048) as usize;
                     let private_key = rsa::RsaPrivateKey::new(&mut rand::thread_rng(), bits)
                         .map_err(|_| rquickjs::Error::Exception)?;
                     let public_key = rsa::RsaPublicKey::from(&private_key);
@@ -390,49 +456,53 @@ fn crypto_subtle_generate_key<'js>(
                     let public_der = public_key
                         .to_public_key_der()
                         .map_err(|_| rquickjs::Error::Exception)?;
+
                     let private_id = store_key(KeyInfo {
                         material: KeyMaterial::RsaPrivate(private_der.as_bytes().to_vec()),
-                        algorithm: name.to_string(),
+                        algorithm: name.clone(),
                         usages: usages_vec.clone(),
                         extractable,
                     });
                     let public_id = store_key(KeyInfo {
                         material: KeyMaterial::RsaPublic(public_der.as_bytes().to_vec()),
-                        algorithm: name.to_string(),
+                        algorithm: name.clone(),
                         usages: filter_public_usages(&usages_vec),
                         extractable,
                     });
+
+                    let private_key = CryptoKey {
+                        id: private_id,
+                        key_type: "private".to_string(),
+                        extractable,
+                        algorithm: algorithm_json.clone(),
+                        usages: usages_vec.clone(),
+                    };
+                    let public_key = CryptoKey {
+                        id: public_id,
+                        key_type: "public".to_string(),
+                        extractable,
+                        algorithm: algorithm_json.clone(),
+                        usages: filter_public_usages(&usages_vec),
+                    };
+
                     let pair = Object::new(ctx_clone.clone())?;
-                    let private_obj = Object::new(ctx_clone.clone())?;
-                    private_obj.set("_id", private_id)?;
-                    private_obj.set("type", "private")?;
-                    private_obj.set("extractable", extractable)?;
-                    private_obj.set("algorithm", name)?;
-                    private_obj.set("usages", usages_vec.clone())?;
-                    let public_obj = Object::new(ctx_clone.clone())?;
-                    public_obj.set("_id", public_id)?;
-                    public_obj.set("type", "public")?;
-                    public_obj.set("extractable", extractable)?;
-                    public_obj.set("algorithm", name)?;
-                    public_obj.set("usages", filter_public_usages(&usages_vec))?;
-                    pair.set("privateKey", private_obj)?;
-                    pair.set("publicKey", public_obj)?;
-                    return Ok(pair);
+                    pair.set(
+                        "privateKey",
+                        Class::instance(ctx_clone.clone(), private_key)?,
+                    )?;
+                    pair.set(
+                        "publicKey",
+                        Class::instance(ctx_clone.clone(), public_key)?,
+                    )?;
+                    Ok(pair.into_value())
                 }
-                _ => return Err(rquickjs::Error::Exception),
-            };
-            let obj = Object::new(ctx_clone.clone())?;
-            obj.set("_id", id)?;
-            obj.set("type", "secret")?;
-            obj.set("extractable", extractable)?;
-            obj.set("algorithm", name)?;
-            obj.set("usages", usages_vec.clone())?;
-            Ok(obj)
+                _ => Err(rquickjs::Error::Exception),
+            }
         })();
 
         match result {
-            Ok(obj) => {
-                let _ = resolve.call::<_, ()>((obj,));
+            Ok(value) => {
+                let _ = resolve.call::<_, ()>((value,));
             }
             Err(_) => {
                 let _ = reject.call::<_, ()>(("generateKey failed",));
@@ -443,31 +513,27 @@ fn crypto_subtle_generate_key<'js>(
     Ok(promise)
 }
 
-// ===== encrypt / decrypt =====
+// =============================================================================
+// subtle.encrypt / subtle.decrypt
+// =============================================================================
 
 fn crypto_subtle_encrypt<'js>(
     ctx: Ctx<'js>,
-    algorithm_json: String,
-    key_id: u64,
-    data: TypedArray<'js, u8>,
+    algorithm: Value<'js>,
+    key: Class<'js, CryptoKey>,
+    data: Value<'js>,
 ) -> Result<Promise<'js>> {
-    let plaintext = if let Some(raw) = data.as_raw() {
-        unsafe { std::slice::from_raw_parts(raw.ptr.as_ptr(), raw.len) }.to_vec()
-    } else {
-        Vec::new()
-    };
-
-    let algorithm: serde_json::Value =
-        serde_json::from_str(&algorithm_json).map_err(|_| rquickjs::Error::Exception)?;
-    let key_info = get_key(key_id).ok_or(rquickjs::Error::Exception)?;
+    let algorithm_json = js_value_to_json(&ctx, &algorithm)?;
+    let plaintext = value_to_bytes(&data)?;
+    let key_info = get_key(key.try_borrow()?.id).ok_or(rquickjs::Error::Exception)?;
 
     let (promise, resolve, reject) = ctx.promise()?;
     let ctx_clone = ctx.clone();
 
     ctx.spawn(async move {
-        let result = do_encrypt(&key_info, &algorithm, &plaintext);
+        let result = do_encrypt(&key_info, &algorithm_json, &plaintext);
         match result {
-            Ok(ciphertext) => match TypedArray::new_copy(ctx_clone, ciphertext) {
+            Ok(ciphertext) => match ArrayBuffer::new_copy(ctx_clone, ciphertext) {
                 Ok(ta) => {
                     let _ = resolve.call::<_, ()>((ta,));
                 }
@@ -486,27 +552,21 @@ fn crypto_subtle_encrypt<'js>(
 
 fn crypto_subtle_decrypt<'js>(
     ctx: Ctx<'js>,
-    algorithm_json: String,
-    key_id: u64,
-    data: TypedArray<'js, u8>,
+    algorithm: Value<'js>,
+    key: Class<'js, CryptoKey>,
+    data: Value<'js>,
 ) -> Result<Promise<'js>> {
-    let ciphertext = if let Some(raw) = data.as_raw() {
-        unsafe { std::slice::from_raw_parts(raw.ptr.as_ptr(), raw.len) }.to_vec()
-    } else {
-        Vec::new()
-    };
-
-    let algorithm: serde_json::Value =
-        serde_json::from_str(&algorithm_json).map_err(|_| rquickjs::Error::Exception)?;
-    let key_info = get_key(key_id).ok_or(rquickjs::Error::Exception)?;
+    let algorithm_json = js_value_to_json(&ctx, &algorithm)?;
+    let ciphertext = value_to_bytes(&data)?;
+    let key_info = get_key(key.try_borrow()?.id).ok_or(rquickjs::Error::Exception)?;
 
     let (promise, resolve, reject) = ctx.promise()?;
     let ctx_clone = ctx.clone();
 
     ctx.spawn(async move {
-        let result = do_decrypt(&key_info, &algorithm, &ciphertext);
+        let result = do_decrypt(&key_info, &algorithm_json, &ciphertext);
         match result {
-            Ok(plaintext) => match TypedArray::new_copy(ctx_clone, plaintext) {
+            Ok(plaintext) => match ArrayBuffer::new_copy(ctx_clone, plaintext) {
                 Ok(ta) => {
                     let _ = resolve.call::<_, ()>((ta,));
                 }
@@ -704,23 +764,19 @@ fn do_decrypt(
     }
 }
 
-// ===== sign / verify =====
+// =============================================================================
+// subtle.sign / subtle.verify
+// =============================================================================
 
 fn crypto_subtle_sign<'js>(
     ctx: Ctx<'js>,
-    algorithm_json: String,
-    key_id: u64,
-    data: TypedArray<'js, u8>,
+    algorithm: Value<'js>,
+    key: Class<'js, CryptoKey>,
+    data: Value<'js>,
 ) -> Result<Promise<'js>> {
-    let message = if let Some(raw) = data.as_raw() {
-        unsafe { std::slice::from_raw_parts(raw.ptr.as_ptr(), raw.len) }.to_vec()
-    } else {
-        Vec::new()
-    };
-
-    let algorithm: serde_json::Value =
-        serde_json::from_str(&algorithm_json).map_err(|_| rquickjs::Error::Exception)?;
-    let key_info = get_key(key_id).ok_or(rquickjs::Error::Exception)?;
+    let algorithm_json = js_value_to_json(&ctx, &algorithm)?;
+    let message = value_to_bytes(&data)?;
+    let key_info = get_key(key.try_borrow()?.id).ok_or(rquickjs::Error::Exception)?;
 
     let (promise, resolve, reject) = ctx.promise()?;
     let ctx_clone = ctx.clone();
@@ -736,7 +792,7 @@ fn crypto_subtle_sign<'js>(
         }
         let _guard = TaskGuard;
 
-        let result = do_sign(&key_info, &algorithm, &message);
+        let result = do_sign(&key_info, &algorithm_json, &message);
         match result {
             Ok(sig) => match ArrayBuffer::new_copy(ctx_clone, sig) {
                 Ok(ab) => {
@@ -757,25 +813,15 @@ fn crypto_subtle_sign<'js>(
 
 fn crypto_subtle_verify<'js>(
     ctx: Ctx<'js>,
-    algorithm_json: String,
-    key_id: u64,
-    signature: TypedArray<'js, u8>,
-    data: TypedArray<'js, u8>,
+    algorithm: Value<'js>,
+    key: Class<'js, CryptoKey>,
+    signature: Value<'js>,
+    data: Value<'js>,
 ) -> Result<Promise<'js>> {
-    let sig = if let Some(raw) = signature.as_raw() {
-        unsafe { std::slice::from_raw_parts(raw.ptr.as_ptr(), raw.len) }.to_vec()
-    } else {
-        Vec::new()
-    };
-    let message = if let Some(raw) = data.as_raw() {
-        unsafe { std::slice::from_raw_parts(raw.ptr.as_ptr(), raw.len) }.to_vec()
-    } else {
-        Vec::new()
-    };
-
-    let algorithm: serde_json::Value =
-        serde_json::from_str(&algorithm_json).map_err(|_| rquickjs::Error::Exception)?;
-    let key_info = get_key(key_id).ok_or(rquickjs::Error::Exception)?;
+    let algorithm_json = js_value_to_json(&ctx, &algorithm)?;
+    let sig = value_to_bytes(&signature)?;
+    let message = value_to_bytes(&data)?;
+    let key_info = get_key(key.try_borrow()?.id).ok_or(rquickjs::Error::Exception)?;
 
     let (promise, resolve, reject) = ctx.promise()?;
 
@@ -790,7 +836,7 @@ fn crypto_subtle_verify<'js>(
         }
         let _guard = TaskGuard;
 
-        let result = do_verify(&key_info, &algorithm, &message, &sig);
+        let result = do_verify(&key_info, &algorithm_json, &message, &sig);
         match result {
             Ok(valid) => {
                 let _ = resolve.call::<_, ()>((valid,));
@@ -1044,28 +1090,30 @@ fn rsa_verify(
     Ok(result.is_ok())
 }
 
-// ===== importKey / exportKey =====
+// =============================================================================
+// subtle.importKey / subtle.exportKey
+// =============================================================================
 
 fn crypto_subtle_import_key<'js>(
     ctx: Ctx<'js>,
     format: String,
     key_data: Value<'js>,
-    algorithm_json: String,
+    algorithm: Value<'js>,
     extractable: bool,
     usages: Array<'js>,
-) -> Result<Object<'js>> {
-    let algorithm: serde_json::Value =
-        serde_json::from_str(&algorithm_json).map_err(|_| rquickjs::Error::Exception)?;
-    let name = algorithm["name"].as_str().unwrap_or("");
+) -> Result<Promise<'js>> {
+    let algorithm_json = js_value_to_json(&ctx, &algorithm)?;
+    let name = algorithm_json["name"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
-    let usages_vec: Vec<String> = (0..usages.len())
-        .map(|i| usages.get::<String>(i as usize).unwrap_or_default())
-        .collect();
+    let usages_vec: Vec<String> = usages.iter::<String>().collect::<Result<Vec<_>>>()?;
 
     let (material, key_type) = match format.as_str() {
         "raw" => {
             let bytes = value_to_bytes(&key_data)?;
-            let material = match name {
+            let material = match name.as_str() {
                 "AES-CBC" | "AES-GCM" => KeyMaterial::Aes(bytes),
                 "HMAC" => KeyMaterial::Hmac(bytes),
                 _ => return Err(rquickjs::Error::Exception),
@@ -1073,10 +1121,8 @@ fn crypto_subtle_import_key<'js>(
             (material, "secret")
         }
         "jwk" => {
-            let jwk_str: String = key_data.get()?;
-            let jwk: serde_json::Value =
-                serde_json::from_str(&jwk_str).map_err(|_| rquickjs::Error::Exception)?;
-            let material = import_jwk(&jwk, name)?;
+            let jwk = js_value_to_json(&ctx, &key_data)?;
+            let material = import_jwk(&jwk, &name)?;
             (material, "secret")
         }
         "pkcs8" => {
@@ -1096,64 +1142,82 @@ fn crypto_subtle_import_key<'js>(
 
     let id = store_key(KeyInfo {
         material,
-        algorithm: name.to_string(),
+        algorithm: name.clone(),
         usages: usages_vec.clone(),
         extractable,
     });
 
-    let obj = Object::new(ctx)?;
-    obj.set("_id", id)?;
-    obj.set("type", key_type)?;
-    obj.set("extractable", extractable)?;
-    obj.set("algorithm", name)?;
-    obj.set("usages", usages_vec)?;
-    Ok(obj)
+    let key = CryptoKey {
+        id,
+        key_type: key_type.to_string(),
+        extractable,
+        algorithm: algorithm_json,
+        usages: usages_vec,
+    };
+
+    let (promise, resolve, _reject) = ctx.promise()?;
+    let instance = Class::instance(ctx.clone(), key)?;
+    resolve.call::<_, ()>((instance,))?;
+    Ok(promise)
 }
 
-fn crypto_subtle_export_key<'js>(ctx: Ctx<'js>, format: String, key_id: u64) -> Result<Value<'js>> {
-    let key_info = get_key(key_id).ok_or(rquickjs::Error::Exception)?;
+fn crypto_subtle_export_key<'js>(
+    ctx: Ctx<'js>,
+    format: String,
+    key: Class<'js, CryptoKey>,
+) -> Result<Promise<'js>> {
+    let key_info = get_key(key.try_borrow()?.id).ok_or(rquickjs::Error::Exception)?;
 
-    match format.as_str() {
-        "raw" => {
-            let bytes = match &key_info.material {
-                KeyMaterial::Aes(b) => b.clone(),
-                KeyMaterial::Hmac(b) => b.clone(),
-                _ => return Err(rquickjs::Error::Exception),
-            };
-            Ok(ArrayBuffer::new_copy(ctx, bytes)?.into_value())
-        }
-        "jwk" => {
-            let jwk = export_jwk(&key_info)?;
-            let obj = Object::new(ctx)?;
-            for (k, v) in jwk.as_object().ok_or(rquickjs::Error::Exception)? {
-                obj.set(k, v.as_str().unwrap_or(""))?;
+    let (promise, resolve, reject) = ctx.promise()?;
+    let ctx_clone = ctx.clone();
+
+    ctx.spawn(async move {
+        let result: std::result::Result<Value<'js>, rquickjs::Error> = (|| match format.as_str() {
+            "raw" => {
+                let bytes = match &key_info.material {
+                    KeyMaterial::Aes(b) => b.clone(),
+                    KeyMaterial::Hmac(b) => b.clone(),
+                    _ => return Err(rquickjs::Error::Exception),
+                };
+                Ok(ArrayBuffer::new_copy(ctx_clone.clone(), bytes)?.into_value())
             }
-            Ok(obj.into_value())
-        }
-        "pkcs8" => {
-            let bytes = match &key_info.material {
-                KeyMaterial::RsaPrivate(b) => b.clone(),
-                _ => return Err(rquickjs::Error::Exception),
-            };
-            Ok(ArrayBuffer::new_copy(ctx, bytes)?.into_value())
-        }
-        "spki" => {
-            let bytes = match &key_info.material {
-                KeyMaterial::RsaPublic(b) => b.clone(),
-                _ => return Err(rquickjs::Error::Exception),
-            };
-            Ok(ArrayBuffer::new_copy(ctx, bytes)?.into_value())
-        }
-        _ => Err(rquickjs::Error::Exception),
-    }
-}
+            "jwk" => {
+                let jwk = export_jwk(&key_info)?;
+                json_value_to_js_value(&ctx_clone, &jwk)
+            }
+            "pkcs8" => {
+                let bytes = match &key_info.material {
+                    KeyMaterial::RsaPrivate(b) => b.clone(),
+                    _ => return Err(rquickjs::Error::Exception),
+                };
+                Ok(ArrayBuffer::new_copy(ctx_clone.clone(), bytes)?.into_value())
+            }
+            "spki" => {
+                let bytes = match &key_info.material {
+                    KeyMaterial::RsaPublic(b) => b.clone(),
+                    _ => return Err(rquickjs::Error::Exception),
+                };
+                Ok(ArrayBuffer::new_copy(ctx_clone.clone(), bytes)?.into_value())
+            }
+            _ => Err(rquickjs::Error::Exception),
+        })();
 
-// ===== JWK helpers =====
+        match result {
+            Ok(value) => {
+                let _ = resolve.call::<_, ()>((value,));
+            }
+            Err(_) => {
+                let _ = reject.call::<_, ()>(("exportKey failed",));
+            }
+        }
+    });
+
+    Ok(promise)
+}
 
 fn import_jwk(jwk: &serde_json::Value, expected_name: &str) -> Result<KeyMaterial> {
     let kty = jwk["kty"].as_str().ok_or(rquickjs::Error::Exception)?;
     if kty != "oct" {
-        // Only symmetric (oct) keys are supported currently.
         return Err(rquickjs::Error::Exception);
     }
 
@@ -1163,7 +1227,6 @@ fn import_jwk(jwk: &serde_json::Value, expected_name: &str) -> Result<KeyMateria
         .decode(k)
         .map_err(|_| rquickjs::Error::Exception)?;
 
-    // Validate algorithm if present.
     if let Some(alg) = jwk["alg"].as_str() {
         let expected_alg = match expected_name {
             "AES-CBC" => match bytes.len() {
@@ -1258,16 +1321,113 @@ fn export_jwk(key_info: &KeyInfo) -> Result<serde_json::Value> {
     Ok(serde_json::Value::Object(jwk))
 }
 
-// ===== helpers =====
+// =============================================================================
+// Helpers
+// =============================================================================
 
 fn value_to_bytes<'js>(value: &Value<'js>) -> Result<Vec<u8>> {
+    value_as_bytes(value).ok_or(rquickjs::Error::Exception)
+}
+
+fn value_as_bytes<'js>(value: &Value<'js>) -> Option<Vec<u8>> {
     if let Ok(ta) = value.get::<TypedArray<'js, u8>>() {
-        if let Some(raw) = ta.as_raw() {
-            return Ok(unsafe { std::slice::from_raw_parts(raw.ptr.as_ptr(), raw.len) }.to_vec());
+        if let Some(bytes) = ta.as_bytes() {
+            return Some(bytes.to_vec());
         }
     }
     if let Ok(ab) = value.get::<ArrayBuffer<'js>>() {
-        return Ok(ab.as_bytes().unwrap_or_default().to_vec());
+        return Some(ab.as_bytes().unwrap_or_default().to_vec());
     }
-    Err(rquickjs::Error::Exception)
+    if let Some(obj) = value.as_object() {
+        if let Ok(buffer_val) = obj.get::<&str, Value>("buffer") {
+            if let Ok(ab) = buffer_val.get::<ArrayBuffer<'js>>() {
+                let offset = obj.get::<&str, i64>("byteOffset").unwrap_or(0).max(0) as usize;
+                let length = obj.get::<&str, i64>("byteLength").unwrap_or(0).max(0) as usize;
+                let bytes = ab.as_bytes().unwrap_or_default();
+                if offset < bytes.len() {
+                    let end = (offset + length).min(bytes.len());
+                    return Some(bytes[offset..end].to_vec());
+                }
+            }
+        }
+    }
+    None
+}
+
+fn js_value_to_json<'js>(ctx: &Ctx<'js>, value: &Value<'js>) -> Result<serde_json::Value> {
+    if value.is_undefined() || value.is_null() {
+        return Ok(serde_json::Value::Null);
+    }
+    if let Some(b) = value.as_bool() {
+        return Ok(serde_json::Value::Bool(b));
+    }
+    if let Some(n) = value.as_number() {
+        let json_val = if n.is_finite() && n.fract() == 0.0 {
+            if n >= 0.0 && n <= u64::MAX as f64 {
+                serde_json::Value::Number((n as u64).into())
+            } else if n >= i64::MIN as f64 && n <= i64::MAX as f64 {
+                serde_json::Value::Number((n as i64).into())
+            } else {
+                serde_json::Number::from_f64(n)
+                    .map_or(serde_json::Value::Null, serde_json::Value::Number)
+            }
+        } else {
+            serde_json::Number::from_f64(n)
+                .map_or(serde_json::Value::Null, serde_json::Value::Number)
+        };
+        return Ok(json_val);
+    }
+    if let Some(s) = value.as_string() {
+        return Ok(serde_json::Value::String(s.to_string().ok().unwrap_or_default()));
+    }
+    if let Some(bytes) = value_as_bytes(value) {
+        return Ok(serde_json::Value::Array(
+            bytes.into_iter().map(|b| serde_json::Value::Number(b.into())).collect(),
+        ));
+    }
+    if let Ok(arr) = value.get::<Array<'js>>() {
+        let mut out = Vec::new();
+        for v in arr.iter::<Value<'js>>() {
+            out.push(js_value_to_json(ctx, &v?)?);
+        }
+        return Ok(serde_json::Value::Array(out));
+    }
+    if let Some(obj) = value.as_object() {
+        let mut map = serde_json::Map::new();
+        for entry in obj.props::<String, Value>() {
+            let (k, v) = entry?;
+            map.insert(k, js_value_to_json(ctx, &v)?);
+        }
+        return Ok(serde_json::Value::Object(map));
+    }
+    Ok(serde_json::Value::Null)
+}
+
+fn json_value_to_js_value<'js>(
+    ctx: &Ctx<'js>,
+    value: &serde_json::Value,
+) -> Result<Value<'js>> {
+    match value {
+        serde_json::Value::Null => Ok(Value::new_null(ctx.clone())),
+        serde_json::Value::Bool(b) => Ok(Value::new_bool(ctx.clone(), *b)),
+        serde_json::Value::Number(n) => {
+            let f = n.as_f64().unwrap_or(0.0);
+            Ok(Value::new_number(ctx.clone(), f))
+        }
+        serde_json::Value::String(s) => Ok(s.clone().into_js(ctx)?),
+        serde_json::Value::Array(arr) => {
+            let a = Array::new(ctx.clone())?;
+            for (i, v) in arr.iter().enumerate() {
+                a.set(i, json_value_to_js_value(ctx, v)?)?;
+            }
+            Ok(a.into_value())
+        }
+        serde_json::Value::Object(map) => {
+            let o = Object::new(ctx.clone())?;
+            for (k, v) in map {
+                o.set(k.as_str(), json_value_to_js_value(ctx, v)?)?;
+            }
+            Ok(o.into_value())
+        }
+    }
 }
