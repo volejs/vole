@@ -41,22 +41,6 @@ pub fn init(ctx: &Ctx) -> Result<(), rquickjs::Error> {
 
     ctx.globals().set("console", console)?;
 
-    // globalThis is the only global scope identifier in a pure ECMAScript runtime.
-    // Browser-specific globals like navigator/self/window are intentionally not exposed.
-
-    // Location stub
-    let location = Object::new(ctx.clone())?;
-    location.set("href", "file://")?;
-    location.set("protocol", "file:")?;
-    location.set("host", "")?;
-    location.set("hostname", "")?;
-    location.set("port", "")?;
-    location.set("pathname", "")?;
-    location.set("search", "")?;
-    location.set("hash", "")?;
-    location.set("origin", "file://")?;
-    ctx.globals().set("location", location)?;
-
     ctx.eval::<(), _>(
         r#"
         (function() {
