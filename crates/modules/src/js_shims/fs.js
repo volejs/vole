@@ -24,22 +24,9 @@ import {
   __fs_copyFile,
   __fs_realPath,
   __fs_open,
-  __fs_fread,
-  __fs_fwrite,
-  __fs_fseek,
-  __fs_fclose,
+  FileHandle,
+  Stats,
 } from "std:raw:fs";
-
-function normalizeStat(s) {
-  return {
-    size: s.size,
-    isFile: s.isFile,
-    isDirectory: s.isDirectory,
-    isSymlink: s.isSymlink,
-    mtime: s.mtime != null ? new Date(s.mtime) : undefined,
-    ctime: s.ctime != null ? new Date(s.ctime) : undefined,
-  };
-}
 
 function encodeData(data) {
   if (data instanceof Uint8Array) {
@@ -88,7 +75,7 @@ export function readdirSync(path) {
 }
 
 export function statSync(path) {
-  return normalizeStat(__fs_statSync(path));
+  return __fs_statSync(path);
 }
 
 export function removeSync(path) {
@@ -138,7 +125,7 @@ export async function readdir(path) {
 }
 
 export async function stat(path) {
-  return normalizeStat(await __fs_stat(path));
+  return __fs_stat(path);
 }
 
 export async function remove(path) {
@@ -159,33 +146,11 @@ export async function realPath(path) {
 
 // --- File-handle API (merged from the old std:file module) ---
 
-export class FileHandle {
-  constructor(inner) {
-    this._inner = inner;
-  }
-
-  async read(size) {
-    return __fs_fread(this._inner._id, size);
-  }
-
-  async write(data) {
-    const buf = encodeData(data);
-    return __fs_fwrite(this._inner._id, buf);
-  }
-
-  async seek(offset, whence = "start") {
-    return __fs_fseek(this._inner._id, offset, whence);
-  }
-
-  async close() {
-    return __fs_fclose(this._inner._id);
-  }
-}
-
 export async function open(path, options = {}) {
-  const inner = await __fs_open(path, options);
-  return new FileHandle(inner);
+  return __fs_open(path, options);
 }
+
+export { FileHandle, Stats };
 
 export default {
   readFileSync,
@@ -212,4 +177,5 @@ export default {
   realPath,
   open,
   FileHandle,
+  Stats,
 };

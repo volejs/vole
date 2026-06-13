@@ -18,15 +18,15 @@ pub fn registry() -> ExtensionRegistry {
         .with(crate::global_bindings::structured_clone::init)
         .with(crate::global_bindings::events::init)
         .with(crate::global_bindings::fetch::init)
-        // raw_bindings: low-level Rust backends exposed via std:raw:*
         .with(crate::global_bindings::console::init)
+        .with(crate::global_bindings::streams::init)
+        .with(crate::global_bindings::compression::init)
+        // raw_bindings: low-level Rust backends exposed via std:raw:*
         .with(crate::raw_bindings::env::init)
         .with(crate::raw_bindings::ffi::init)
         .with(crate::raw_bindings::process::init)
         .with(crate::raw_bindings::path::init)
         .with(crate::raw_bindings::http_server::init)
-        .with(crate::global_bindings::streams::init)
-        .with(crate::global_bindings::compression::init)
         .with(crate::raw_bindings::tcp::init)
         .with(crate::raw_bindings::udp::init)
         .with(crate::raw_bindings::socket::init)
