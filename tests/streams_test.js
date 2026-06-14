@@ -115,9 +115,135 @@ test("TextEncoderStream encodes chunks", async () => {
   }
 
   const decoded = new TextDecoder().decode(
-    chunks.length === 1 ? chunks[0] : new Uint8Array(0)
+    chunks.length === 1 ? chunks[0] : new Uint8Array(0),
   );
   if (decoded !== "hello") {
     throw new Error("unexpected decoded: " + decoded);
+  }
+});
+
+test("ReadableStream tee splits data", async () => {
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue("a");
+      controller.enqueue("b");
+      controller.close();
+    },
+  });
+
+  const [branch1, branch2] = stream.tee();
+
+  const r1 = branch1.getReader();
+  const r2 = branch2.getReader();
+
+  const values1 = [];
+  while (true) {
+    const { done, value } = await r1.read();
+    if (done) break;
+    values1.push(value);
+  }
+
+  const values2 = [];
+  while (true) {
+    const { done, value } = await r2.read();
+    if (done) break;
+    values2.push(value);
+  }
+
+  if (values1.join(",") !== "a,b") {
+    throw new Error("branch1 unexpected: " + values1.join(","));
+  }
+  if (values2.join(",") !== "a,b") {
+    throw new Error("branch2 unexpected: " + values2.join(","));
+  }
+});
+
+test("ReadableStream pipeTo copies data", async () => {
+  const source = new ReadableStream({
+    start(controller) {
+      controller.enqueue("x");
+      controller.enqueue("y");
+      controller.close();
+    },
+  });
+
+  const chunks = [];
+  const dest = new WritableStream({
+    write(chunk) {
+      chunks.push(chunk);
+    },
+  });
+
+  await source.pipeTo(dest);
+
+  if (chunks.join(",") !== "x,y") {
+    throw new Error("unexpected chunks: " + chunks.join(","));
+  }
+});
+
+test("ReadableStream pipeTo aborts with signal", async () => {
+  let sourceCanceled = false;
+  const source = new ReadableStream({
+    pull(controller) {
+      controller.enqueue("a");
+    },
+    cancel(reason) {
+      sourceCanceled = true;
+    },
+  });
+
+  const dest = new WritableStream({
+    write() {},
+  });
+
+  const controller = new AbortController();
+  const pipePromise = source.pipeTo(dest, { signal: controller.signal });
+  controller.abort("stop pipe");
+
+  let rejected = false;
+  try {
+    await pipePromise;
+  } catch (e) {
+    rejected = true;
+  }
+  if (!rejected) throw new Error("pipeTo should reject on abort");
+  if (!sourceCanceled) throw new Error("source should be canceled");
+});
+
+test("ReadableStream async iterator yields chunks", async () => {
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(1);
+      controller.enqueue(2);
+      controller.close();
+    },
+  });
+
+  const values = [];
+  for await (const value of stream) {
+    values.push(value);
+  }
+
+  if (values.join(",") !== "1,2") {
+    throw new Error("unexpected values: " + values.join(","));
+  }
+});
+
+test("WritableStreamDefaultController.signal aborts", async () => {
+  let signalReason;
+  const stream = new WritableStream({
+    start(controller) {
+      controller.signal.addEventListener("abort", () => {
+        signalReason = controller.signal.reason;
+      });
+    },
+  });
+
+  const writer = stream.getWriter();
+  await writer.abort("stop");
+  await delay(0);
+
+  if (signalReason !== "stop") {
+    throw new Error("signal reason not propagated: " + signalReason);
   }
 });
