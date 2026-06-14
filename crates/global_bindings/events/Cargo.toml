@@ -5,3 +5,5 @@ edition = "2021"
 
 [dependencies]
 rquickjs = { version = "0.12", features = ["futures"] }
+vole-core = { path = "../../core" }
+tokio = { workspace = true, features = ["rt"] }

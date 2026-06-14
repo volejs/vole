@@ -29,14 +29,33 @@ fn message_port_post_message<'js>(
     ctx: Ctx<'js>,
     this: This<Class<'js, MessagePort>>,
     data: Value<'js>,
-    _transfer: Opt<Value<'js>>,
+    transfer: Opt<Value<'js>>,
 ) -> Result<()> {
     let obj = this.as_object().expect("This<Class> should have an object");
+    if obj.get::<_, bool>("_closed").unwrap_or(false) {
+        return Ok(());
+    }
     let pair: Value<'js> = obj.get("_pair")?;
     if pair.is_null() || pair.is_undefined() {
         return Ok(());
     }
     let pair_obj = Object::from_value(pair)?;
+    if pair_obj.get::<_, bool>("_closed").unwrap_or(false) {
+        return Ok(());
+    }
+
+    let data = match ctx.globals().get::<_, Function>("structuredClone") {
+        Ok(structured_clone) => {
+            if let Some(transfer) = transfer.0 {
+                let options = Object::new(ctx.clone())?;
+                options.set("transfer", transfer)?;
+                structured_clone.call((data, options))?
+            } else {
+                structured_clone.call((data,))?
+            }
+        },
+        Err(_) => data,
+    };
 
     let event = Object::new(ctx.clone())?;
     event.set("type", "message")?;
@@ -46,7 +65,10 @@ fn message_port_post_message<'js>(
     event.set("source", obj.clone())?;
     event.set("ports", Array::new(ctx.clone())?)?;
 
-    crate::event_target::dispatch_event_on_object(&ctx, &pair_obj, &event)?;
+    ctx.clone().spawn(async move {
+        tokio::task::yield_now().await;
+        let _ = crate::event_target::dispatch_event_on_object(&ctx, &pair_obj, &event);
+    });
     Ok(())
 }
 

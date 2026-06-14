@@ -3,6 +3,7 @@ use rquickjs::{
     function::{Opt, This},
     Class, Constructor, Ctx, Function, Object, Result, Value,
 };
+use vole_core::error::{dom_exception_name, dom_exception_value};
 
 #[derive(Clone, Debug)]
 pub struct AbortController<'js> {
@@ -53,8 +54,18 @@ fn abort_controller_abort<'js>(
     let signal_obj = Object::from_value(ctrl.signal.clone())?;
     if let Some(signal) = Class::<crate::abort_signal::AbortSignal>::from_object(&signal_obj) {
         let mut sig = signal.try_borrow_mut()?;
+        if sig.aborted {
+            return Ok(());
+        }
         sig.aborted = true;
-        sig.reason = reason.0.clone();
+        sig.reason = Some(match reason.0 {
+            Some(reason) => reason,
+            None => dom_exception_value(
+                &ctx,
+                dom_exception_name::ABORT,
+                "This operation was aborted",
+            )?,
+        });
     }
 
     let event_ctor: Function = ctx.globals().get("Event")?;

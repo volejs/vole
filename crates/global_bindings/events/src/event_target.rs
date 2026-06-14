@@ -54,13 +54,28 @@ fn listener_key(type_: &str, capture: bool) -> String {
     }
 }
 
+fn listener_from_value<'js>(
+    ctx: &Ctx<'js>,
+    callback: Value<'js>,
+) -> Result<Option<Function<'js>>> {
+    if callback.is_null() || callback.is_undefined() {
+        return Ok(None);
+    }
+    callback.as_function().cloned().map(Some).ok_or_else(|| {
+        rquickjs::Exception::throw_type(ctx, "Event listener must be a function")
+    })
+}
+
 fn add_event_listener<'js>(
     ctx: Ctx<'js>,
     this: This<Object<'js>>,
     type_: String,
-    callback: Function<'js>,
+    callback: Value<'js>,
     options: Opt<Value<'js>>,
 ) -> Result<()> {
+    let Some(callback) = listener_from_value(&ctx, callback)? else {
+        return Ok(());
+    };
     let (capture, once) = parse_listener_options(options.0);
     let listeners = ensure_listeners(&ctx, &this.0)?;
     let key = listener_key(&type_, capture);
@@ -97,9 +112,12 @@ fn remove_event_listener<'js>(
     ctx: Ctx<'js>,
     this: This<Object<'js>>,
     type_: String,
-    callback: Function<'js>,
+    callback: Value<'js>,
     options: Opt<Value<'js>>,
 ) -> Result<()> {
+    let Some(callback) = listener_from_value(&ctx, callback)? else {
+        return Ok(());
+    };
     let (capture, _) = parse_listener_options(options.0);
     let listeners = ensure_listeners(&ctx, &this.0)?;
     let key = listener_key(&type_, capture);
@@ -197,7 +215,14 @@ pub fn dispatch_event_on_object<'js>(
         }
     }
 
-    let default_prevented: bool = event.get::<&str, bool>("defaultPrevented")?;
+    let handler_name = format!("on{}", type_);
+    if let Ok(handler) = target_obj.get::<_, Value>(&handler_name) {
+        if let Some(callback) = handler.as_function() {
+            callback.call::<_, ()>((This(target_obj.clone()), event.clone()))?;
+        }
+    }
+
+    let default_prevented: bool = event.get::<&str, bool>("defaultPrevented").unwrap_or(false);
     Ok(!default_prevented)
 }
 

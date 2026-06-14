@@ -3,6 +3,7 @@ use rquickjs::{
     function::This,
     Array, Class, Constructor, Ctx, Function, IntoJs, Null, Object, Result, Value,
 };
+use vole_core::time::TimeOrigin;
 
 #[derive(Clone, Debug)]
 pub struct Event<'js> {
@@ -42,7 +43,7 @@ impl<'js> rquickjs::IntoJs<'js> for Event<'js> {
 }
 
 fn event_ctor<'js>(
-    _ctx: Ctx<'js>,
+    ctx: Ctx<'js>,
     event_type: String,
     options: rquickjs::function::Opt<Value<'js>>,
 ) -> Result<Event<'js>> {
@@ -68,7 +69,7 @@ fn event_ctor<'js>(
         cancelable,
         composed,
         default_prevented: false,
-        time_stamp: 0.0,
+        time_stamp: TimeOrigin::get_or_init(&ctx)?.now(),
         event_phase: 0,
         is_trusted: false,
         stop_propagation: false,
@@ -148,9 +149,13 @@ fn event_stop_immediate_propagation<'js>(this: This<Class<'js, Event<'js>>>) -> 
 
 fn event_composed_path<'js>(
     ctx: Ctx<'js>,
-    _this: This<Class<'js, Event<'js>>>,
+    this: This<Class<'js, Event<'js>>>,
 ) -> Result<Array<'js>> {
-    Array::new(ctx)
+    let array = Array::new(ctx)?;
+    if let Some(target) = this.try_borrow()?.target.clone() {
+        array.set(0, target)?;
+    }
+    Ok(array)
 }
 
 impl<'js> JsClass<'js> for Event<'js> {

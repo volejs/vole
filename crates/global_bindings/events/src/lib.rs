@@ -1,4 +1,5 @@
 pub mod abort_controller;
+pub mod abort_adapter;
 pub mod abort_signal;
 pub mod custom_event;
 pub mod event;
@@ -10,6 +11,7 @@ pub mod message_port;
 use rquickjs::{class::Class, Ctx, Function, Result};
 
 pub use abort_controller::AbortController;
+pub use abort_adapter::{AbortControllerRef, AbortSignalRef};
 pub use abort_signal::AbortSignal;
 pub use custom_event::CustomEvent;
 pub use event::Event;

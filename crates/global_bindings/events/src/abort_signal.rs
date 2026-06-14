@@ -1,8 +1,9 @@
 use rquickjs::{
     class::{JsClass, Trace, Tracer, Writable},
     function::{Opt, This},
-    Class, Constructor, Ctx, Function, IntoJs, Null, Object, Result, Value,
+    Class, Constructor, Ctx, Function, Object, Result, Value,
 };
+use vole_core::error::{dom_exception_name, dom_exception_value};
 
 #[derive(Clone, Debug)]
 pub struct AbortSignal<'js> {
@@ -28,11 +29,8 @@ impl<'js> rquickjs::IntoJs<'js> for AbortSignal<'js> {
     }
 }
 
-fn abort_signal_ctor<'js>(_ctx: Ctx<'js>) -> Result<AbortSignal<'js>> {
-    Ok(AbortSignal {
-        aborted: false,
-        reason: None,
-    })
+fn abort_signal_ctor<'js>(ctx: Ctx<'js>) -> Result<AbortSignal<'js>> {
+    Err(rquickjs::Exception::throw_type(&ctx, "Illegal constructor"))
 }
 
 fn abort_signal_get_aborted<'js>(this: This<Class<'js, AbortSignal<'js>>>) -> Result<bool> {
@@ -53,18 +51,17 @@ fn abort_signal_get_reason<'js>(this: This<Class<'js, AbortSignal<'js>>>) -> Res
     if let Ok(v) = obj.get::<&str, Value>("_reason") {
         return Ok(v);
     }
-    Null.into_js(&obj.ctx())
+    Ok(Value::new_undefined(obj.ctx().clone()))
 }
 
 fn abort_signal_abort<'js>(ctx: Ctx<'js>, reason: Opt<Value<'js>>) -> Result<Value<'js>> {
     let reason = match reason.0 {
         Some(r) => r,
-        None => {
-            let err = Object::new(ctx.clone())?;
-            err.set("name", "AbortError")?;
-            err.set("message", "This operation was aborted")?;
-            err.into_value()
-        }
+        None => dom_exception_value(
+            &ctx,
+            dom_exception_name::ABORT,
+            "This operation was aborted",
+        )?,
     };
     let signal = AbortSignal {
         aborted: true,
