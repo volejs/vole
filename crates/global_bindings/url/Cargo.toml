@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-rquickjs = { workspace = true }
+rquickjs = { workspace = true, features = ["macro"] }
 url = { workspace = true }
 percent-encoding = { workspace = true }
+vole-core = { path = "../../core" }
+urlpattern = "0.6.0"
+regex = "1"
