@@ -1,6 +1,6 @@
 use rquickjs::{
     class::{JsClass, Trace, Tracer, Writable},
-    function::{This},
+    function::This,
     Class, Constructor, Ctx, Function, Object, Result, TypedArray, Value,
 };
 
@@ -63,7 +63,10 @@ impl<'js> JsClass<'js> for TextEncoder {
     fn prototype(ctx: &Ctx<'js>) -> Result<Option<Object<'js>>> {
         let proto = Object::new(ctx.clone())?;
         proto.set("encode", Function::new(ctx.clone(), text_encoder_encode)?)?;
-        proto.set("encodeInto", Function::new(ctx.clone(), text_encoder_encode_into)?)?;
+        proto.set(
+            "encodeInto",
+            Function::new(ctx.clone(), text_encoder_encode_into)?,
+        )?;
         proto.set("encoding", Function::new(ctx.clone(), || "utf-8"))?;
         Ok(Some(proto))
     }

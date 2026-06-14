@@ -14,7 +14,9 @@ pub(crate) fn crypto_random_uuid() -> String {
     )
 }
 
-pub(crate) fn crypto_get_random_values<'js>(array: TypedArray<'js, u8>) -> Result<TypedArray<'js, u8>> {
+pub(crate) fn crypto_get_random_values<'js>(
+    array: TypedArray<'js, u8>,
+) -> Result<TypedArray<'js, u8>> {
     if let Some(raw) = array.as_raw() {
         let slice = unsafe { std::slice::from_raw_parts_mut(raw.ptr.as_ptr(), raw.len) };
         getrandom::getrandom(slice).map_err(|_| rquickjs::Error::Exception)?;

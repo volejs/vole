@@ -1,5 +1,5 @@
-use rquickjs::{qjs, Array, Ctx, Function, Object, Result, TypedArray, Value};
 use rquickjs::module::{Declarations, Exports, ModuleDef};
+use rquickjs::{qjs, Array, Ctx, Function, Object, Result, TypedArray, Value};
 use std::collections::HashMap;
 use std::sync::Mutex;
 use wasmi::{Engine, Func, FuncType, Instance, Linker, Module, Store, Val, ValType};
@@ -74,7 +74,9 @@ fn wasm_instantiate<'js>(
     let instance_id = next_id();
 
     // Store import object on the global object so closures can access it
-    let import_object = imports.0.unwrap_or_else(|| Object::new(ctx.clone()).unwrap());
+    let import_object = imports
+        .0
+        .unwrap_or_else(|| Object::new(ctx.clone()).unwrap());
     let import_key = format!("__wasm_imports_{}", instance_id);
     ctx.globals().set(&import_key, import_object)?;
 
@@ -137,7 +139,8 @@ fn wasm_instantiate<'js>(
                         Val::F64(v) => Value::new_float(ctx.clone(), f64::from(*v)),
                         _ => return Err(wasmi::Error::new("unsupported wasm arg type")),
                     };
-                    js_args.push_arg(val)
+                    js_args
+                        .push_arg(val)
                         .map_err(|_| wasmi::Error::new("failed to push arg"))?;
                 }
 
@@ -150,19 +153,24 @@ fn wasm_instantiate<'js>(
                 if result_types.is_empty() {
                     // nothing to do
                 } else if result_types.len() == 1 {
-                    outputs[0] = jsval_to_wasm_val(&ctx, &result_types[0], &result)
-                        .map_err(|e| wasmi::Error::new(format!("result conversion failed: {:?}", e)))?;
+                    outputs[0] =
+                        jsval_to_wasm_val(&ctx, &result_types[0], &result).map_err(|e| {
+                            wasmi::Error::new(format!("result conversion failed: {:?}", e))
+                        })?;
                 } else {
-                    let arr: Array = result.get()
+                    let arr: Array = result
+                        .get()
                         .map_err(|_| wasmi::Error::new("expected array result for multi-value"))?;
                     if arr.len() as usize != result_types.len() {
                         return Err(wasmi::Error::new("result array length mismatch"));
                     }
                     for (i, ty) in result_types.iter().enumerate() {
-                        let elem: Value = arr.get(i)
+                        let elem: Value = arr
+                            .get(i)
                             .map_err(|_| wasmi::Error::new("failed to get result element"))?;
-                        outputs[i] = jsval_to_wasm_val(&ctx, ty, &elem)
-                            .map_err(|e| wasmi::Error::new(format!("result conversion failed: {:?}", e)))?;
+                        outputs[i] = jsval_to_wasm_val(&ctx, ty, &elem).map_err(|e| {
+                            wasmi::Error::new(format!("result conversion failed: {:?}", e))
+                        })?;
                     }
                 }
 
@@ -359,7 +367,6 @@ fn wasm_memory_write<'js>(
     Ok(())
 }
 
-
 pub struct WasmRawModule;
 
 impl ModuleDef for WasmRawModule {
@@ -375,11 +382,26 @@ impl ModuleDef for WasmRawModule {
 
     fn evaluate<'js>(ctx: &Ctx<'js>, exports: &Exports<'js>) -> rquickjs::Result<()> {
         exports.export("__wasm_compile", Function::new(ctx.clone(), wasm_compile))?;
-        exports.export("__wasm_instantiate", Function::new(ctx.clone(), wasm_instantiate))?;
-        exports.export("__wasm_instance_exports", Function::new(ctx.clone(), wasm_instance_exports))?;
-        exports.export("__wasm_call_function", Function::new(ctx.clone(), wasm_call_function))?;
-        exports.export("__wasm_memory_read", Function::new(ctx.clone(), wasm_memory_read))?;
-        exports.export("__wasm_memory_write", Function::new(ctx.clone(), wasm_memory_write))?;
+        exports.export(
+            "__wasm_instantiate",
+            Function::new(ctx.clone(), wasm_instantiate),
+        )?;
+        exports.export(
+            "__wasm_instance_exports",
+            Function::new(ctx.clone(), wasm_instance_exports),
+        )?;
+        exports.export(
+            "__wasm_call_function",
+            Function::new(ctx.clone(), wasm_call_function),
+        )?;
+        exports.export(
+            "__wasm_memory_read",
+            Function::new(ctx.clone(), wasm_memory_read),
+        )?;
+        exports.export(
+            "__wasm_memory_write",
+            Function::new(ctx.clone(), wasm_memory_write),
+        )?;
         Ok(())
     }
 }

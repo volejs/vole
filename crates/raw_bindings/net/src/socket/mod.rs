@@ -61,11 +61,7 @@ fn socket_connect<'js>(ctx: Ctx<'js>, _path: String) -> Result<Promise<'js>> {
     Ok(promise)
 }
 
-fn socket_read<'js>(
-    ctx: Ctx<'js>,
-    id: u64,
-    size: Opt<u32>,
-) -> Result<Promise<'js>> {
+fn socket_read<'js>(ctx: Ctx<'js>, id: u64, size: Opt<u32>) -> Result<Promise<'js>> {
     let stream = sockets()
         .lock()
         .unwrap()
@@ -96,11 +92,7 @@ fn socket_read<'js>(
     Ok(promise)
 }
 
-fn socket_write<'js>(
-    ctx: Ctx<'js>,
-    id: u64,
-    data: TypedArray<'js, u8>,
-) -> Result<Promise<'js>> {
+fn socket_write<'js>(ctx: Ctx<'js>, id: u64, data: TypedArray<'js, u8>) -> Result<Promise<'js>> {
     let stream = sockets()
         .lock()
         .unwrap()
@@ -218,13 +210,31 @@ impl ModuleDef for SocketRawModule {
     }
 
     fn evaluate<'js>(ctx: &Ctx<'js>, exports: &Exports<'js>) -> Result<()> {
-        exports.export("__std_socket_connect", Function::new(ctx.clone(), socket_connect))?;
+        exports.export(
+            "__std_socket_connect",
+            Function::new(ctx.clone(), socket_connect),
+        )?;
         exports.export("__std_socket_read", Function::new(ctx.clone(), socket_read))?;
-        exports.export("__std_socket_write", Function::new(ctx.clone(), socket_write))?;
-        exports.export("__std_socket_close", Function::new(ctx.clone(), socket_close))?;
-        exports.export("__std_socket_listen", Function::new(ctx.clone(), socket_listen))?;
-        exports.export("__std_socket_server_accept", Function::new(ctx.clone(), socket_server_accept))?;
-        exports.export("__std_socket_server_close", Function::new(ctx.clone(), socket_server_close))?;
+        exports.export(
+            "__std_socket_write",
+            Function::new(ctx.clone(), socket_write),
+        )?;
+        exports.export(
+            "__std_socket_close",
+            Function::new(ctx.clone(), socket_close),
+        )?;
+        exports.export(
+            "__std_socket_listen",
+            Function::new(ctx.clone(), socket_listen),
+        )?;
+        exports.export(
+            "__std_socket_server_accept",
+            Function::new(ctx.clone(), socket_server_accept),
+        )?;
+        exports.export(
+            "__std_socket_server_close",
+            Function::new(ctx.clone(), socket_server_close),
+        )?;
         Ok(())
     }
 }

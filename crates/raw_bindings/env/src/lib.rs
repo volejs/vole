@@ -76,11 +76,26 @@ impl ModuleDef for EnvRawModule {
     }
 
     fn evaluate<'js>(ctx: &Ctx<'js>, exports: &Exports<'js>) -> Result<()> {
-        exports.export("__std_env_get", rquickjs::Function::new(ctx.clone(), env_get))?;
-        exports.export("__std_env_set", rquickjs::Function::new(ctx.clone(), env_set))?;
-        exports.export("__std_env_has", rquickjs::Function::new(ctx.clone(), env_has))?;
-        exports.export("__std_env_remove", rquickjs::Function::new(ctx.clone(), env_remove))?;
-        exports.export("__std_env_entries", rquickjs::Function::new(ctx.clone(), env_entries))?;
+        exports.export(
+            "__std_env_get",
+            rquickjs::Function::new(ctx.clone(), env_get),
+        )?;
+        exports.export(
+            "__std_env_set",
+            rquickjs::Function::new(ctx.clone(), env_set),
+        )?;
+        exports.export(
+            "__std_env_has",
+            rquickjs::Function::new(ctx.clone(), env_has),
+        )?;
+        exports.export(
+            "__std_env_remove",
+            rquickjs::Function::new(ctx.clone(), env_remove),
+        )?;
+        exports.export(
+            "__std_env_entries",
+            rquickjs::Function::new(ctx.clone(), env_entries),
+        )?;
         Ok(())
     }
 }

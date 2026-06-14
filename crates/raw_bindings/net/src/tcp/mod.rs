@@ -50,11 +50,7 @@ fn tcp_connect<'js>(ctx: Ctx<'js>, host: String, port: u16) -> Result<Promise<'j
     Ok(promise)
 }
 
-fn tcp_socket_read<'js>(
-    ctx: Ctx<'js>,
-    id: u64,
-    size: Opt<u32>,
-) -> Result<Promise<'js>> {
+fn tcp_socket_read<'js>(ctx: Ctx<'js>, id: u64, size: Opt<u32>) -> Result<Promise<'js>> {
     let stream = sockets()
         .lock()
         .unwrap()
@@ -116,10 +112,7 @@ fn tcp_socket_write<'js>(
 }
 
 fn tcp_socket_close<'js>(ctx: Ctx<'js>, id: u64) -> Result<Promise<'js>> {
-    let stream = sockets()
-        .lock()
-        .unwrap()
-        .remove(&id);
+    let stream = sockets().lock().unwrap().remove(&id);
     let (promise, resolve, _reject) = ctx.promise()?;
     if let Some(stream) = stream {
         ctx.spawn(async move {
@@ -132,11 +125,7 @@ fn tcp_socket_close<'js>(ctx: Ctx<'js>, id: u64) -> Result<Promise<'js>> {
     Ok(promise)
 }
 
-fn tcp_listen<'js>(
-    ctx: Ctx<'js>,
-    port: u16,
-    host: Opt<String>,
-) -> Result<Promise<'js>> {
+fn tcp_listen<'js>(ctx: Ctx<'js>, port: u16, host: Opt<String>) -> Result<Promise<'js>> {
     let host = host.0.unwrap_or_else(|| "0.0.0.0".to_string());
     let (promise, resolve, reject) = ctx.promise()?;
     let ctx_clone = ctx.clone();
@@ -218,12 +207,27 @@ impl ModuleDef for TcpRawModule {
 
     fn evaluate<'js>(ctx: &Ctx<'js>, exports: &Exports<'js>) -> Result<()> {
         exports.export("__std_tcp_connect", Function::new(ctx.clone(), tcp_connect))?;
-        exports.export("__std_tcp_socket_read", Function::new(ctx.clone(), tcp_socket_read))?;
-        exports.export("__std_tcp_socket_write", Function::new(ctx.clone(), tcp_socket_write))?;
-        exports.export("__std_tcp_socket_close", Function::new(ctx.clone(), tcp_socket_close))?;
+        exports.export(
+            "__std_tcp_socket_read",
+            Function::new(ctx.clone(), tcp_socket_read),
+        )?;
+        exports.export(
+            "__std_tcp_socket_write",
+            Function::new(ctx.clone(), tcp_socket_write),
+        )?;
+        exports.export(
+            "__std_tcp_socket_close",
+            Function::new(ctx.clone(), tcp_socket_close),
+        )?;
         exports.export("__std_tcp_listen", Function::new(ctx.clone(), tcp_listen))?;
-        exports.export("__std_tcp_server_accept", Function::new(ctx.clone(), tcp_server_accept))?;
-        exports.export("__std_tcp_server_close", Function::new(ctx.clone(), tcp_server_close))?;
+        exports.export(
+            "__std_tcp_server_accept",
+            Function::new(ctx.clone(), tcp_server_accept),
+        )?;
+        exports.export(
+            "__std_tcp_server_close",
+            Function::new(ctx.clone(), tcp_server_close),
+        )?;
         Ok(())
     }
 }

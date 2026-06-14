@@ -75,7 +75,12 @@ fn udp_socket_send<'js>(
     };
     let (promise, resolve, reject) = ctx.promise()?;
     ctx.spawn(async move {
-        match socket.lock().await.send_to(&bytes, (remote_host, remote_port)).await {
+        match socket
+            .lock()
+            .await
+            .send_to(&bytes, (remote_host, remote_port))
+            .await
+        {
             Ok(n) => {
                 let _ = resolve.call::<_, ()>((n as f64,));
             }
@@ -87,11 +92,7 @@ fn udp_socket_send<'js>(
     Ok(promise)
 }
 
-fn udp_socket_recv<'js>(
-    ctx: Ctx<'js>,
-    id: u64,
-    size: Opt<u32>,
-) -> Result<Promise<'js>> {
+fn udp_socket_recv<'js>(ctx: Ctx<'js>, id: u64, size: Opt<u32>) -> Result<Promise<'js>> {
     let socket = sockets()
         .lock()
         .unwrap()
@@ -176,11 +177,26 @@ impl ModuleDef for UdpRawModule {
     }
 
     fn evaluate<'js>(ctx: &Ctx<'js>, exports: &Exports<'js>) -> Result<()> {
-        exports.export("__std_udp_create_socket", Function::new(ctx.clone(), udp_create_socket))?;
-        exports.export("__std_udp_socket_send", Function::new(ctx.clone(), udp_socket_send))?;
-        exports.export("__std_udp_socket_recv", Function::new(ctx.clone(), udp_socket_recv))?;
-        exports.export("__std_udp_socket_close", Function::new(ctx.clone(), udp_socket_close))?;
-        exports.export("__std_udp_socket_local_address", Function::new(ctx.clone(), udp_socket_local_address))?;
+        exports.export(
+            "__std_udp_create_socket",
+            Function::new(ctx.clone(), udp_create_socket),
+        )?;
+        exports.export(
+            "__std_udp_socket_send",
+            Function::new(ctx.clone(), udp_socket_send),
+        )?;
+        exports.export(
+            "__std_udp_socket_recv",
+            Function::new(ctx.clone(), udp_socket_recv),
+        )?;
+        exports.export(
+            "__std_udp_socket_close",
+            Function::new(ctx.clone(), udp_socket_close),
+        )?;
+        exports.export(
+            "__std_udp_socket_local_address",
+            Function::new(ctx.clone(), udp_socket_local_address),
+        )?;
         Ok(())
     }
 }

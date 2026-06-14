@@ -29,7 +29,10 @@ pub(crate) fn value_as_bytes<'js>(value: &Value<'js>) -> Option<Vec<u8>> {
     None
 }
 
-pub(crate) fn js_value_to_json<'js>(ctx: &Ctx<'js>, value: &Value<'js>) -> Result<serde_json::Value> {
+pub(crate) fn js_value_to_json<'js>(
+    ctx: &Ctx<'js>,
+    value: &Value<'js>,
+) -> Result<serde_json::Value> {
     if value.is_undefined() || value.is_null() {
         return Ok(serde_json::Value::Null);
     }
@@ -53,11 +56,16 @@ pub(crate) fn js_value_to_json<'js>(ctx: &Ctx<'js>, value: &Value<'js>) -> Resul
         return Ok(json_val);
     }
     if let Some(s) = value.as_string() {
-        return Ok(serde_json::Value::String(s.to_string().ok().unwrap_or_default()));
+        return Ok(serde_json::Value::String(
+            s.to_string().ok().unwrap_or_default(),
+        ));
     }
     if let Some(bytes) = value_as_bytes(value) {
         return Ok(serde_json::Value::Array(
-            bytes.into_iter().map(|b| serde_json::Value::Number(b.into())).collect(),
+            bytes
+                .into_iter()
+                .map(|b| serde_json::Value::Number(b.into()))
+                .collect(),
         ));
     }
     if let Ok(arr) = value.get::<Array<'js>>() {

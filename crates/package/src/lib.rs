@@ -127,9 +127,7 @@ impl PackageManager {
     pub async fn install_all(&self, dir: &Path) -> Result<(), PackageError> {
         let package_json_path = dir.join("package.json");
         if !package_json_path.exists() {
-            return Err(PackageError::NotFound(
-                "package.json not found".to_string(),
-            ));
+            return Err(PackageError::NotFound("package.json not found".to_string()));
         }
 
         let content = std::fs::read_to_string(&package_json_path)?;

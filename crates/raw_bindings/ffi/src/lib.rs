@@ -205,7 +205,10 @@ unsafe fn result_to_value<'js>(
         "u16" => Ok(Value::new_int(ctx.clone(), bits as u16 as i32)),
         "u32" => Ok(Value::new_int(ctx.clone(), bits as u32 as i32)),
         "u64" => Ok(Value::new_float(ctx.clone(), bits as u64 as f64)),
-        "f32" => Ok(Value::new_float(ctx.clone(), f32::from_bits(bits as u32) as f64)),
+        "f32" => Ok(Value::new_float(
+            ctx.clone(),
+            f32::from_bits(bits as u32) as f64,
+        )),
         "f64" => Ok(Value::new_float(ctx.clone(), f64::from_bits(bits as u64))),
         "usize" => Ok(Value::new_float(ctx.clone(), bits as f64)),
         "isize" => Ok(Value::new_float(ctx.clone(), bits as isize as f64)),

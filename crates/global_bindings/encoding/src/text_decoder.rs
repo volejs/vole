@@ -43,7 +43,8 @@ fn text_decoder_decode<'js>(
             } else if let Ok(ab) = v.get::<ArrayBuffer<'js>>() {
                 <ArrayBuffer<'js> as AsRef<[u8]>>::as_ref(&ab).to_vec()
             } else if v.as_object().map_or(false, |o| {
-                o.get::<&str, Value>("byteLength").is_ok() && o.get::<&str, Value>("byteOffset").is_ok()
+                o.get::<&str, Value>("byteLength").is_ok()
+                    && o.get::<&str, Value>("byteOffset").is_ok()
             }) {
                 // DataView shim: convert via JS
                 return Err(rquickjs::Error::Exception);
@@ -110,9 +111,15 @@ impl<'js> JsClass<'js> for TextDecoder {
     fn prototype(ctx: &Ctx<'js>) -> Result<Option<Object<'js>>> {
         let proto = Object::new(ctx.clone())?;
         proto.set("decode", Function::new(ctx.clone(), text_decoder_decode)?)?;
-        proto.set("encoding", Function::new(ctx.clone(), text_decoder_encoding)?)?;
+        proto.set(
+            "encoding",
+            Function::new(ctx.clone(), text_decoder_encoding)?,
+        )?;
         proto.set("fatal", Function::new(ctx.clone(), text_decoder_fatal)?)?;
-        proto.set("ignoreBOM", Function::new(ctx.clone(), text_decoder_ignore_bom)?)?;
+        proto.set(
+            "ignoreBOM",
+            Function::new(ctx.clone(), text_decoder_ignore_bom)?,
+        )?;
         Ok(Some(proto))
     }
 

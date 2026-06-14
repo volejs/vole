@@ -50,9 +50,7 @@ impl ModuleResolver {
         };
 
         let resolved = base_dir.join(name);
-        let resolved = resolved
-            .canonicalize()
-            .map_err(|_e| Error::Exception)?;
+        let resolved = resolved.canonicalize().map_err(|_e| Error::Exception)?;
 
         Ok(resolved.to_string_lossy().to_string())
     }
@@ -75,7 +73,13 @@ impl ModuleResolver {
 }
 
 impl Resolver for ModuleResolver {
-    fn resolve<'js>(&mut self, _ctx: &Ctx<'js>, base: &str, name: &str, _attrs: Option<rquickjs::loader::ImportAttributes<'js>>) -> Result<String, Error> {
+    fn resolve<'js>(
+        &mut self,
+        _ctx: &Ctx<'js>,
+        base: &str,
+        name: &str,
+        _attrs: Option<rquickjs::loader::ImportAttributes<'js>>,
+    ) -> Result<String, Error> {
         // vole: modules (public vole:xxx and internal raw vole:raw:xxx)
         if self.is_vole_module(name) {
             // Internal raw modules are only importable by public vole:* modules.
@@ -100,7 +104,9 @@ impl Resolver for ModuleResolver {
             let mapped_path = Path::new(&mapped);
             if mapped_path.is_absolute() {
                 // Resolve absolute mapped path relative to base_dir
-                let resolved = self.base_dir.join(mapped_path.strip_prefix("/").unwrap_or(mapped_path));
+                let resolved = self
+                    .base_dir
+                    .join(mapped_path.strip_prefix("/").unwrap_or(mapped_path));
                 if let Ok(canonical) = resolved.canonicalize() {
                     return Ok(canonical.to_string_lossy().to_string());
                 }

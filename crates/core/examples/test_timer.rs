@@ -1,5 +1,5 @@
-use std::time::Duration;
 use rquickjs::{Ctx, Function};
+use std::time::Duration;
 
 fn set_timeout_impl<'js>(ctx: Ctx<'js>, callback: Function<'js>, delay: Option<u64>) -> u64 {
     let delay = delay.unwrap_or(0);
@@ -15,9 +15,17 @@ fn set_timeout_impl<'js>(ctx: Ctx<'js>, callback: Function<'js>, delay: Option<u
 async fn main() {
     let rt = rquickjs::AsyncRuntime::new().unwrap();
     let ctx = rquickjs::AsyncContext::full(&rt).await.unwrap();
-    let _ = ctx.with(|ctx| {
-        ctx.globals().set("setTimeout", rquickjs::Function::new(ctx.clone(), set_timeout_impl).unwrap()).unwrap();
-        ctx.eval::<(), _>("setTimeout(() => console.log('delayed'), 100)")
-    }).await.unwrap();
+    let _ = ctx
+        .with(|ctx| {
+            ctx.globals()
+                .set(
+                    "setTimeout",
+                    rquickjs::Function::new(ctx.clone(), set_timeout_impl).unwrap(),
+                )
+                .unwrap();
+            ctx.eval::<(), _>("setTimeout(() => console.log('delayed'), 100)")
+        })
+        .await
+        .unwrap();
     tokio::time::sleep(Duration::from_millis(300)).await;
 }

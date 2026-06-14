@@ -18,10 +18,7 @@ pub(crate) fn crypto_subtle_import_key<'js>(
     usages: Array<'js>,
 ) -> Result<Promise<'js>> {
     let algorithm_json = js_value_to_json(&ctx, &algorithm)?;
-    let name = algorithm_json["name"]
-        .as_str()
-        .unwrap_or("")
-        .to_string();
+    let name = algorithm_json["name"].as_str().unwrap_or("").to_string();
 
     let usages_vec: Vec<String> = usages.iter::<String>().collect::<Result<Vec<_>>>()?;
 
@@ -81,7 +78,8 @@ pub(crate) fn crypto_subtle_export_key<'js>(
     format: String,
     key: Class<'js, CryptoKey>,
 ) -> Result<Promise<'js>> {
-    let key_info = crate::key_material::get_key(key.try_borrow()?.id).ok_or(rquickjs::Error::Exception)?;
+    let key_info =
+        crate::key_material::get_key(key.try_borrow()?.id).ok_or(rquickjs::Error::Exception)?;
 
     let (promise, resolve, reject) = ctx.promise()?;
     let ctx_clone = ctx.clone();

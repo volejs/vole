@@ -8,22 +8,21 @@ pub struct Runtime {
 impl Runtime {
     pub fn new() -> Result<Self, RuntimeError> {
         let rt = JsRuntime::new().map_err(|_| RuntimeError::CreationFailed)?;
-        Ok(Runtime {
-            rt: Arc::new(rt),
-        })
+        Ok(Runtime { rt: Arc::new(rt) })
     }
 
     pub fn eval(&self, code: &str) -> Result<String, RuntimeError> {
         let ctx = Context::full(&self.rt).map_err(|_| RuntimeError::CreationFailed)?;
-        
+
         ctx.with(|ctx| {
             // Add console.log support using a simple JavaScript implementation
             // Since we can't easily add Rust callbacks, we'll just skip console.log for now
             // and let the user handle it in their JavaScript code
-            
+
             let result: rquickjs::Value = ctx.eval(code)?;
             Ok(format_js_value(&result))
-        }).map_err(|e: rquickjs::Error| RuntimeError::ExecutionError(e.to_string()))
+        })
+        .map_err(|e: rquickjs::Error| RuntimeError::ExecutionError(e.to_string()))
     }
 
     pub fn global_object(&self) -> String {
@@ -50,7 +49,8 @@ fn format_js_value(value: &rquickjs::Value) -> String {
     } else if value.is_number() {
         value.as_number().unwrap().to_string()
     } else if value.is_string() {
-        value.as_string()
+        value
+            .as_string()
             .and_then(|s| s.to_string().ok())
             .unwrap_or_else(|| "string".to_string())
     } else if value.is_array() {

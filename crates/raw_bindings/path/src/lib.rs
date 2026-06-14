@@ -31,7 +31,11 @@ fn dirname(path: String) -> String {
 
 fn basename(path: String, ext: Option<String>) -> String {
     let p = std::path::Path::new(&path);
-    let name = p.file_name().unwrap_or_default().to_string_lossy().to_string();
+    let name = p
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .to_string();
     if let Some(ext) = ext {
         if name.ends_with(&ext) {
             return name[..name.len() - ext.len()].to_string();
@@ -67,7 +71,10 @@ fn relative(from: String, to: String) -> String {
 fn parse<'js>(ctx: Ctx<'js>, path: String) -> Result<Object<'js>> {
     let p = std::path::Path::new(&path);
     let obj = Object::new(ctx)?;
-    obj.set("root", p.parent().map(|_| String::new()).unwrap_or_default())?;
+    obj.set(
+        "root",
+        p.parent().map(|_| String::new()).unwrap_or_default(),
+    )?;
     obj.set(
         "dir",
         p.parent()
@@ -152,14 +159,35 @@ impl ModuleDef for PathRawModule {
 
     fn evaluate<'js>(ctx: &Ctx<'js>, exports: &Exports<'js>) -> Result<()> {
         exports.export("__path_join", rquickjs::Function::new(ctx.clone(), join))?;
-        exports.export("__path_resolve", rquickjs::Function::new(ctx.clone(), resolve))?;
-        exports.export("__path_dirname", rquickjs::Function::new(ctx.clone(), dirname))?;
-        exports.export("__path_basename", rquickjs::Function::new(ctx.clone(), basename))?;
-        exports.export("__path_extname", rquickjs::Function::new(ctx.clone(), extname))?;
-        exports.export("__path_isAbsolute", rquickjs::Function::new(ctx.clone(), is_absolute))?;
-        exports.export("__path_relative", rquickjs::Function::new(ctx.clone(), relative))?;
+        exports.export(
+            "__path_resolve",
+            rquickjs::Function::new(ctx.clone(), resolve),
+        )?;
+        exports.export(
+            "__path_dirname",
+            rquickjs::Function::new(ctx.clone(), dirname),
+        )?;
+        exports.export(
+            "__path_basename",
+            rquickjs::Function::new(ctx.clone(), basename),
+        )?;
+        exports.export(
+            "__path_extname",
+            rquickjs::Function::new(ctx.clone(), extname),
+        )?;
+        exports.export(
+            "__path_isAbsolute",
+            rquickjs::Function::new(ctx.clone(), is_absolute),
+        )?;
+        exports.export(
+            "__path_relative",
+            rquickjs::Function::new(ctx.clone(), relative),
+        )?;
         exports.export("__path_parse", rquickjs::Function::new(ctx.clone(), parse))?;
-        exports.export("__path_format", rquickjs::Function::new(ctx.clone(), format))?;
+        exports.export(
+            "__path_format",
+            rquickjs::Function::new(ctx.clone(), format),
+        )?;
         exports.export("__path_sep", std::path::MAIN_SEPARATOR.to_string())?;
         exports.export("__path_delimiter", ":")?;
         Ok(())

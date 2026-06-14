@@ -8,7 +8,5 @@ pub struct JsShims;
 /// `vole:` prefix and without the `.js` extension).
 pub fn get_shim(path: &str) -> Option<String> {
     let key = format!("{}.js", path);
-    JsShims::get(&key).map(|file| {
-        String::from_utf8_lossy(file.data.as_ref()).into_owned()
-    })
+    JsShims::get(&key).map(|file| String::from_utf8_lossy(file.data.as_ref()).into_owned())
 }

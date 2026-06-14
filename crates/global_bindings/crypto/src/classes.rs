@@ -85,8 +85,14 @@ impl<'js> JsClass<'js> for SubtleCrypto {
             "generateKey",
             Function::new(ctx.clone(), crypto_subtle_generate_key)?,
         )?;
-        proto.set("encrypt", Function::new(ctx.clone(), crypto_subtle_encrypt)?)?;
-        proto.set("decrypt", Function::new(ctx.clone(), crypto_subtle_decrypt)?)?;
+        proto.set(
+            "encrypt",
+            Function::new(ctx.clone(), crypto_subtle_encrypt)?,
+        )?;
+        proto.set(
+            "decrypt",
+            Function::new(ctx.clone(), crypto_subtle_decrypt)?,
+        )?;
         proto.set("sign", Function::new(ctx.clone(), crypto_subtle_sign)?)?;
         proto.set("verify", Function::new(ctx.clone(), crypto_subtle_verify)?)?;
         proto.set(
@@ -177,7 +183,10 @@ pub(crate) fn crypto_key_algorithm<'js>(
     json_value_to_js_value(&ctx, &alg)
 }
 
-pub(crate) fn crypto_key_usages<'js>(ctx: Ctx<'js>, this: This<Class<'js, CryptoKey>>) -> Result<Array<'js>> {
+pub(crate) fn crypto_key_usages<'js>(
+    ctx: Ctx<'js>,
+    this: This<Class<'js, CryptoKey>>,
+) -> Result<Array<'js>> {
     let arr = Array::new(ctx.clone())?;
     for (i, u) in this.try_borrow()?.usages.iter().enumerate() {
         arr.set(i, u.clone())?;

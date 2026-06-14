@@ -1,5 +1,5 @@
-use rquickjs::{Ctx, Function, Object, Promise, Result, TypedArray};
 use reqwest::Client;
+use rquickjs::{Ctx, Function, Object, Promise, Result, TypedArray};
 use std::sync::OnceLock;
 
 static CLIENT: OnceLock<Client> = OnceLock::new();
@@ -338,7 +338,8 @@ fn fetch_impl<'js>(
                 let ok = status >= 200 && status < 300;
                 let status_text = resp.status().canonical_reason().unwrap_or("").to_string();
                 let url = resp.url().to_string();
-                let header_entries: Vec<Vec<String>> = resp.headers()
+                let header_entries: Vec<Vec<String>> = resp
+                    .headers()
                     .iter()
                     .map(|(k, v)| vec![k.to_string(), v.to_str().unwrap_or("").to_string()])
                     .collect();
@@ -349,7 +350,10 @@ fn fetch_impl<'js>(
                         let _ = result.set("ok", ok);
                         let _ = result.set("statusText", status_text);
                         let _ = result.set("url", url);
-                        let _ = result.set("body", TypedArray::new_copy(ctx_clone.clone(), bytes.to_vec()).unwrap());
+                        let _ = result.set(
+                            "body",
+                            TypedArray::new_copy(ctx_clone.clone(), bytes.to_vec()).unwrap(),
+                        );
                         let _ = result.set("_headers", header_entries);
                         let _ = resolve.call::<_, ()>((result,));
                     }
