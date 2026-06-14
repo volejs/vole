@@ -12,7 +12,8 @@ Cargo workspace with `resolver = "2"`, members under `crates/`:
 
 | Crate                           | Package Name         | Type          | Purpose                                   |
 | ------------------------------- | -------------------- | ------------- | ----------------------------------------- |
-| `crates/core`                   | `vole-runtime`       | Library       | VM (async), extension registry, lifecycle |
+| `crates/core`                   | `vole-core`          | Library       | Shared JS binding support and runtime primitives |
+| `crates/runtime`                | `vole-runtime`       | Library       | VM (async), extension registry, lifecycle |
 | `crates/modules`                | `vole-module`        | Library       | Module resolver, loader, JS shims         |
 | `crates/package`                | `vole-package`       | Library       | Package system                            |
 | `crates/cmd`                    | `vole-cli`           | Binary `vole` | CLI entrypoint                            |
@@ -126,7 +127,7 @@ known runtime differences.
 
 > 立场：vole 是**纯粹的 ECMAScript 运行时**，不是浏览器。Web API 以 WinterTC Minimum Common Web Platform API 为参考，但会对浏览器、DOM、HTML、CSS 专属概念进行甄别和替代；无法替代的不予实现。
 
-Located in `crates/global_bindings/`. Registered via `ExtensionRegistry` builder in `crates/core/src/bindings.rs`.
+Located in `crates/global_bindings/`. Registered via `ExtensionRegistry` builder in `crates/runtime/src/bindings.rs`.
 
 - **Phase 0**: console, timers, performance, base64, DOMException, reportError
 - **Phase 1**: TextEncoder/TextDecoder, URL/URLSearchParams, Blob/File, CompressionStream/DecompressionStream, structuredClone
@@ -205,7 +206,8 @@ CLI commands: `vole init` / `vole install`.
 
 | Scope     | 说明                                                                   |
 | --------- | ---------------------------------------------------------------------- |
-| `core`    | `crates/core`（vole-runtime）                                          |
+| `core`    | `crates/core`（vole-core）                                              |
+| `runtime` | `crates/runtime`（vole-runtime）                                       |
 | `modules` | `crates/modules`（vole-module）                                        |
 | `package` | `crates/package`（vole-package）                                       |
 | `cli`     | `crates/cmd`（vole-cli）                                               |

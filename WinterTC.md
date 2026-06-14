@@ -4,7 +4,7 @@
 >
 > 官方规范：[https://min-common-api.proposal.wintertc.org/](https://min-common-api.proposal.wintertc.org/)
 >
-> **重要立场**：vole 是一个**纯粹的 ECMAScript 运行时**，不是浏览器。我们尽可能兼容 WinterTC 与 TC39 的公共运行时接口，但会对其中属于浏览器、DOM、HTML、CSS 的概念进行甄别：能用运行时概念替代的予以替代，无法替代的则明确抛弃。因此下表中某些 WinterTC 接口会被标记为“➖ 不适用/已替代”，这不代表实现遗漏，而是代表它们不属于 vole 的运行时模型。
+> **重要立场**：vole 是一个**纯粹的 ECMAScript 运行时**，不是浏览器。我们尽可能兼容 WinterTC 与 TC39 的公共运行时接口，但会对其中属于浏览器、DOM、HTML、CSS 的概念进行甄别：能用运行时概念替代的予以替代，无法替代的则明确抛弃。因此下表中某些 WinterTC 接口会被标记为“🔁 运行时替代”或“➖ 不适用/主动不实现”，这不代表实现遗漏，而是代表它们不属于 vole 的浏览器模型。
 >
 > **文档定位**：`ROADMAP.md` 是实现路线和优先级的来源；本文档只维护 WinterTC 对齐口径。实现状态变更时，应先校准 `ROADMAP.md`，再同步更新本文档。
 
@@ -17,20 +17,22 @@
 |  ✅  | 已按 vole 运行时目标完整实现；不等同于浏览器完整规范覆盖         |
 |  ⚠️  | 已实现核心能力，但存在明确限制、兼容性偏差或缺少规范关键语义     |
 |  ❌  | 未实现，且属于 vole 运行时目标范围                               |
-|  ➖  | 主动不实现 / 不适用 / 已用运行时概念替代；不计入待实现缺口       |
+|  🔁  | 已用 vole 运行时概念替代；不是原接口实现，但已有等价运行时路径   |
+|  ➖  | 主动不实现 / 不适用；不计入待实现缺口                            |
 
 ### 状态口径
 
 - 本文档追踪的是 **vole 对 WinterTC 的运行时适配结果**，不是浏览器兼容性认证。
 - `✅` 必须代表当前实现满足 vole 定义的目标语义，并具备基础测试覆盖。
 - `⚠️` 用于保留已可用但有已知规范缺口的能力，避免把“可用”误写成“完整”。
-- `➖` 是主动产品取舍，不应在汇总和路线图中被当作待补齐任务。
+- `🔁` 用于记录“概念被替代”的场景，例如用 `globalThis` 事件、`process` 或 `vole:*` 模块承担浏览器接口职责。
+- `➖` 是主动产品取舍或确实不适用，不应在汇总和路线图中被当作待补齐任务。
 
 ---
 
 ## 1. Common Interfaces
 
-WinterTC snapshot 列出以下 53 个 Common Interfaces。vole 按运行时模型将其分为已实现、部分实现、待实现和主动替代/抛弃四类。
+WinterTC snapshot 列出以下 53 个 Common Interfaces。vole 按运行时模型将其分为已实现、部分实现、待实现、运行时替代和主动不适用五类。
 
 ### 1.1 DOM
 
@@ -46,11 +48,11 @@ WinterTC snapshot 列出以下 53 个 Common Interfaces。vole 按运行时模�
 | Interface               | Status | Notes                                                                                                  |
 | ----------------------- | :----: | ------------------------------------------------------------------------------------------------------ |
 | `CustomEvent`           |   ✅   | —                                                                                                      |
-| `ErrorEvent`            |   ➖   | HTML 错误事件类型；已用 `globalThis` 的 `"error"` 事件替代，`reportError()` 与未捕获异常均会派发该事件 |
+| `ErrorEvent`            |   🔁   | HTML 错误事件类型；已用 `globalThis` 的 `"error"` 事件替代，`reportError()` 与未捕获异常均会派发该事件 |
 | `MessageChannel`        |   ✅   | —                                                                                                      |
 | `MessageEvent`          |   ✅   | —                                                                                                      |
 | `MessagePort`           |   ⚠️   | 已实现，但仅能在同一 VM 内通信；无 Worker / 跨线程能力                                                 |
-| `PromiseRejectionEvent` |   ➖   | HTML Promise 拒绝事件类型；已用 `globalThis` 的 `"unhandledrejection"` / `"rejectionhandled"` 事件替代 |
+| `PromiseRejectionEvent` |   🔁   | HTML Promise 拒绝事件类型；已用 `globalThis` 的 `"unhandledrejection"` / `"rejectionhandled"` 事件替代 |
 
 ### 1.3 WEBIDL
 
@@ -159,7 +161,7 @@ WinterTC snapshot 列出以下 53 个 Common Interfaces。vole 按运行时模�
 
 ## 2. Common Methods and Properties
 
-WinterTC snapshot 列出以下 Common Methods and Properties。vole 按运行时模型将其分为已实现、部分实现、待实现和主动替代/抛弃四类。
+WinterTC snapshot 列出以下 Common Methods and Properties。vole 按运行时模型将其分为已实现、部分实现、待实现、运行时替代和主动不适用五类。
 
 ### 2.1 HTML
 
@@ -170,13 +172,13 @@ WinterTC snapshot 列出以下 Common Methods and Properties。vole 按运行时
 | `btoa()`               |   ✅   | —                                                                                                                |
 | `clearTimeout()`       |   ✅   | —                                                                                                                |
 | `clearInterval()`      |   ✅   | —                                                                                                                |
-| `navigator.userAgent`  |   ➖   | 浏览器 `navigator` 概念；vole 已移除 `navigator`，运行时信息通过 `process` / `vole:env` 等机制提供                |
-| `onerror`              |   ➖   | HTML `Window` / `WorkerGlobalScope` 事件处理器；vole 不实现该属性，错误通过 `"error"` 事件在 `globalThis` 上派发 |
-| `onunhandledrejection` |   ➖   | HTML 属性；已用 `globalThis` 的 `"unhandledrejection"` 事件替代                                                  |
-| `onrejectionhandled`   |   ➖   | HTML 属性；已用 `globalThis` 的 `"rejectionhandled"` 事件替代                                                    |
+| `navigator.userAgent`  |   🔁   | 浏览器 `navigator` 概念；vole 已移除 `navigator`，运行时信息通过 `process` / `vole:env` 等机制提供                |
+| `onerror`              |   🔁   | HTML `Window` / `WorkerGlobalScope` 事件处理器；vole 不实现该属性，错误通过 `"error"` 事件在 `globalThis` 上派发 |
+| `onunhandledrejection` |   🔁   | HTML 属性；已用 `globalThis` 的 `"unhandledrejection"` 事件替代                                                  |
+| `onrejectionhandled`   |   🔁   | HTML 属性；已用 `globalThis` 的 `"rejectionhandled"` 事件替代                                                    |
 | `queueMicrotask()`     |   ✅   | —                                                                                                                |
 | `reportError()`        |   ✅   | 派发 `"error"` 事件；若未被取消默认行为则回退打印                                                                |
-| `self`                 |   ➖   | 浏览器 / Worker 全局别名概念；vole 已移除 `self`，统一使用 `globalThis`                                          |
+| `self`                 |   🔁   | 浏览器 / Worker 全局别名概念；vole 已移除 `self`，统一使用 `globalThis`                                          |
 | `setTimeout()`         |   ✅   | 含 args 传递                                                                                                     |
 | `setInterval()`        |   ✅   | 含 args 传递                                                                                                     |
 | `structuredClone()`    |   ⚠️   | serde_json 往返；仅适合 JSON-serializable 数据，无 transfer list / 循环引用 / Map / Set / Date 等完整语义        |
@@ -240,12 +242,12 @@ WinterTC **不要求**运行时支持 Web Workers。
 
 ## 4. 汇总
 
-| 类别                      | 总数 | ✅ 已实现 | ⚠️ 部分实现 | ❌ 未实现 | ➖ 不适用/已替代 |
-| ------------------------- | :--: | :-------: | :---------: | :-------: | :--------------: |
-| Common Interfaces         |  53  |    41     |      2      |     8     |        2         |
-| Common Methods/Properties |  25  |    15     |      1      |     4     |        5         |
+| 类别                      | 总数 | ✅ 已实现 | ⚠️ 部分实现 | ❌ 未实现 | 🔁 运行时替代 | ➖ 不适用 |
+| ------------------------- | :--: | :-------: | :---------: | :-------: | :-----------: | :-------: |
+| Common Interfaces         |  53  |    41     |      2      |     8     |       2       |     0     |
+| Common Methods/Properties |  25  |    15     |      1      |     4     |       5       |     0     |
 
-> **结论**：vole 不是浏览器，因此不会 100% 复刻 WinterTC 中所有浏览器/DOM/HTML 概念。➖ 项属于被明确替代或抛弃的浏览器概念；⚠️ 项是已可用但存在明确限制的兼容层（当前包括 `MessagePort` 的同 VM 占位实现、基于正则的 `URLPattern` shim，以及 JSON-only 的 `structuredClone()`）；❌ 项才是需要在纯运行时模型下继续补齐的能力（主要集中在 Streams 字节流三件套与 WASM 缺失类型与方法）。
+> **结论**：vole 不是浏览器，因此不会 100% 复刻 WinterTC 中所有浏览器/DOM/HTML 概念。🔁 项属于已被 vole 运行时机制替代的浏览器接口；➖ 项属于主动不实现或确实不适用的浏览器概念；⚠️ 项是已可用但存在明确限制的兼容层（当前包括 `MessagePort` 的同 VM 占位实现、基于正则的 `URLPattern` shim，以及 JSON-only 的 `structuredClone()`）；❌ 项才是需要在纯运行时模型下继续补齐的能力（主要集中在 Streams 字节流三件套与 WASM 缺失类型与方法）。
 
 ---
 
@@ -266,6 +268,6 @@ WinterTC **不要求**运行时支持 Web Workers。
    - ✅ 全局暴露 `CompressionStream` / `DecompressionStream`
    - ✅ 暴露 `Performance` 构造函数
    - ✅ 修复 `Blob.stream()` 返回真正 `ReadableStream`
-6. **已移除 / 已抛弃**
+6. **运行时替代 / 已移除浏览器别名**
    - `navigator` 全局对象（含 `navigator.userAgent`）
    - `self` / `window` 全局别名
