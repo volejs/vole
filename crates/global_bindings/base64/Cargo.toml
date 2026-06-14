@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 rquickjs = { workspace = true }
 base64 = { workspace = true }
+vole-core = { path = "../../core" }

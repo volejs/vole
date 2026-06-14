@@ -1,78 +1,86 @@
 use rquickjs::{
-    class::{JsClass, Trace, Tracer, Writable},
-    function::This,
-    Class, Constructor, Ctx, Function, Object, Result, TypedArray, Value,
+    atom::PredefinedAtom, function::Opt, Ctx, Exception, Object, Result, TypedArray, Value,
 };
+use vole_core::{result::ResultExt, webidl::to_usv_string};
 
-#[derive(Clone, Debug)]
-pub struct TextEncoder;
+#[derive(rquickjs::class::Trace, rquickjs::JsLifetime)]
+#[rquickjs::class]
+pub struct TextEncoder {}
 
-unsafe impl<'js> rquickjs::JsLifetime<'js> for TextEncoder {
-    type Changed<'to> = TextEncoder;
-}
-
-impl<'js> Trace<'js> for TextEncoder {
-    fn trace<'a>(&self, _tracer: Tracer<'a, 'js>) {}
-}
-
-impl<'js> rquickjs::IntoJs<'js> for TextEncoder {
-    fn into_js(self, ctx: &Ctx<'js>) -> Result<Value<'js>> {
-        Class::instance(ctx.clone(), self).into_js(ctx)
+impl Default for TextEncoder {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
-fn text_encoder_encode<'js>(
-    ctx: Ctx<'js>,
-    _this: This<Class<'js, TextEncoder>>,
-    text: String,
-) -> Result<TypedArray<'js, u8>> {
-    TypedArray::new_copy(ctx, text.into_bytes())
-}
+#[rquickjs::methods(rename_all = "camelCase")]
+impl TextEncoder {
+    #[qjs(constructor)]
+    pub fn new() -> Self {
+        Self {}
+    }
 
-fn text_encoder_encode_into<'js>(
-    ctx: Ctx<'js>,
-    _this: This<Class<'js, TextEncoder>>,
-    text: String,
-    dest: TypedArray<'js, u8>,
-) -> Result<Object<'js>> {
-    let bytes = text.into_bytes();
-    let dest_len = dest.len();
-    let written = bytes.len().min(dest_len);
+    #[qjs(get)]
+    fn encoding(&self) -> &str {
+        "utf-8"
+    }
 
-    if written > 0 {
-        let arr = dest.as_object();
-        for (i, b) in bytes.iter().take(written).enumerate() {
-            arr.set(i as u32, *b)?;
+    #[qjs(prop, rename = PredefinedAtom::SymbolToStringTag, configurable)]
+    pub fn to_string_tag() -> &'static str {
+        stringify!(TextEncoder)
+    }
+
+    pub fn encode<'js>(&self, ctx: Ctx<'js>, string: Opt<Value<'js>>) -> Result<Value<'js>> {
+        let string = match string.0 {
+            Some(value) if !value.is_undefined() => to_usv_string(&value)?,
+            _ => String::new(),
+        };
+        TypedArray::new(ctx.clone(), string.as_bytes()).map(|m: TypedArray<'_, u8>| m.into_value())
+    }
+
+    pub fn encode_into<'js>(
+        &self,
+        ctx: Ctx<'js>,
+        src: Value<'js>,
+        dst: Value<'js>,
+    ) -> Result<Object<'js>> {
+        let src = to_usv_string(&src)?;
+        let src = src.as_str();
+
+        if let Ok(typed_array) = TypedArray::<u8>::from_value(dst) {
+            let dst_length = typed_array.len();
+            let dst_offset: usize = typed_array.get("byteOffset")?;
+            let array_buffer = typed_array.arraybuffer()?;
+            let raw = array_buffer
+                .as_raw()
+                .ok_or("ArrayBuffer is detached")
+                .or_throw(&ctx)?;
+
+            let dst = unsafe {
+                std::slice::from_raw_parts_mut(raw.ptr.as_ptr().add(dst_offset), dst_length)
+            };
+
+            let mut written = 0;
+            let dst_len = dst.len();
+            for ch in src.chars() {
+                let len = ch.len_utf8();
+                if written + len > dst_len {
+                    break;
+                }
+                written += len;
+            }
+            dst[..written].copy_from_slice(&src.as_bytes()[..written]);
+            let read: usize = src[..written].chars().map(char::len_utf16).sum();
+
+            let obj = Object::new(ctx)?;
+            obj.set("read", read)?;
+            obj.set("written", written)?;
+            Ok(obj)
+        } else {
+            Err(Exception::throw_type(
+                &ctx,
+                "The \"dest\" argument must be an instance of Uint8Array.",
+            ))
         }
-    }
-
-    let result = Object::new(ctx)?;
-    result.set("read", bytes.len() as u32)?;
-    result.set("written", written as u32)?;
-    Ok(result)
-}
-
-fn text_encoder_ctor() -> Result<TextEncoder> {
-    Ok(TextEncoder)
-}
-
-impl<'js> JsClass<'js> for TextEncoder {
-    const NAME: &'static str = "TextEncoder";
-    type Mutable = Writable;
-
-    fn prototype(ctx: &Ctx<'js>) -> Result<Option<Object<'js>>> {
-        let proto = Object::new(ctx.clone())?;
-        proto.set("encode", Function::new(ctx.clone(), text_encoder_encode)?)?;
-        proto.set(
-            "encodeInto",
-            Function::new(ctx.clone(), text_encoder_encode_into)?,
-        )?;
-        proto.set("encoding", Function::new(ctx.clone(), || "utf-8"))?;
-        Ok(Some(proto))
-    }
-
-    fn constructor(ctx: &Ctx<'js>) -> Result<Option<Constructor<'js>>> {
-        let constr = Constructor::new_class::<TextEncoder, _, _>(ctx.clone(), text_encoder_ctor)?;
-        Ok(Some(constr))
     }
 }

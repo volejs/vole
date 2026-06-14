@@ -1,282 +1,266 @@
+use std::{cell::RefCell, rc::Rc};
+
 use rquickjs::{
-    class::{JsClass, Trace, Tracer, Writable},
-    function::{Opt, This},
-    Array, Class, Constructor, Ctx, Function, Object, Result, Value,
+    atom::PredefinedAtom,
+    class::Trace,
+    function::Opt,
+    Array, Class, Coerced, Ctx, Exception, FromJs, Object, Result, Value,
 };
-use std::collections::HashMap;
-use std::sync::{Mutex, OnceLock};
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
-
-static START: OnceLock<Instant> = OnceLock::new();
-static START_TIME_ORIGIN: OnceLock<f64> = OnceLock::new();
-static MARKS: OnceLock<Mutex<HashMap<String, (Instant, f64)>>> = OnceLock::new();
-static MEASURES: OnceLock<Mutex<HashMap<String, f64>>> = OnceLock::new();
-static ENTRIES: OnceLock<Mutex<Vec<PerfEntry>>> = OnceLock::new();
-
-#[derive(Clone, Debug)]
-pub struct Performance;
+use vole_core::time::TimeOrigin;
 
 #[derive(Clone)]
-struct PerfEntry {
+struct PerformanceEntryRecord {
     name: String,
-    entry_type: String,
+    entry_type: &'static str,
     start_time: f64,
     duration: f64,
 }
 
-unsafe impl<'js> rquickjs::JsLifetime<'js> for Performance {
-    type Changed<'to> = Performance;
+#[derive(Default)]
+struct PerformanceState {
+    marks: Vec<PerformanceEntryRecord>,
+    measures: Vec<PerformanceEntryRecord>,
+    entries: Vec<PerformanceEntryRecord>,
 }
 
-impl<'js> Trace<'js> for Performance {
-    fn trace<'a>(&self, _tracer: Tracer<'a, 'js>) {}
+/// Native `Performance` implementation.
+///
+/// 时间源来自 `vole_core::time::TimeOrigin`，按 JS context 隔离；
+/// mark/measure/entries 是 `Performance` 实例自己的状态，不再使用进程级 static。
+#[derive(Clone, Trace, rquickjs::JsLifetime)]
+#[rquickjs::class]
+pub struct Performance {
+    #[qjs(skip_trace)]
+    state: Rc<RefCell<PerformanceState>>,
 }
 
-impl<'js> rquickjs::IntoJs<'js> for Performance {
-    fn into_js(self, ctx: &Ctx<'js>) -> Result<Value<'js>> {
-        Ok(Class::instance(ctx.clone(), self)?.into_value())
+#[rquickjs::methods(rename_all = "camelCase")]
+impl<'js> Performance {
+    #[qjs(constructor)]
+    pub fn new(ctx: Ctx<'js>) -> Result<Self> {
+        TimeOrigin::init(&ctx)?;
+        Ok(Self {
+            state: Rc::new(RefCell::new(PerformanceState::default())),
+        })
+    }
+
+    #[qjs(get, rename = "timeOrigin")]
+    pub fn time_origin(&self, ctx: Ctx<'js>) -> Result<f64> {
+        Ok(TimeOrigin::get_or_init(&ctx)?.time_origin())
+    }
+
+    #[qjs(prop, rename = PredefinedAtom::SymbolToStringTag, configurable)]
+    pub fn to_string_tag() -> &'static str {
+        "Performance"
+    }
+
+    pub fn now(&self, ctx: Ctx<'js>) -> Result<f64> {
+        Ok(TimeOrigin::get_or_init(&ctx)?.now())
+    }
+
+    pub fn mark(
+        &self,
+        ctx: Ctx<'js>,
+        name: Coerced<String>,
+        options: Opt<Value<'js>>,
+    ) -> Result<Object<'js>> {
+        let start_time = match options.0 {
+            Some(value) if !value.is_undefined() && !value.is_null() => {
+                let object = value.as_object().ok_or_else(|| {
+                    Exception::throw_type(&ctx, "PerformanceMarkOptions must be an object")
+                })?;
+                object
+                    .get::<_, Coerced<f64>>("startTime")
+                    .map(|value| value.0)
+                    .unwrap_or(TimeOrigin::get_or_init(&ctx)?.now())
+            },
+            _ => TimeOrigin::get_or_init(&ctx)?.now(),
+        };
+
+        if start_time < 0.0 {
+            return Err(Exception::throw_range(
+                &ctx,
+                "Performance mark startTime must not be negative",
+            ));
+        }
+
+        let entry = PerformanceEntryRecord {
+            name: name.0,
+            entry_type: "mark",
+            start_time,
+            duration: 0.0,
+        };
+        self.push_entry(entry.clone());
+        entry_to_object(&ctx, &entry)
+    }
+
+    pub fn measure(
+        &self,
+        ctx: Ctx<'js>,
+        name: Coerced<String>,
+        start: Opt<Value<'js>>,
+        end: Opt<Value<'js>>,
+    ) -> Result<Object<'js>> {
+        let end_time = match end.0 {
+            Some(value) if !value.is_undefined() => self.resolve_mark_or_time(&ctx, value)?,
+            _ => TimeOrigin::get_or_init(&ctx)?.now(),
+        };
+        let start_time = match start.0 {
+            Some(value) if !value.is_undefined() => self.resolve_mark_or_time(&ctx, value)?,
+            _ => 0.0,
+        };
+
+        let duration = end_time - start_time;
+        let entry = PerformanceEntryRecord {
+            name: name.0,
+            entry_type: "measure",
+            start_time,
+            duration,
+        };
+        self.push_entry(entry.clone());
+        entry_to_object(&ctx, &entry)
+    }
+
+    pub fn clear_marks(&self, name: Opt<Coerced<String>>) {
+        clear_entries(&mut self.state.borrow_mut(), "mark", name.0.map(|name| name.0));
+    }
+
+    pub fn clear_measures(&self, name: Opt<Coerced<String>>) {
+        clear_entries(
+            &mut self.state.borrow_mut(),
+            "measure",
+            name.0.map(|name| name.0),
+        );
+    }
+
+    pub fn get_entries(&self, ctx: Ctx<'js>) -> Result<Array<'js>> {
+        entries_to_array(&ctx, self.state.borrow().entries.iter())
+    }
+
+    pub fn get_entries_by_type(
+        &self,
+        ctx: Ctx<'js>,
+        entry_type: Coerced<String>,
+    ) -> Result<Array<'js>> {
+        entries_to_array(
+            &ctx,
+            self.state
+                .borrow()
+                .entries
+                .iter()
+                .filter(|entry| entry.entry_type == entry_type.0),
+        )
+    }
+
+    pub fn get_entries_by_name(
+        &self,
+        ctx: Ctx<'js>,
+        name: Coerced<String>,
+        entry_type: Opt<Coerced<String>>,
+    ) -> Result<Array<'js>> {
+        let entry_type = entry_type.0.map(|entry_type| entry_type.0);
+        entries_to_array(
+            &ctx,
+            self.state.borrow().entries.iter().filter(|entry| {
+                entry.name == name.0
+                    && entry_type
+                        .as_ref()
+                        .map(|entry_type| entry.entry_type == entry_type)
+                        .unwrap_or(true)
+            }),
+        )
+    }
+
+    pub fn to_json(&self, ctx: Ctx<'js>) -> Result<Object<'js>> {
+        let object = Object::new(ctx.clone())?;
+        object.set("timeOrigin", TimeOrigin::get_or_init(&ctx)?.time_origin())?;
+        Ok(object)
     }
 }
 
-fn marks() -> &'static Mutex<HashMap<String, (Instant, f64)>> {
-    MARKS.get_or_init(|| Mutex::new(HashMap::new()))
+impl Performance {
+    fn push_entry(&self, entry: PerformanceEntryRecord) {
+        let mut state = self.state.borrow_mut();
+        match entry.entry_type {
+            "mark" => state.marks.push(entry.clone()),
+            "measure" => state.measures.push(entry.clone()),
+            _ => {},
+        }
+        state.entries.push(entry);
+    }
+
+    fn resolve_mark_or_time<'js>(&self, ctx: &Ctx<'js>, value: Value<'js>) -> Result<f64> {
+        if let Some(number) = value.as_number() {
+            return Ok(number);
+        }
+
+        let name = Coerced::<String>::from_js(ctx, value)?.0;
+        self.state
+            .borrow()
+            .marks
+            .iter()
+            .rev()
+            .find(|entry| entry.name == name)
+            .map(|entry| entry.start_time)
+            .ok_or_else(|| Exception::throw_syntax(ctx, "Performance mark does not exist"))
+    }
 }
 
-fn measures() -> &'static Mutex<HashMap<String, f64>> {
-    MEASURES.get_or_init(|| Mutex::new(HashMap::new()))
+fn clear_entries(state: &mut PerformanceState, entry_type: &'static str, name: Option<String>) {
+    state
+        .entries
+        .retain(|entry| should_keep_entry(entry, entry_type, name.as_deref()));
+    match entry_type {
+        "mark" => state
+            .marks
+            .retain(|entry| should_keep_entry(entry, entry_type, name.as_deref())),
+        "measure" => state
+            .measures
+            .retain(|entry| should_keep_entry(entry, entry_type, name.as_deref())),
+        _ => {},
+    }
 }
 
-fn entries() -> &'static Mutex<Vec<PerfEntry>> {
-    ENTRIES.get_or_init(|| Mutex::new(Vec::new()))
+fn should_keep_entry(
+    entry: &PerformanceEntryRecord,
+    entry_type: &'static str,
+    name: Option<&str>,
+) -> bool {
+    if entry.entry_type != entry_type {
+        return true;
+    }
+    name.map(|name| entry.name != name).unwrap_or(false)
 }
 
-fn now_ms() -> f64 {
-    let start = START.get_or_init(Instant::now);
-    start.elapsed().as_secs_f64() * 1000.0
+fn entries_to_array<'js, I>(ctx: &Ctx<'js>, entries: I) -> Result<Array<'js>>
+where
+    I: IntoIterator,
+    I::Item: std::borrow::Borrow<PerformanceEntryRecord>,
+{
+    let array = Array::new(ctx.clone())?;
+    for (idx, entry) in entries.into_iter().enumerate() {
+        array.set(idx, entry_to_object(ctx, std::borrow::Borrow::borrow(&entry))?)?;
+    }
+    Ok(array)
 }
 
-fn time_origin_ms() -> f64 {
-    *START_TIME_ORIGIN.get_or_init(|| {
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs_f64()
-            * 1000.0
-    })
-}
-
-fn performance_ctor() -> Result<Performance> {
-    Ok(Performance)
-}
-
-fn performance_now(_this: This<Class<'_, Performance>>) -> f64 {
-    now_ms()
-}
-
-fn performance_time_origin(_this: This<Class<'_, Performance>>) -> f64 {
-    time_origin_ms()
-}
-
-fn performance_mark<'js>(
-    ctx: Ctx<'js>,
-    _this: This<Class<'js, Performance>>,
-    name: String,
+fn entry_to_object<'js>(
+    ctx: &Ctx<'js>,
+    entry: &PerformanceEntryRecord,
 ) -> Result<Object<'js>> {
-    let now = now_ms();
-    let instant = Instant::now();
-    marks().lock().unwrap().insert(name.clone(), (instant, now));
-    let entry = PerfEntry {
-        name: name.clone(),
-        entry_type: "mark".to_string(),
-        start_time: now,
-        duration: 0.0,
-    };
-    entries().lock().unwrap().push(entry.clone());
-    build_entry_obj(&ctx, &entry)
-}
-
-fn performance_measure<'js>(
-    ctx: Ctx<'js>,
-    _this: This<Class<'js, Performance>>,
-    name: String,
-    start_mark: Opt<String>,
-    end_mark: Opt<String>,
-) -> Result<Object<'js>> {
-    let marks = marks().lock().unwrap();
-    let (start_instant, start_time) = start_mark
-        .0
-        .and_then(|m| marks.get(&m).cloned())
-        .unwrap_or_else(|| (*START.get_or_init(Instant::now), 0.0));
-    let end = end_mark
-        .0
-        .and_then(|m| marks.get(&m).cloned())
-        .map(|(inst, _)| inst)
-        .unwrap_or_else(Instant::now);
-    let elapsed = end.duration_since(start_instant).as_secs_f64() * 1000.0;
-    measures().lock().unwrap().insert(name.clone(), elapsed);
-    let entry = PerfEntry {
-        name: name.clone(),
-        entry_type: "measure".to_string(),
-        start_time,
-        duration: elapsed,
-    };
-    entries().lock().unwrap().push(entry.clone());
-    println!("{}: {:.3}ms", name, elapsed);
-    build_entry_obj(&ctx, &entry)
-}
-
-fn performance_clear_marks(_this: This<Class<'_, Performance>>, name: Opt<String>) {
-    let mut marks = marks().lock().unwrap();
-    if let Some(n) = name.0 {
-        marks.remove(&n);
-    } else {
-        marks.clear();
-    }
-}
-
-fn performance_clear_measures(_this: This<Class<'_, Performance>>, name: Opt<String>) {
-    let mut measures = measures().lock().unwrap();
-    if let Some(n) = name.0 {
-        measures.remove(&n);
-    } else {
-        measures.clear();
-    }
-}
-
-fn performance_to_json<'js>(
-    _this: This<Class<'js, Performance>>,
-    ctx: Ctx<'js>,
-) -> Result<Object<'js>> {
-    let obj = Object::new(ctx)?;
-    obj.set("timeOrigin", time_origin_ms())?;
-    Ok(obj)
-}
-
-fn build_entry_obj<'js>(ctx: &Ctx<'js>, entry: &PerfEntry) -> Result<Object<'js>> {
-    let obj = Object::new(ctx.clone())?;
-    obj.set("name", entry.name.clone())?;
-    obj.set("entryType", entry.entry_type.clone())?;
-    obj.set("startTime", entry.start_time)?;
-    obj.set("duration", entry.duration)?;
-    Ok(obj)
-}
-
-fn performance_get_entries<'js>(
-    _this: This<Class<'js, Performance>>,
-    ctx: Ctx<'js>,
-) -> Result<Array<'js>> {
-    let entries = entries().lock().unwrap();
-    let arr = Array::new(ctx.clone())?;
-    for (i, entry) in entries.iter().enumerate() {
-        arr.set(i, build_entry_obj(&ctx, entry)?)?;
-    }
-    Ok(arr)
-}
-
-fn performance_get_entries_by_type<'js>(
-    _this: This<Class<'js, Performance>>,
-    ctx: Ctx<'js>,
-    entry_type: String,
-) -> Result<Array<'js>> {
-    let entries = entries().lock().unwrap();
-    let arr = Array::new(ctx.clone())?;
-    let mut idx = 0usize;
-    for entry in entries.iter().filter(|e| e.entry_type == entry_type) {
-        arr.set(idx, build_entry_obj(&ctx, entry)?)?;
-        idx += 1;
-    }
-    Ok(arr)
-}
-
-fn performance_get_entries_by_name<'js>(
-    _this: This<Class<'js, Performance>>,
-    ctx: Ctx<'js>,
-    name: String,
-    entry_type: Opt<String>,
-) -> Result<Array<'js>> {
-    let entries = entries().lock().unwrap();
-    let arr = Array::new(ctx.clone())?;
-    let mut idx = 0usize;
-    for entry in entries
-        .iter()
-        .filter(|e| e.name == name && entry_type.0.as_ref().map_or(true, |t| e.entry_type == *t))
-    {
-        arr.set(idx, build_entry_obj(&ctx, entry)?)?;
-        idx += 1;
-    }
-    Ok(arr)
-}
-
-impl<'js> JsClass<'js> for Performance {
-    const NAME: &'static str = "Performance";
-    type Mutable = Writable;
-
-    fn prototype(ctx: &Ctx<'js>) -> Result<Option<Object<'js>>> {
-        let proto = Object::new(ctx.clone())?;
-        proto.set("now", Function::new(ctx.clone(), performance_now)?)?;
-        proto.set("mark", Function::new(ctx.clone(), performance_mark)?)?;
-        proto.set("measure", Function::new(ctx.clone(), performance_measure)?)?;
-        proto.set(
-            "clearMarks",
-            Function::new(ctx.clone(), performance_clear_marks),
-        )?;
-        proto.set(
-            "clearMeasures",
-            Function::new(ctx.clone(), performance_clear_measures),
-        )?;
-        proto.set("toJSON", Function::new(ctx.clone(), performance_to_json)?)?;
-        proto.set(
-            "getEntries",
-            Function::new(ctx.clone(), performance_get_entries),
-        )?;
-        proto.set(
-            "getEntriesByType",
-            Function::new(ctx.clone(), performance_get_entries_by_type),
-        )?;
-        proto.set(
-            "getEntriesByName",
-            Function::new(ctx.clone(), performance_get_entries_by_name),
-        )?;
-        // timeOrigin is exposed as a data property on the global performance object
-        // and as a getter on the prototype.
-        proto.set(
-            "timeOrigin",
-            Function::new(ctx.clone(), performance_time_origin),
-        )?;
-        Ok(Some(proto))
-    }
-
-    fn constructor(ctx: &Ctx<'js>) -> Result<Option<Constructor<'js>>> {
-        let constr = Constructor::new_class::<Performance, _, _>(ctx.clone(), performance_ctor)?;
-        Ok(Some(constr))
-    }
+    let object = Object::new(ctx.clone())?;
+    object.set("name", entry.name.clone())?;
+    object.set("entryType", entry.entry_type)?;
+    object.set("startTime", entry.start_time)?;
+    object.set("duration", entry.duration)?;
+    Ok(object)
 }
 
 pub fn init(ctx: &Ctx) -> Result<()> {
-    let _ = START.get_or_init(Instant::now);
-
-    Class::<Performance>::define(&ctx.globals())?;
-
-    // Create the global `performance` object as an instance of Performance.
-    let perf = Class::<Performance>::instance(ctx.clone(), Performance)?;
-    ctx.globals().set("performance", perf)?;
-
-    // Turn prototype methods into getters where the spec requires getters.
-    ctx.eval::<(), _>(
-        r#"
-        (function() {
-            const wrapGetter = (proto, name) => {
-                const fn = proto[name];
-                Object.defineProperty(proto, name, {
-                    get: fn,
-                    enumerable: true,
-                    configurable: true,
-                });
-            };
-            wrapGetter(Performance.prototype, "timeOrigin");
-        })();
-    "#,
-    )?;
-
+    TimeOrigin::init(ctx)?;
+    let globals = ctx.globals();
+    Class::<Performance>::define(&globals)?;
+    let performance = Class::instance(ctx.clone(), Performance::new(ctx.clone())?)?;
+    globals.set("performance", performance)?;
     Ok(())
 }
