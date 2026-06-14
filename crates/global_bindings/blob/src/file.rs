@@ -1,128 +1,145 @@
-use crate::blob::Blob;
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use rquickjs::{
-    class::{JsClass, Trace, Tracer, Writable},
-    function::{Opt, This},
-    ArrayBuffer, Class, Constructor, Ctx, FromJs, IntoJs, Object, Result, Value,
+    atom::PredefinedAtom, class::Trace, function::Opt, ArrayBuffer, Coerced, Ctx, Exception,
+    IntoJs, Object, Result, Value,
 };
 
-#[derive(Clone, Debug)]
-pub struct File {
-    blob: Blob,
-    name: String,
+use super::blob::Blob;
+
+#[rquickjs::class]
+#[derive(Trace, Clone, rquickjs::JsLifetime)]
+pub struct File<'js> {
+    blob: Blob<'js>,
+    filename: String,
     last_modified: i64,
 }
 
-impl File {
-    pub fn new<'js>(
-        ctx: &Ctx<'js>,
-        parts: Option<Value<'js>>,
-        name: String,
-        options: Option<Object<'js>>,
+#[rquickjs::methods]
+impl<'js> File<'js> {
+    #[qjs(constructor)]
+    fn new(
+        ctx: Ctx<'js>,
+        data: Value<'js>,
+        filename: Coerced<String>,
+        options: Opt<Value<'js>>,
     ) -> Result<Self> {
-        let blob = Blob::new(ctx, parts, options.clone())?;
-        let last_modified = options
-            .as_ref()
-            .and_then(|o| o.get::<&str, i64>("lastModified").ok())
-            .unwrap_or_else(|| {
-                std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_millis() as i64
-            });
+        let mut last_modified = now_millis();
+
+        if let Some(ref opts) = options.0 {
+            if opts.is_bool() || opts.is_float() || opts.is_int() || opts.is_string() {
+                return Err(Exception::throw_type(&ctx, "Invalid options"));
+            }
+
+            if let Some(v) = opts.as_object() {
+                if let Some(x) = v.get::<_, Option<Coerced<i64>>>("lastModified")? {
+                    last_modified = x.0;
+                }
+            }
+        }
+
+        let blob = Blob::new(ctx, Opt(Some(data)), options)?;
+
         Ok(Self {
             blob,
-            name,
+            filename: filename.0,
             last_modified,
         })
     }
-}
 
-unsafe impl<'js> rquickjs::JsLifetime<'js> for File {
-    type Changed<'to> = File;
-}
+    #[qjs(get)]
+    pub fn size(&self) -> usize {
+        self.blob.size()
+    }
 
-impl<'js> Trace<'js> for File {
-    fn trace<'a>(&self, _tracer: Tracer<'a, 'js>) {}
-}
+    #[qjs(get)]
+    pub fn name(&self) -> String {
+        self.filename.clone()
+    }
 
-impl<'js> IntoJs<'js> for File {
-    fn into_js(self, ctx: &Ctx<'js>) -> Result<Value<'js>> {
-        Class::instance(ctx.clone(), self).into_js(ctx)
+    #[qjs(get, rename = "type")]
+    pub fn mime_type(&self) -> String {
+        self.blob.mime_type()
+    }
+
+    #[qjs(get, rename = "lastModified")]
+    pub fn last_modified(&self) -> i64 {
+        self.last_modified
+    }
+
+    #[qjs(get, rename = "webkitRelativePath")]
+    pub fn webkit_relative_path(&self) -> &'static str {
+        ""
+    }
+
+    pub fn slice(
+        &self,
+        ctx: Ctx<'js>,
+        start: Opt<isize>,
+        end: Opt<isize>,
+        content_type: Opt<String>,
+    ) -> Result<Blob<'js>> {
+        self.blob.slice(ctx, start, end, content_type)
+    }
+
+    pub async fn text(&mut self) -> String {
+        self.blob.text().await
+    }
+
+    #[qjs(rename = "arrayBuffer")]
+    pub async fn array_buffer(&self, ctx: Ctx<'js>) -> Result<ArrayBuffer<'js>> {
+        self.blob.array_buffer(ctx).await
+    }
+
+    pub async fn bytes(&self, ctx: Ctx<'js>) -> Result<Value<'js>> {
+        self.blob.bytes(ctx).await
+    }
+
+    pub fn stream(&self, ctx: Ctx<'js>) -> Result<Value<'js>> {
+        self.blob.stream(ctx)
+    }
+
+    #[qjs(prop, rename = PredefinedAtom::SymbolToStringTag, configurable)]
+    pub fn to_string_tag() -> &'static str {
+        stringify!(File)
     }
 }
 
-impl<'js> FromJs<'js> for File {
-    fn from_js(ctx: &Ctx<'js>, value: Value<'js>) -> Result<Self> {
-        Ok(Class::<File>::from_js(ctx, value)?.try_borrow()?.clone())
+impl<'js> File<'js> {
+    pub fn from_bytes(
+        ctx: &Ctx<'js>,
+        data: Vec<u8>,
+        filename: String,
+        mime_type: Option<String>,
+    ) -> Result<Self> {
+        let options = Opt(Some({
+            let obj = Object::new(ctx.clone())?;
+            obj.set(
+                "type",
+                mime_type
+                    .clone()
+                    .unwrap_or("application/octet-stream".into())
+                    .into_js(ctx)?,
+            )?;
+            obj.into_js(ctx)?
+        }));
+        let blob = Blob::new(ctx.clone(), Opt(Some(data.into_js(ctx)?)), options)?;
+
+        Ok(Self {
+            blob,
+            filename,
+            last_modified: now_millis(),
+        })
+    }
+
+    pub fn get_blob(&self) -> Blob<'js> {
+        self.blob.clone()
     }
 }
 
-fn file_name<'js>(this: This<Class<'js, File>>) -> Result<String> {
-    Ok(this.try_borrow()?.name.clone())
-}
-
-fn file_last_modified<'js>(this: This<Class<'js, File>>) -> Result<i64> {
-    Ok(this.try_borrow()?.last_modified)
-}
-
-fn file_size<'js>(this: This<Class<'js, File>>) -> Result<usize> {
-    Ok(this.try_borrow()?.blob.size())
-}
-
-fn file_type<'js>(this: This<Class<'js, File>>) -> Result<String> {
-    Ok(this.try_borrow()?.blob.mime_type().to_string())
-}
-
-fn file_text<'js>(this: This<Class<'js, File>>) -> Result<String> {
-    this.try_borrow()?.blob.text()
-}
-
-fn file_array_buffer<'js>(ctx: Ctx<'js>, this: This<Class<'js, File>>) -> Result<ArrayBuffer<'js>> {
-    this.try_borrow()?.blob.array_buffer(ctx)
-}
-
-fn file_slice<'js>(
-    this: This<Class<'js, File>>,
-    start: Option<i64>,
-    end: Option<i64>,
-    content_type: Option<String>,
-) -> Result<Blob> {
-    this.try_borrow()?.blob.slice(start, end, content_type)
-}
-
-fn file_constructor<'js>(
-    ctx: Ctx<'js>,
-    parts: Opt<Value<'js>>,
-    name: String,
-    options: Opt<Object<'js>>,
-) -> Result<File> {
-    File::new(&ctx, parts.0, name, options.0)
-}
-
-impl<'js> JsClass<'js> for File {
-    const NAME: &'static str = "File";
-    type Mutable = Writable;
-
-    fn prototype(ctx: &Ctx<'js>) -> Result<Option<Object<'js>>> {
-        let proto = Object::new(ctx.clone())?;
-        proto.set("name", rquickjs::Function::new(ctx.clone(), file_name)?)?;
-        proto.set(
-            "lastModified",
-            rquickjs::Function::new(ctx.clone(), file_last_modified)?,
-        )?;
-        proto.set("size", rquickjs::Function::new(ctx.clone(), file_size)?)?;
-        proto.set("type", rquickjs::Function::new(ctx.clone(), file_type)?)?;
-        proto.set("text", rquickjs::Function::new(ctx.clone(), file_text)?)?;
-        proto.set(
-            "arrayBuffer",
-            rquickjs::Function::new(ctx.clone(), file_array_buffer)?,
-        )?;
-        proto.set("slice", rquickjs::Function::new(ctx.clone(), file_slice)?)?;
-        Ok(Some(proto))
-    }
-
-    fn constructor(ctx: &Ctx<'js>) -> Result<Option<Constructor<'js>>> {
-        let constr = Constructor::new_class::<File, _, _>(ctx.clone(), file_constructor)?;
-        Ok(Some(constr))
-    }
+fn now_millis() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as i64
 }

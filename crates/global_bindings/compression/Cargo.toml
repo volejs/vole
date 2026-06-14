@@ -4,5 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-rquickjs = { workspace = true }
+rquickjs = { workspace = true, features = ["macro"] }
 flate2 = { workspace = true }
+brotlic = "0.8.2"
+vole-core = { path = "../../core" }

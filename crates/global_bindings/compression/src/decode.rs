@@ -1,44 +1,66 @@
-use rquickjs::{Ctx, Result, TypedArray};
-use std::io::Read;
+use std::io::{self, Write};
 
-pub fn compression_decode<'js>(
-    ctx: Ctx<'js>,
-    format: String,
-    data: TypedArray<'js, u8>,
-) -> Result<TypedArray<'js, u8>> {
-    let bytes = if let Some(raw) = data.as_raw() {
-        unsafe { std::slice::from_raw_parts(raw.ptr.as_ptr(), raw.len) }.to_vec()
-    } else {
-        Vec::new()
-    };
+use crate::CompressionFormat;
 
-    let decompressed = match format.as_str() {
-        "gzip" => {
-            let mut decoder = flate2::read::GzDecoder::new(&bytes[..]);
-            let mut out = Vec::new();
-            decoder
-                .read_to_end(&mut out)
-                .map_err(|_| rquickjs::Error::Exception)?;
-            out
-        }
-        "deflate" => {
-            let mut decoder = flate2::read::ZlibDecoder::new(&bytes[..]);
-            let mut out = Vec::new();
-            decoder
-                .read_to_end(&mut out)
-                .map_err(|_| rquickjs::Error::Exception)?;
-            out
-        }
-        "deflate-raw" => {
-            let mut decoder = flate2::read::DeflateDecoder::new(&bytes[..]);
-            let mut out = Vec::new();
-            decoder
-                .read_to_end(&mut out)
-                .map_err(|_| rquickjs::Error::Exception)?;
-            out
-        }
-        _ => return Err(rquickjs::Error::Exception),
-    };
+/// 持有一个跨 chunk 复用的解压器。
+///
+/// 这保留了 LLRT `StreamingDecoder` 的核心能力：压缩数据可以按任意边界进入，解压器
+/// 维护内部状态并在后续 chunk 或 `finish()` 时继续输出剩余数据。这个能力后续也能被
+/// fetch/http 的 `Content-Encoding` 解码复用。
+pub(crate) enum StreamingDecoder {
+    Gzip(flate2::write::GzDecoder<Vec<u8>>),
+    Deflate(flate2::write::ZlibDecoder<Vec<u8>>),
+    DeflateRaw(flate2::write::DeflateDecoder<Vec<u8>>),
+    Brotli(brotlic::DecompressorWriter<Vec<u8>>),
+}
 
-    TypedArray::new_copy(ctx, &decompressed)
+impl StreamingDecoder {
+    pub(crate) fn new(format: CompressionFormat) -> io::Result<Self> {
+        match format {
+            CompressionFormat::Gzip => Ok(Self::Gzip(flate2::write::GzDecoder::new(Vec::new()))),
+            CompressionFormat::Deflate => Ok(Self::Deflate(flate2::write::ZlibDecoder::new(
+                Vec::new(),
+            ))),
+            CompressionFormat::DeflateRaw => Ok(Self::DeflateRaw(
+                flate2::write::DeflateDecoder::new(Vec::new()),
+            )),
+            CompressionFormat::Brotli => Ok(Self::Brotli(brotlic::DecompressorWriter::new(Vec::new()))),
+        }
+    }
+
+    pub(crate) fn write_chunk(&mut self, input: &[u8]) -> io::Result<Vec<u8>> {
+        match self {
+            Self::Gzip(decoder) => {
+                decoder.write_all(input)?;
+                decoder.flush()?;
+                Ok(std::mem::take(decoder.get_mut()))
+            },
+            Self::Deflate(decoder) => {
+                decoder.write_all(input)?;
+                decoder.flush()?;
+                Ok(std::mem::take(decoder.get_mut()))
+            },
+            Self::DeflateRaw(decoder) => {
+                decoder.write_all(input)?;
+                decoder.flush()?;
+                Ok(std::mem::take(decoder.get_mut()))
+            },
+            Self::Brotli(decoder) => {
+                decoder.write_all(input)?;
+                decoder.flush()?;
+                Ok(std::mem::take(decoder.get_mut()))
+            },
+        }
+    }
+
+    pub(crate) fn finish(self) -> io::Result<Vec<u8>> {
+        match self {
+            Self::Gzip(decoder) => decoder.finish(),
+            Self::Deflate(decoder) => decoder.finish(),
+            Self::DeflateRaw(decoder) => decoder.finish(),
+            Self::Brotli(decoder) => decoder
+                .into_inner()
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string())),
+        }
+    }
 }

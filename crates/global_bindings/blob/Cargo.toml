@@ -4,4 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-rquickjs = { workspace = true }
+rquickjs = { workspace = true, features = ["macro", "futures"] }
+vole-core = { path = "../../core" }
+vole-global-streams = { path = "../streams" }
+itoa = { version = "1", default-features = false }
+ryu = { version = "1", default-features = false }
