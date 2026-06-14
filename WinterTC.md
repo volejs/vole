@@ -4,26 +4,33 @@
 >
 > 官方规范：[https://min-common-api.proposal.wintertc.org/](https://min-common-api.proposal.wintertc.org/)
 >
-> **重要立场**：vole 是一个**纯粹的 ECMAScript 运行时**，不是浏览器。我们最大能力兼容 WinterTC 与 TC39，但会对其中属于浏览器、DOM、HTML、CSS 的概念进行甄别：能用运行时概念替代的予以替代，无法替代的则明确抛弃。因此下表中某些 WinterTC 接口会被标记为“➖ 不适用/已替代”，这不代表实现缺失，而是代表它们不属于 vole 的运行时模型。
+> **重要立场**：vole 是一个**纯粹的 ECMAScript 运行时**，不是浏览器。我们尽可能兼容 WinterTC 与 TC39 的公共运行时接口，但会对其中属于浏览器、DOM、HTML、CSS 的概念进行甄别：能用运行时概念替代的予以替代，无法替代的则明确抛弃。因此下表中某些 WinterTC 接口会被标记为“➖ 不适用/已替代”，这不代表实现遗漏，而是代表它们不属于 vole 的运行时模型。
 >
-> 本文档随代码迭代更新；如有实现变更，需同步调整此处状态。
+> **文档定位**：`ROADMAP.md` 是实现路线和优先级的来源；本文档只维护 WinterTC 对齐口径。实现状态变更时，应先校准 `ROADMAP.md`，再同步更新本文档。
 
 ---
 
 ## 图例
 
-| 标记 | 含义                                   |
-| :--: | -------------------------------------- |
-|  ✅  | 已完整实现                             |
-|  ⚠️  | 部分实现 / 与规范有偏差                |
-|  ❌  | 未实现，且属于运行时目标范围           |
-|  ➖  | 不适用 / 已用运行时概念替代 / 明确抛弃 |
+| 标记 | 含义                                                             |
+| :--: | ---------------------------------------------------------------- |
+|  ✅  | 已按 vole 运行时目标完整实现；不等同于浏览器完整规范覆盖         |
+|  ⚠️  | 已实现核心能力，但存在明确限制、兼容性偏差或缺少规范关键语义     |
+|  ❌  | 未实现，且属于 vole 运行时目标范围                               |
+|  ➖  | 主动不实现 / 不适用 / 已用运行时概念替代；不计入待实现缺口       |
+
+### 状态口径
+
+- 本文档追踪的是 **vole 对 WinterTC 的运行时适配结果**，不是浏览器兼容性认证。
+- `✅` 必须代表当前实现满足 vole 定义的目标语义，并具备基础测试覆盖。
+- `⚠️` 用于保留已可用但有已知规范缺口的能力，避免把“可用”误写成“完整”。
+- `➖` 是主动产品取舍，不应在汇总和路线图中被当作待补齐任务。
 
 ---
 
 ## 1. Common Interfaces
 
-WinterTC 要求以下 53 个接口全部暴露在 `globalThis` 上。
+WinterTC snapshot 列出以下 53 个 Common Interfaces。vole 按运行时模型将其分为已实现、部分实现、待实现和主动替代/抛弃四类。
 
 ### 1.1 DOM
 
@@ -152,7 +159,7 @@ WinterTC 要求以下 53 个接口全部暴露在 `globalThis` 上。
 
 ## 2. Common Methods and Properties
 
-WinterTC 要求以下方法和属性暴露在 `globalThis` 上。
+WinterTC snapshot 列出以下 Common Methods and Properties。vole 按运行时模型将其分为已实现、部分实现、待实现和主动替代/抛弃四类。
 
 ### 2.1 HTML
 
@@ -172,7 +179,7 @@ WinterTC 要求以下方法和属性暴露在 `globalThis` 上。
 | `self`                 |   ➖   | 浏览器 / Worker 全局别名概念；vole 已移除 `self`，统一使用 `globalThis`                                          |
 | `setTimeout()`         |   ✅   | 含 args 传递                                                                                                     |
 | `setInterval()`        |   ✅   | 含 args 传递                                                                                                     |
-| `structuredClone()`    |   ✅   | serde_json 往返，无 transfer list                                                                                |
+| `structuredClone()`    |   ⚠️   | serde_json 往返；仅适合 JSON-serializable 数据，无 transfer list / 循环引用 / Map / Set / Date 等完整语义        |
 
 ### 2.2 Fetch
 
@@ -235,27 +242,30 @@ WinterTC **不要求**运行时支持 Web Workers。
 
 | 类别                      | 总数 | ✅ 已实现 | ⚠️ 部分实现 | ❌ 未实现 | ➖ 不适用/已替代 |
 | ------------------------- | :--: | :-------: | :---------: | :-------: | :--------------: |
-| Common Interfaces         |  53  |    40     |      2      |     8     |        2         |
-| Common Methods/Properties |  25  |    16     |      0      |     4     |        5         |
+| Common Interfaces         |  53  |    41     |      2      |     8     |        2         |
+| Common Methods/Properties |  25  |    15     |      1      |     4     |        5         |
 
-> **结论**：vole 不是浏览器，因此不会 100% 复刻 WinterTC 中所有浏览器/DOM/HTML 概念。➖ 项属于被明确替代或抛弃的浏览器概念；⚠️ 项是已用运行时概念保留但未来可进一步弱化的兼容层（目前仅剩 `MessagePort` 的同 VM 占位实现，以及基于正则的 `URLPattern` shim）；❌ 项才是需要在纯运行时模型下继续补齐的能力（主要集中在 Streams 字节流三件套与 WASM 缺失类型与方法）。
+> **结论**：vole 不是浏览器，因此不会 100% 复刻 WinterTC 中所有浏览器/DOM/HTML 概念。➖ 项属于被明确替代或抛弃的浏览器概念；⚠️ 项是已可用但存在明确限制的兼容层（当前包括 `MessagePort` 的同 VM 占位实现、基于正则的 `URLPattern` shim，以及 JSON-only 的 `structuredClone()`）；❌ 项才是需要在纯运行时模型下继续补齐的能力（主要集中在 Streams 字节流三件套与 WASM 缺失类型与方法）。
 
 ---
 
 ## 5. 推荐补齐优先级
 
-1. **P1（高）**
+1. **P0（文档与验证基线）**
+   - 对照 `ROADMAP.md`、`tests/external/README.md` 和实际测试结果校准所有 ✅ / ⚠️ 状态
+   - 为关键 ✅ 项补充实现位置与测试覆盖引用，避免状态漂移
+2. **P1（高）**
    - 补齐 Streams 字节流三件套（`ReadableByteStreamController`、`ReadableStreamBYOBReader`、`ReadableStreamBYOBRequest`）
-2. **P2（中）**
+3. **P2（中）**
    - 补齐 WASM `Global` / `Table` / `Exception` / `LinkError` / `validate()` / `JSTag`
-3. **P3（架构级 / 待设计）**
+4. **P3（架构级 / 待设计）**
    - `WebAssembly.compileStreaming()` / `instantiateStreaming()`：设计为接受非浏览器字节源（ReadableStream / Promise<bytes> / AsyncIterable）
    - `DOMException`：保留兼容，未来如定义运行时通用 `Exception`，可将 `DOMException` 作为别名暴露
-4. **已完成（已从优先级列表移除）**
+5. **已完成（已从优先级列表移除）**
    - ✅ 让 `globalThis` 实现 `EventTarget`，通过 `"error"` / `"unhandledrejection"` / `"rejectionhandled"` 事件替代 `ErrorEvent` / `PromiseRejectionEvent` / `onerror` 等浏览器概念
    - ✅ 全局暴露 `CompressionStream` / `DecompressionStream`
    - ✅ 暴露 `Performance` 构造函数
    - ✅ 修复 `Blob.stream()` 返回真正 `ReadableStream`
-5. **已移除 / 已抛弃**
+6. **已移除 / 已抛弃**
    - `navigator` 全局对象（含 `navigator.userAgent`）
    - `self` / `window` 全局别名
