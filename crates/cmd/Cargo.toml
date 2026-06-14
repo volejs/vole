@@ -8,7 +8,7 @@ name = "vole"
 path = "src/main.rs"
 
 [dependencies]
-vole-runtime = { path = "../core" }
+vole-runtime = { path = "../runtime" }
 vole-package = { path = "../package" }
 clap = { version = "4.5", features = ["derive"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

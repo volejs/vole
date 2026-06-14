@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "crates/cmd",
+    "crates/runtime",
     "crates/core",
     "crates/modules",
     "crates/package",

@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 rquickjs = { workspace = true, features = ["futures"] }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }
+vole-core = { path = "../../core" }

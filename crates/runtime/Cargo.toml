@@ -1,0 +1,33 @@
+[package]
+name = "vole-runtime"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rquickjs = { workspace = true, features = ["futures", "loader"] }
+vole-module = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }
+vole-global-base64 = { path = "../global_bindings/base64" }
+vole-global-blob = { path = "../global_bindings/blob" }
+vole-global-compression = { path = "../global_bindings/compression" }
+vole-global-console = { path = "../global_bindings/console" }
+vole-global-crypto = { path = "../global_bindings/crypto" }
+vole-global-dom_exception = { path = "../global_bindings/dom_exception" }
+vole-global-encoding = { path = "../global_bindings/encoding" }
+vole-global-events = { path = "../global_bindings/events" }
+vole-global-fetch = { path = "../global_bindings/fetch" }
+vole-global-performance = { path = "../global_bindings/performance" }
+vole-global-report_error = { path = "../global_bindings/report_error" }
+vole-global-streams = { path = "../global_bindings/streams" }
+vole-global-structured_clone = { path = "../global_bindings/structured_clone" }
+vole-global-timers = { path = "../global_bindings/timers" }
+vole-global-url = { path = "../global_bindings/url" }
+vole-raw-env = { path = "../raw_bindings/env" }
+vole-raw-ffi = { path = "../raw_bindings/ffi" }
+vole-raw-fs = { path = "../raw_bindings/fs" }
+vole-raw-net = { path = "../raw_bindings/net" }
+vole-raw-path = { path = "../raw_bindings/path" }
+vole-raw-process = { path = "../raw_bindings/process" }
+
+vole-raw-wasm = { path = "../raw_bindings/wasm" }

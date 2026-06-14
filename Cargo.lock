@@ -44,6 +44,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "aho-corasick"
+version = "1.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ddd31a130427c27518df266943a5308ed92d4b226cc639f5a8f1002816174301"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "allocator-api2"
 version = "0.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -230,6 +239,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8894febbff9f758034a5b8e12d87918f56dfc64a8e1fe757d65e29041538d93"
 dependencies = [
  "generic-array",
+]
+
+[[package]]
+name = "brotlic"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f552f56f302af0006c32b50bfa2bdb4696fd6ba33c3ab9f6225fefdb1efdc680"
+dependencies = [
+ "brotlic-sys",
+]
+
+[[package]]
+name = "brotlic-sys"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "afdec5c62bc97b56349053cf66ba503af5c2448591be61c3ad70a5f11b57e574"
+dependencies = [
+ "cc",
 ]
 
 [[package]]
@@ -602,6 +629,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "float-cmp"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b09cf3155332e944990140d967ff5eceb70df778b34f77d8075db46e4704e6d8"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -755,6 +791,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "halfbrown"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c7ed2f2edad8a14c8186b847909a41fbb9c3eafa44f88bd891114ed5019da09"
+dependencies = [
+ "hashbrown 0.16.1",
+]
+
+[[package]]
 name = "hashbrown"
 version = "0.15.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -770,6 +815,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
 dependencies = [
  "allocator-api2",
+ "equivalent",
+ "foldhash 0.2.0",
 ]
 
 [[package]]
@@ -788,6 +835,16 @@ name = "heck"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
+
+[[package]]
+name = "hex-simd"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1f7685beb53fc20efc2605f32f5d51e9ba18b8ef237961d1760169d2290d3bee"
+dependencies = [
+ "outref",
+ "vsimd",
+]
 
 [[package]]
 name = "hmac"
@@ -2059,6 +2116,55 @@ dependencies = [
 ]
 
 [[package]]
+name = "ref-cast"
+version = "1.0.25"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f354300ae66f76f1c85c5f84693f0ce81d747e2c3f21a45fef496d89c960bf7d"
+dependencies = [
+ "ref-cast-impl",
+]
+
+[[package]]
+name = "ref-cast-impl"
+version = "1.0.25"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b7186006dcb21920990093f30e3dea63b7d6e977bf1256be20c3563a5db070da"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "regex"
+version = "1.12.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1292b7759ae1cb9ec195452d1390a074f0cd8541ab7a5a8c31cd6db45d4a6ba"
+dependencies = [
+ "aho-corasick",
+ "memchr",
+ "regex-automata",
+ "regex-syntax",
+]
+
+[[package]]
+name = "regex-automata"
+version = "0.4.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e1dd4122fc1595e8162618945476892eefca7b88c52820e74af6262213cae8f"
+dependencies = [
+ "aho-corasick",
+ "memchr",
+ "regex-syntax",
+]
+
+[[package]]
+name = "regex-syntax"
+version = "0.8.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
+
+[[package]]
 name = "relative-path"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2168,16 +2274,6 @@ dependencies = [
  "quote",
  "rquickjs-core",
  "syn",
-]
-
-[[package]]
-name = "rquickjs-serde"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04cf0aa631f8d0c5051db35f9f59899c34074d7b6be280c03fd4ce6165d0ed35"
-dependencies = [
- "rquickjs",
- "serde",
 ]
 
 [[package]]
@@ -2527,6 +2623,24 @@ name = "simd-adler32"
 version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "703d5c7ef118737c72f1af64ad2f6f8c5e1921f818cdcb97b8fe6fc69bf66214"
+
+[[package]]
+name = "simd-json"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4255126f310d2ba20048db6321c81ab376f6a6735608bf11f0785c41f01f64e3"
+dependencies = [
+ "halfbrown",
+ "ref-cast",
+ "simdutf8",
+ "value-trait",
+]
+
+[[package]]
+name = "simdutf8"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3a9fe34e3e7a50316060351f37187a3f546bce95496156754b601a5fa71b76e"
 
 [[package]]
 name = "siphasher"
@@ -3044,6 +3158,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "urlpattern"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df16f50ef4cc145211879a3867ba757076b25dfee812040dcb0658bd9ae7904b"
+dependencies = [
+ "icu_properties",
+ "regex",
+ "serde",
+ "url",
+]
+
+[[package]]
 name = "utf8_iter"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3054,6 +3180,18 @@ name = "utf8parse"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
+
+[[package]]
+name = "value-trait"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8e80f0c733af0720a501b3905d22e2f97662d8eacfe082a75ed7ffb5ab08cb59"
+dependencies = [
+ "float-cmp",
+ "halfbrown",
+ "itoa",
+ "ryu",
+]
 
 [[package]]
 name = "vcpkg"
@@ -3080,26 +3218,48 @@ dependencies = [
 ]
 
 [[package]]
+name = "vole-core"
+version = "0.1.0"
+dependencies = [
+ "base64-simd",
+ "hex-simd",
+ "itoa",
+ "memchr",
+ "phf",
+ "rquickjs",
+ "ryu",
+ "simd-json",
+ "tokio",
+]
+
+[[package]]
 name = "vole-global-base64"
 version = "0.1.0"
 dependencies = [
  "base64",
  "rquickjs",
+ "vole-core",
 ]
 
 [[package]]
 name = "vole-global-blob"
 version = "0.1.0"
 dependencies = [
+ "itoa",
  "rquickjs",
+ "ryu",
+ "vole-core",
+ "vole-global-streams",
 ]
 
 [[package]]
 name = "vole-global-compression"
 version = "0.1.0"
 dependencies = [
+ "brotlic",
  "flate2",
  "rquickjs",
+ "vole-core",
 ]
 
 [[package]]
@@ -3107,6 +3267,7 @@ name = "vole-global-console"
 version = "0.1.0"
 dependencies = [
  "rquickjs",
+ "vole-core",
 ]
 
 [[package]]
@@ -3128,6 +3289,7 @@ dependencies = [
  "sha1",
  "sha2",
  "spki",
+ "vole-core",
  "vole-global-timers",
 ]
 
@@ -3136,6 +3298,7 @@ name = "vole-global-dom_exception"
 version = "0.1.0"
 dependencies = [
  "rquickjs",
+ "vole-core",
 ]
 
 [[package]]
@@ -3143,6 +3306,7 @@ name = "vole-global-encoding"
 version = "0.1.0"
 dependencies = [
  "rquickjs",
+ "vole-core",
 ]
 
 [[package]]
@@ -3150,6 +3314,8 @@ name = "vole-global-events"
 version = "0.1.0"
 dependencies = [
  "rquickjs",
+ "tokio",
+ "vole-core",
 ]
 
 [[package]]
@@ -3167,6 +3333,7 @@ name = "vole-global-performance"
 version = "0.1.0"
 dependencies = [
  "rquickjs",
+ "vole-core",
 ]
 
 [[package]]
@@ -3181,6 +3348,8 @@ name = "vole-global-streams"
 version = "0.1.0"
 dependencies = [
  "rquickjs",
+ "vole-core",
+ "vole-global-events",
 ]
 
 [[package]]
@@ -3188,8 +3357,7 @@ name = "vole-global-structured_clone"
 version = "0.1.0"
 dependencies = [
  "rquickjs",
- "rquickjs-serde",
- "serde_json",
+ "vole-core",
 ]
 
 [[package]]
@@ -3198,6 +3366,7 @@ version = "0.1.0"
 dependencies = [
  "rquickjs",
  "tokio",
+ "vole-core",
 ]
 
 [[package]]
@@ -3205,8 +3374,11 @@ name = "vole-global-url"
 version = "0.1.0"
 dependencies = [
  "percent-encoding",
+ "regex",
  "rquickjs",
  "url",
+ "urlpattern",
+ "vole-core",
 ]
 
 [[package]]
