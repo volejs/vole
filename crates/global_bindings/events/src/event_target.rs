@@ -21,17 +21,11 @@ impl<'js> rquickjs::IntoJs<'js> for EventTarget {
     }
 }
 
-fn ensure_listeners<'js>(
-    ctx: &Ctx<'js>,
-    this: &This<Class<'js, EventTarget>>,
-) -> Result<Object<'js>> {
-    let obj = this
-        .as_object()
-        .expect("This<Class> should always have an object");
-    if !obj.contains_key("_listeners")? {
-        obj.set("_listeners", Object::new(ctx.clone())?)?;
+fn ensure_listeners<'js>(ctx: &Ctx<'js>, this: &Object<'js>) -> Result<Object<'js>> {
+    if !this.contains_key("_listeners")? {
+        this.set("_listeners", Object::new(ctx.clone())?)?;
     }
-    obj.get::<&str, Object>("_listeners")
+    this.get::<&str, Object>("_listeners")
 }
 
 fn parse_listener_options(options: Option<Value<'_>>) -> (bool, bool) {
@@ -62,13 +56,13 @@ fn listener_key(type_: &str, capture: bool) -> String {
 
 fn add_event_listener<'js>(
     ctx: Ctx<'js>,
-    this: This<Class<'js, EventTarget>>,
+    this: This<Object<'js>>,
     type_: String,
     callback: Function<'js>,
     options: Opt<Value<'js>>,
 ) -> Result<()> {
     let (capture, once) = parse_listener_options(options.0);
-    let listeners = ensure_listeners(&ctx, &this)?;
+    let listeners = ensure_listeners(&ctx, &this.0)?;
     let key = listener_key(&type_, capture);
     let list: Array<'js> = if listeners.contains_key(&key)? {
         listeners.get(&key)?
@@ -101,13 +95,13 @@ fn add_event_listener<'js>(
 
 fn remove_event_listener<'js>(
     ctx: Ctx<'js>,
-    this: This<Class<'js, EventTarget>>,
+    this: This<Object<'js>>,
     type_: String,
     callback: Function<'js>,
     options: Opt<Value<'js>>,
 ) -> Result<()> {
     let (capture, _) = parse_listener_options(options.0);
-    let listeners = ensure_listeners(&ctx, &this)?;
+    let listeners = ensure_listeners(&ctx, &this.0)?;
     let key = listener_key(&type_, capture);
     if !listeners.contains_key(&key)? {
         return Ok(());
@@ -128,11 +122,7 @@ fn remove_event_listener<'js>(
     Ok(())
 }
 
-fn set_event_target<'js>(
-    _ctx: &Ctx<'js>,
-    event: &Object<'js>,
-    target: &Object<'js>,
-) -> Result<()> {
+fn set_event_target<'js>(_ctx: &Ctx<'js>, event: &Object<'js>, target: &Object<'js>) -> Result<()> {
     let target_value = target.clone().into_value();
     if let Some(cls) = Class::<crate::event::Event>::from_object(event) {
         let mut ev = cls.try_borrow_mut()?;
@@ -152,13 +142,22 @@ fn set_event_target<'js>(
 
 fn is_stop_immediate_propagation<'js>(_ctx: &Ctx<'js>, event: &Object<'js>) -> bool {
     if let Some(cls) = Class::<crate::event::Event>::from_object(event) {
-        return cls.try_borrow().map(|e| e.stop_immediate_propagation).unwrap_or(false);
+        return cls
+            .try_borrow()
+            .map(|e| e.stop_immediate_propagation)
+            .unwrap_or(false);
     }
     if let Some(cls) = Class::<crate::custom_event::CustomEvent>::from_object(event) {
-        return cls.try_borrow().map(|e| e.stop_immediate_propagation).unwrap_or(false);
+        return cls
+            .try_borrow()
+            .map(|e| e.stop_immediate_propagation)
+            .unwrap_or(false);
     }
     if let Some(cls) = Class::<crate::message_event::MessageEvent>::from_object(event) {
-        return cls.try_borrow().map(|e| e.stop_immediate_propagation).unwrap_or(false);
+        return cls
+            .try_borrow()
+            .map(|e| e.stop_immediate_propagation)
+            .unwrap_or(false);
     }
     false
 }
@@ -171,11 +170,7 @@ pub fn dispatch_event_on_object<'js>(
     let type_: String = event.get::<&str, String>("type")?;
     set_event_target(ctx, event, target_obj)?;
 
-    let listeners: Object<'js> = if target_obj.contains_key("_listeners")? {
-        target_obj.get("_listeners")?
-    } else {
-        return Ok(true);
-    };
+    let listeners: Object<'js> = ensure_listeners(ctx, target_obj)?;
 
     let key = listener_key(&type_, false);
     if listeners.contains_key(&key)? {
@@ -206,13 +201,8 @@ pub fn dispatch_event_on_object<'js>(
     Ok(!default_prevented)
 }
 
-fn dispatch_event<'js>(
-    ctx: Ctx<'js>,
-    this: This<Class<'js, EventTarget>>,
-    event: Object<'js>,
-) -> Result<bool> {
-    let target_obj = this.as_object().expect("This<Class> should have an object");
-    dispatch_event_on_object(&ctx, &target_obj, &event)
+fn dispatch_event<'js>(ctx: Ctx<'js>, this: This<Object<'js>>, event: Object<'js>) -> Result<bool> {
+    dispatch_event_on_object(&ctx, &this.0, &event)
 }
 
 fn event_target_ctor<'js>(_ctx: Ctx<'js>) -> Result<EventTarget> {

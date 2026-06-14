@@ -85,9 +85,7 @@ fn custom_event_get_type<'js>(this: This<Class<'js, CustomEvent<'js>>>) -> Resul
     Ok(this.try_borrow()?.event_type.clone())
 }
 
-fn custom_event_get_detail<'js>(
-    this: This<Class<'js, CustomEvent<'js>>>,
-) -> Result<Value<'js>> {
+fn custom_event_get_detail<'js>(this: This<Class<'js, CustomEvent<'js>>>) -> Result<Value<'js>> {
     let detail = this.try_borrow()?.detail.clone();
     match detail {
         Some(v) => Ok(v),
@@ -113,9 +111,7 @@ fn custom_event_get_default_prevented<'js>(
     Ok(this.try_borrow()?.default_prevented)
 }
 
-fn custom_event_get_target<'js>(
-    this: This<Class<'js, CustomEvent<'js>>>,
-) -> Result<Value<'js>> {
+fn custom_event_get_target<'js>(this: This<Class<'js, CustomEvent<'js>>>) -> Result<Value<'js>> {
     let target = this.try_borrow()?.target.clone();
     match target {
         Some(v) => Ok(v),
@@ -133,9 +129,7 @@ fn custom_event_get_current_target<'js>(
     }
 }
 
-fn custom_event_prevent_default<'js>(
-    this: This<Class<'js, CustomEvent<'js>>>,
-) -> Result<()> {
+fn custom_event_prevent_default<'js>(this: This<Class<'js, CustomEvent<'js>>>) -> Result<()> {
     let mut ev = this.try_borrow_mut()?;
     if ev.cancelable {
         ev.default_prevented = true;
@@ -143,9 +137,7 @@ fn custom_event_prevent_default<'js>(
     Ok(())
 }
 
-fn custom_event_stop_propagation<'js>(
-    this: This<Class<'js, CustomEvent<'js>>>,
-) -> Result<()> {
+fn custom_event_stop_propagation<'js>(this: This<Class<'js, CustomEvent<'js>>>) -> Result<()> {
     this.try_borrow_mut()?.stop_propagation = true;
     Ok(())
 }
@@ -173,15 +165,30 @@ impl<'js> JsClass<'js> for CustomEvent<'js> {
     fn prototype(ctx: &Ctx<'js>) -> Result<Option<Object<'js>>> {
         let proto = Object::new(ctx.clone())?;
         proto.set("type", Function::new(ctx.clone(), custom_event_get_type)?)?;
-        proto.set("detail", Function::new(ctx.clone(), custom_event_get_detail)?)?;
-        proto.set("bubbles", Function::new(ctx.clone(), custom_event_get_bubbles)?)?;
-        proto.set("cancelable", Function::new(ctx.clone(), custom_event_get_cancelable)?)?;
-        proto.set("composed", Function::new(ctx.clone(), custom_event_get_composed)?)?;
+        proto.set(
+            "detail",
+            Function::new(ctx.clone(), custom_event_get_detail)?,
+        )?;
+        proto.set(
+            "bubbles",
+            Function::new(ctx.clone(), custom_event_get_bubbles)?,
+        )?;
+        proto.set(
+            "cancelable",
+            Function::new(ctx.clone(), custom_event_get_cancelable)?,
+        )?;
+        proto.set(
+            "composed",
+            Function::new(ctx.clone(), custom_event_get_composed)?,
+        )?;
         proto.set(
             "defaultPrevented",
             Function::new(ctx.clone(), custom_event_get_default_prevented)?,
         )?;
-        proto.set("target", Function::new(ctx.clone(), custom_event_get_target)?)?;
+        proto.set(
+            "target",
+            Function::new(ctx.clone(), custom_event_get_target)?,
+        )?;
         proto.set(
             "currentTarget",
             Function::new(ctx.clone(), custom_event_get_current_target)?,
@@ -203,7 +210,10 @@ impl<'js> JsClass<'js> for CustomEvent<'js> {
             Function::new(ctx.clone(), custom_event_composed_path)?,
         )?;
 
-        let event_proto: Object<'js> = ctx.globals().get::<&str, Function>("Event")?.get("prototype")?;
+        let event_proto: Object<'js> = ctx
+            .globals()
+            .get::<&str, Function>("Event")?
+            .get("prototype")?;
         proto.set_prototype(Some(&event_proto))?;
         Ok(Some(proto))
     }

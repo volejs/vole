@@ -26,10 +26,13 @@ impl<'js> rquickjs::IntoJs<'js> for AbortController<'js> {
 }
 
 fn abort_controller_ctor<'js>(ctx: Ctx<'js>) -> Result<AbortController<'js>> {
-    let signal = Class::instance(ctx.clone(), crate::abort_signal::AbortSignal {
-        aborted: false,
-        reason: None,
-    })?;
+    let signal = Class::instance(
+        ctx.clone(),
+        crate::abort_signal::AbortSignal {
+            aborted: false,
+            reason: None,
+        },
+    )?;
     Ok(AbortController {
         signal: signal.into_value(),
     })
@@ -54,8 +57,8 @@ fn abort_controller_abort<'js>(
         sig.reason = reason.0.clone();
     }
 
-    let event = Object::new(ctx.clone())?;
-    event.set("type", "abort")?;
+    let event_ctor: Function = ctx.globals().get("Event")?;
+    let event: Object = event_ctor.call(("abort",))?;
     crate::event_target::dispatch_event_on_object(&ctx, &signal_obj, &event)?;
     Ok(())
 }

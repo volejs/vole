@@ -79,7 +79,6 @@ impl<'js> JsClass<'js> for MessagePort {
         proto.set("start", Function::new(ctx.clone(), message_port_start)?)?;
         proto.set("close", Function::new(ctx.clone(), message_port_close)?)?;
 
-
         let event_target_proto: Object<'js> = ctx
             .globals()
             .get::<&str, Function>("EventTarget")?
@@ -89,8 +88,7 @@ impl<'js> JsClass<'js> for MessagePort {
     }
 
     fn constructor(ctx: &Ctx<'js>) -> Result<Option<Constructor<'js>>> {
-        let constr =
-            Constructor::new_class::<MessagePort, _, _>(ctx.clone(), message_port_ctor)?;
+        let constr = Constructor::new_class::<MessagePort, _, _>(ctx.clone(), message_port_ctor)?;
         Ok(Some(constr))
     }
 }

@@ -146,7 +146,10 @@ fn event_stop_immediate_propagation<'js>(this: This<Class<'js, Event<'js>>>) -> 
     Ok(())
 }
 
-fn event_composed_path<'js>(ctx: Ctx<'js>, _this: This<Class<'js, Event<'js>>>) -> Result<Array<'js>> {
+fn event_composed_path<'js>(
+    ctx: Ctx<'js>,
+    _this: This<Class<'js, Event<'js>>>,
+) -> Result<Array<'js>> {
     Array::new(ctx)
 }
 
@@ -158,15 +161,27 @@ impl<'js> JsClass<'js> for Event<'js> {
         let proto = Object::new(ctx.clone())?;
         proto.set("type", Function::new(ctx.clone(), event_get_type)?)?;
         proto.set("bubbles", Function::new(ctx.clone(), event_get_bubbles)?)?;
-        proto.set("cancelable", Function::new(ctx.clone(), event_get_cancelable)?)?;
+        proto.set(
+            "cancelable",
+            Function::new(ctx.clone(), event_get_cancelable)?,
+        )?;
         proto.set("composed", Function::new(ctx.clone(), event_get_composed)?)?;
         proto.set(
             "defaultPrevented",
             Function::new(ctx.clone(), event_get_default_prevented)?,
         )?;
-        proto.set("timeStamp", Function::new(ctx.clone(), event_get_time_stamp)?)?;
-        proto.set("eventPhase", Function::new(ctx.clone(), event_get_event_phase)?)?;
-        proto.set("isTrusted", Function::new(ctx.clone(), event_get_is_trusted)?)?;
+        proto.set(
+            "timeStamp",
+            Function::new(ctx.clone(), event_get_time_stamp)?,
+        )?;
+        proto.set(
+            "eventPhase",
+            Function::new(ctx.clone(), event_get_event_phase)?,
+        )?;
+        proto.set(
+            "isTrusted",
+            Function::new(ctx.clone(), event_get_is_trusted)?,
+        )?;
         proto.set("target", Function::new(ctx.clone(), event_get_target)?)?;
         proto.set(
             "currentTarget",

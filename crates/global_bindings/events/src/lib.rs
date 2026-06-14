@@ -47,7 +47,8 @@ pub fn init(ctx: &Ctx) -> Result<()> {
     // Adjust native prototypes to feel like real Web APIs: turn methods that
     // return property values into getters, add missing setters, and implement
     // static helpers that are easier to express on the JS side.
-    ctx.eval::<(), _>(r#"
+    ctx.eval::<(), _>(
+        r#"
 (function() {
     const wrapGetter = (proto, name) => {
         const fn = proto[name];
@@ -152,10 +153,12 @@ pub fn init(ctx: &Ctx) -> Result<()> {
     wrapGetter(MessageChannel.prototype, 'port1');
     wrapGetter(MessageChannel.prototype, 'port2');
 })();
-    "#)?;
+    "#,
+    )?;
 
     // Global error/rejection dispatch helpers and EventTarget-style globalThis methods.
-    ctx.eval::<(), _>(r#"
+    ctx.eval::<(), _>(
+        r#"
 (function() {
     "use strict";
 
@@ -211,7 +214,8 @@ pub fn init(ctx: &Ctx) -> Result<()> {
     });
     Object.setPrototypeOf(globalThis, EventTarget.prototype);
 })();
-    "#)?;
+    "#,
+    )?;
 
     Ok(())
 }

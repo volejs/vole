@@ -109,21 +109,15 @@ fn message_event_ctor<'js>(
     })
 }
 
-fn message_event_get_type<'js>(
-    this: This<Class<'js, MessageEvent<'js>>>,
-) -> Result<String> {
+fn message_event_get_type<'js>(this: This<Class<'js, MessageEvent<'js>>>) -> Result<String> {
     Ok(this.try_borrow()?.event_type.clone())
 }
 
-fn message_event_get_data<'js>(
-    this: This<Class<'js, MessageEvent<'js>>>,
-) -> Result<Value<'js>> {
+fn message_event_get_data<'js>(this: This<Class<'js, MessageEvent<'js>>>) -> Result<Value<'js>> {
     Ok(this.try_borrow()?.data.clone())
 }
 
-fn message_event_get_origin<'js>(
-    this: This<Class<'js, MessageEvent<'js>>>,
-) -> Result<String> {
+fn message_event_get_origin<'js>(this: This<Class<'js, MessageEvent<'js>>>) -> Result<String> {
     Ok(this.try_borrow()?.origin.clone())
 }
 
@@ -133,33 +127,23 @@ fn message_event_get_last_event_id<'js>(
     Ok(this.try_borrow()?.last_event_id.clone())
 }
 
-fn message_event_get_source<'js>(
-    this: This<Class<'js, MessageEvent<'js>>>,
-) -> Result<Value<'js>> {
+fn message_event_get_source<'js>(this: This<Class<'js, MessageEvent<'js>>>) -> Result<Value<'js>> {
     Ok(this.try_borrow()?.source.clone())
 }
 
-fn message_event_get_ports<'js>(
-    this: This<Class<'js, MessageEvent<'js>>>,
-) -> Result<Value<'js>> {
+fn message_event_get_ports<'js>(this: This<Class<'js, MessageEvent<'js>>>) -> Result<Value<'js>> {
     Ok(this.try_borrow()?.ports.clone())
 }
 
-fn message_event_get_bubbles<'js>(
-    this: This<Class<'js, MessageEvent<'js>>>,
-) -> Result<bool> {
+fn message_event_get_bubbles<'js>(this: This<Class<'js, MessageEvent<'js>>>) -> Result<bool> {
     Ok(this.try_borrow()?.bubbles)
 }
 
-fn message_event_get_cancelable<'js>(
-    this: This<Class<'js, MessageEvent<'js>>>,
-) -> Result<bool> {
+fn message_event_get_cancelable<'js>(this: This<Class<'js, MessageEvent<'js>>>) -> Result<bool> {
     Ok(this.try_borrow()?.cancelable)
 }
 
-fn message_event_get_composed<'js>(
-    this: This<Class<'js, MessageEvent<'js>>>,
-) -> Result<bool> {
+fn message_event_get_composed<'js>(this: This<Class<'js, MessageEvent<'js>>>) -> Result<bool> {
     Ok(this.try_borrow()?.composed)
 }
 
@@ -169,9 +153,7 @@ fn message_event_get_default_prevented<'js>(
     Ok(this.try_borrow()?.default_prevented)
 }
 
-fn message_event_get_target<'js>(
-    this: This<Class<'js, MessageEvent<'js>>>,
-) -> Result<Value<'js>> {
+fn message_event_get_target<'js>(this: This<Class<'js, MessageEvent<'js>>>) -> Result<Value<'js>> {
     let target = this.try_borrow()?.target.clone();
     match target {
         Some(v) => Ok(v),
@@ -189,9 +171,7 @@ fn message_event_get_current_target<'js>(
     }
 }
 
-fn message_event_prevent_default<'js>(
-    this: This<Class<'js, MessageEvent<'js>>>,
-) -> Result<()> {
+fn message_event_prevent_default<'js>(this: This<Class<'js, MessageEvent<'js>>>) -> Result<()> {
     let mut ev = this.try_borrow_mut()?;
     if ev.cancelable {
         ev.default_prevented = true;
@@ -199,9 +179,7 @@ fn message_event_prevent_default<'js>(
     Ok(())
 }
 
-fn message_event_stop_propagation<'js>(
-    this: This<Class<'js, MessageEvent<'js>>>,
-) -> Result<()> {
+fn message_event_stop_propagation<'js>(this: This<Class<'js, MessageEvent<'js>>>) -> Result<()> {
     this.try_borrow_mut()?.stop_propagation = true;
     Ok(())
 }
@@ -230,21 +208,42 @@ impl<'js> JsClass<'js> for MessageEvent<'js> {
         let proto = Object::new(ctx.clone())?;
         proto.set("type", Function::new(ctx.clone(), message_event_get_type)?)?;
         proto.set("data", Function::new(ctx.clone(), message_event_get_data)?)?;
-        proto.set("origin", Function::new(ctx.clone(), message_event_get_origin)?)?;
+        proto.set(
+            "origin",
+            Function::new(ctx.clone(), message_event_get_origin)?,
+        )?;
         proto.set(
             "lastEventId",
             Function::new(ctx.clone(), message_event_get_last_event_id)?,
         )?;
-        proto.set("source", Function::new(ctx.clone(), message_event_get_source)?)?;
-        proto.set("ports", Function::new(ctx.clone(), message_event_get_ports)?)?;
-        proto.set("bubbles", Function::new(ctx.clone(), message_event_get_bubbles)?)?;
-        proto.set("cancelable", Function::new(ctx.clone(), message_event_get_cancelable)?)?;
-        proto.set("composed", Function::new(ctx.clone(), message_event_get_composed)?)?;
+        proto.set(
+            "source",
+            Function::new(ctx.clone(), message_event_get_source)?,
+        )?;
+        proto.set(
+            "ports",
+            Function::new(ctx.clone(), message_event_get_ports)?,
+        )?;
+        proto.set(
+            "bubbles",
+            Function::new(ctx.clone(), message_event_get_bubbles)?,
+        )?;
+        proto.set(
+            "cancelable",
+            Function::new(ctx.clone(), message_event_get_cancelable)?,
+        )?;
+        proto.set(
+            "composed",
+            Function::new(ctx.clone(), message_event_get_composed)?,
+        )?;
         proto.set(
             "defaultPrevented",
             Function::new(ctx.clone(), message_event_get_default_prevented)?,
         )?;
-        proto.set("target", Function::new(ctx.clone(), message_event_get_target)?)?;
+        proto.set(
+            "target",
+            Function::new(ctx.clone(), message_event_get_target)?,
+        )?;
         proto.set(
             "currentTarget",
             Function::new(ctx.clone(), message_event_get_current_target)?,
@@ -266,14 +265,16 @@ impl<'js> JsClass<'js> for MessageEvent<'js> {
             Function::new(ctx.clone(), message_event_composed_path)?,
         )?;
 
-        let event_proto: Object<'js> = ctx.globals().get::<&str, Function>("Event")?.get("prototype")?;
+        let event_proto: Object<'js> = ctx
+            .globals()
+            .get::<&str, Function>("Event")?
+            .get("prototype")?;
         proto.set_prototype(Some(&event_proto))?;
         Ok(Some(proto))
     }
 
     fn constructor(ctx: &Ctx<'js>) -> Result<Option<Constructor<'js>>> {
-        let constr =
-            Constructor::new_class::<MessageEvent, _, _>(ctx.clone(), message_event_ctor)?;
+        let constr = Constructor::new_class::<MessageEvent, _, _>(ctx.clone(), message_event_ctor)?;
         Ok(Some(constr))
     }
 }

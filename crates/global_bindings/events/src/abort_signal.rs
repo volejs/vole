@@ -44,9 +44,7 @@ fn abort_signal_get_aborted<'js>(this: This<Class<'js, AbortSignal<'js>>>) -> Re
     obj.get::<&str, bool>("_aborted").or(Ok(false))
 }
 
-fn abort_signal_get_reason<'js>(
-    this: This<Class<'js, AbortSignal<'js>>>,
-) -> Result<Value<'js>> {
+fn abort_signal_get_reason<'js>(this: This<Class<'js, AbortSignal<'js>>>) -> Result<Value<'js>> {
     let reason = this.try_borrow()?.reason.clone();
     if let Some(v) = reason {
         return Ok(v);
@@ -58,10 +56,7 @@ fn abort_signal_get_reason<'js>(
     Null.into_js(&obj.ctx())
 }
 
-fn abort_signal_abort<'js>(
-    ctx: Ctx<'js>,
-    reason: Opt<Value<'js>>,
-) -> Result<Value<'js>> {
+fn abort_signal_abort<'js>(ctx: Ctx<'js>, reason: Opt<Value<'js>>) -> Result<Value<'js>> {
     let reason = match reason.0 {
         Some(r) => r,
         None => {
@@ -85,8 +80,14 @@ impl<'js> JsClass<'js> for AbortSignal<'js> {
 
     fn prototype(ctx: &Ctx<'js>) -> Result<Option<Object<'js>>> {
         let proto = Object::new(ctx.clone())?;
-        proto.set("aborted", Function::new(ctx.clone(), abort_signal_get_aborted)?)?;
-        proto.set("reason", Function::new(ctx.clone(), abort_signal_get_reason)?)?;
+        proto.set(
+            "aborted",
+            Function::new(ctx.clone(), abort_signal_get_aborted)?,
+        )?;
+        proto.set(
+            "reason",
+            Function::new(ctx.clone(), abort_signal_get_reason)?,
+        )?;
 
         let event_target_proto: Object<'js> = ctx
             .globals()
