@@ -1,697 +1,295 @@
-use rquickjs::{Ctx, Result};
+use rquickjs::{Class, Ctx, Result};
+
+mod queuing_strategy;
+mod readable;
+mod transform;
+mod utils;
+mod writable;
+
+use queuing_strategy::{ByteLengthQueuingStrategy, CountQueuingStrategy};
+use readable::{
+    ReadableByteStreamController, ReadableStream, ReadableStreamBYOBReader,
+    ReadableStreamDefaultController, ReadableStreamDefaultReader,
+};
+use transform::{TransformStream, TransformStreamDefaultController};
+use writable::{WritableStream, WritableStreamDefaultController, WritableStreamDefaultWriter};
 
 pub fn init(ctx: &Ctx) -> Result<()> {
+    let globals = ctx.globals();
+
+    // Helpers used by Rust code to avoid re-entrancy when resolving/rejecting
+    // promises from inside native callbacks.
     ctx.eval::<(), _>(
         r#"
-(function() {
-    "use strict";
+        globalThis.__vole_promise_then = (promise, onFulfilled, onRejected) =>
+            Promise.prototype.then.call(promise, onFulfilled, onRejected);
+        globalThis.__vole_resolve_later = (resolve, value) =>
+            Promise.resolve(undefined).then(() => resolve(value));
+        globalThis.__vole_reject_later = (reject, reason) =>
+            Promise.resolve(undefined).then(() => reject(reason));
+        globalThis.__vole_schedule_task = (fn) =>
+            (typeof queueMicrotask === "function" ? queueMicrotask : setTimeout)(fn, 0);
+        globalThis.__vole_byte_length = (chunk) => {
+            if (chunk instanceof ArrayBuffer) return chunk.byteLength;
+            if (ArrayBuffer.isView(chunk)) return chunk.byteLength;
+            throw new TypeError('Chunk must be an ArrayBuffer or ArrayBufferView');
+        };
+        globalThis.__vole_byob_copy = (chunk, view) => {
+            let src;
+            if (chunk instanceof ArrayBuffer) {
+                src = new Uint8Array(chunk);
+            } else if (ArrayBuffer.isView(chunk)) {
+                src = new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength);
+            } else {
+                throw new TypeError('Chunk must be an ArrayBuffer or ArrayBufferView');
+            }
+            const dest = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
+            const len = Math.min(src.length, dest.length);
+            dest.set(src.subarray(0, len));
+            const remainder = src.length > len ? src.subarray(len) : undefined;
+            return { consumed: len, remainder };
+        };
+        globalThis.__vole_byob_respond_view = (view, bytesWritten) => {
+            const Ctor = view.constructor;
+            return new Ctor(view.buffer, view.byteOffset, bytesWritten);
+        };
+        globalThis.__vole_byob_same_buffer = (a, b) => a.buffer === b.buffer;
+    "#,
+    )?;
 
-    class ReadableStreamDefaultController {
-        constructor(stream, strategy = {}) {
-            this._stream = stream;
-            this._highWaterMark = strategy.highWaterMark ?? 1;
-            this._size = strategy.size ?? (() => 1);
-        }
-        _queueSize() {
-            const stream = this._stream;
-            if (!stream) return 0;
-            let total = 0;
-            for (const chunk of stream._chunks) {
-                total += this._size(chunk);
-            }
-            return total;
-        }
-        _shouldPull() {
-            const stream = this._stream;
-            if (!stream || stream._closed || stream._errored || stream._pulling) return false;
-            return this.desiredSize > 0;
-        }
-        enqueue(chunk) {
-            const stream = this._stream;
-            if (!stream || stream._closed || stream._errored) return;
-            stream._chunks.push(chunk);
-            if (stream._pendingRead) {
-                const { resolve } = stream._pendingRead;
-                stream._pendingRead = null;
-                resolve({ done: false, value: stream._chunks.shift() });
-            }
-        }
-        close() {
-            const stream = this._stream;
-            if (!stream) return;
-            stream._closed = true;
-            if (stream._pendingRead) {
-                const { resolve } = stream._pendingRead;
-                stream._pendingRead = null;
-                resolve({ done: true, value: undefined });
-            }
-            if (stream._closedResolver) {
-                stream._closedResolver();
-                stream._closedResolver = null;
-            }
-        }
-        error(e) {
-            const stream = this._stream;
-            if (!stream) return;
-            stream._closed = true;
-            stream._errored = true;
-            stream._error = e;
-            if (stream._pendingRead) {
-                const { reject } = stream._pendingRead;
-                stream._pendingRead = null;
-                reject(e);
-            }
-            if (stream._closedResolver) {
-                stream._closedResolver();
-                stream._closedResolver = null;
-            }
-        }
-        get desiredSize() {
-            return this._highWaterMark - this._queueSize();
-        }
-    }
+    Class::<ReadableStream>::define(&globals)?;
+    Class::<ReadableStreamDefaultController>::define(&globals)?;
+    Class::<ReadableStreamDefaultReader>::define(&globals)?;
+    Class::<ReadableByteStreamController>::define(&globals)?;
+    Class::<ReadableStreamBYOBReader>::define(&globals)?;
 
-    class ReadableStreamDefaultReader {
-        constructor(stream) {
-            this._stream = stream;
-        }
-        read() {
-            const stream = this._stream;
-            if (!stream) {
-                return Promise.reject(new TypeError("This reader has been released"));
-            }
-            if (stream._errored) {
-                return Promise.reject(stream._error);
-            }
-            if (stream._chunks.length > 0) {
-                const value = stream._chunks.shift();
-                const result = Promise.resolve({ done: false, value });
-                if (stream._controller._shouldPull()) {
-                    this._tryPull();
-                }
-                return result;
-            }
-            if (stream._closed) {
-                return Promise.resolve({ done: true, value: undefined });
-            }
-            if (stream._pendingRead) {
-                return Promise.reject(new TypeError("A read is already pending"));
-            }
-            return new Promise((resolve, reject) => {
-                stream._pendingRead = { resolve, reject };
-                this._tryPull();
-            });
-        }
-        _tryPull() {
-            const stream = this._stream;
-            if (!stream || !stream._controller._shouldPull()) return;
-            const source = stream._underlyingSource;
-            if (typeof source.pull === "function") {
-                stream._pulling = true;
-                try {
-                    const result = source.pull(stream._controller);
-                    if (result && typeof result.then === "function") {
-                        result.then(
-                            () => {
-                                stream._pulling = false;
-                                if (stream._controller._shouldPull() && !stream._pendingRead) {
-                                    this._tryPull();
-                                }
-                            },
-                            (e) => { stream._pulling = false; stream._controller.error(e); }
-                        );
-                    } else {
-                        stream._pulling = false;
-                    }
-                } catch (e) {
-                    stream._pulling = false;
-                    stream._controller.error(e);
-                }
-            }
-        }
-        releaseLock() {
-            if (this._stream) {
-                if (this._stream._pendingRead) {
-                    const { reject } = this._stream._pendingRead;
-                    this._stream._pendingRead = null;
-                    reject(new TypeError("Reader released"));
-                }
-                this._stream._reader = null;
-            }
-            this._stream = null;
-        }
-        get closed() {
-            const stream = this._stream;
-            if (!stream) return Promise.resolve(undefined);
-            if (stream._closed || stream._errored) {
-                return Promise.resolve(undefined);
-            }
-            return new Promise(resolve => {
-                stream._closedResolver = resolve;
-            });
-        }
-        cancel(reason) {
-            const stream = this._stream;
-            if (stream) {
-                stream._closed = true;
-                if (stream._pendingRead) {
-                    const { reject } = stream._pendingRead;
-                    stream._pendingRead = null;
-                    reject(new TypeError("Cancelled"));
-                }
-                if (stream._closedResolver) {
-                    stream._closedResolver();
-                    stream._closedResolver = null;
-                }
-                stream._reader = null;
-                this._stream = null;
-            }
-            return Promise.resolve(undefined);
-        }
-    }
+    Class::<WritableStream>::define(&globals)?;
+    Class::<WritableStreamDefaultController>::define(&globals)?;
+    Class::<WritableStreamDefaultWriter>::define(&globals)?;
 
-    class ReadableStream {
-        constructor(underlyingSource = {}, strategy = {}) {
-            this._underlyingSource = underlyingSource;
-            this._controller = new ReadableStreamDefaultController(this, strategy);
-            this._reader = null;
-            this._chunks = [];
-            this._closed = false;
-            this._errored = false;
-            this._error = undefined;
-            this._pendingRead = null;
-            this._pulling = false;
-            this._closedResolver = null;
+    Class::<TransformStream>::define(&globals)?;
+    Class::<TransformStreamDefaultController>::define(&globals)?;
 
-            const schedulePull = () => {
-                if (this._controller._shouldPull()) {
-                    queueMicrotask(() => {
-                        if (this._reader) {
-                            this._reader._tryPull();
-                        } else {
-                            // No reader yet; pull internally to fill the queue.
-                            this._doPull();
-                        }
+    Class::<ByteLengthQueuingStrategy>::define(&globals)?;
+    Class::<CountQueuingStrategy>::define(&globals)?;
+
+    // TextEncoderStream/TextDecoderStream are implemented as wrappers around the
+    // native TransformStream, which is simpler than reimplementing the streaming
+    // encoder state in Rust.
+    ctx.eval::<(), _>(
+        r#"
+        (function() {
+            class TextEncoderStream {
+                constructor() {
+                    this._encoder = new TextEncoder();
+                    const self = this;
+                    this._transform = new TransformStream({
+                        transform(chunk, controller) {
+                            const encoded = self._encoder.encode(chunk);
+                            controller.enqueue(encoded);
+                        },
                     });
                 }
-            };
+                get readable() { return this._transform.readable; }
+                get writable() { return this._transform.writable; }
+                get encoding() { return "utf-8"; }
+            }
 
-            this._doPull = () => {
-                if (!this._controller._shouldPull()) return;
-                const source = this._underlyingSource;
-                if (typeof source.pull === "function") {
-                    this._pulling = true;
+            class TextDecoderStream {
+                constructor(label = "utf-8", options = {}) {
+                    this._decoder = new TextDecoder(label, options);
+                    const self = this;
+                    this._transform = new TransformStream({
+                        transform(chunk, controller) {
+                            const decoded = self._decoder.decode(chunk, { stream: true });
+                            if (decoded) controller.enqueue(decoded);
+                        },
+                        flush(controller) {
+                            const decoded = self._decoder.decode(new Uint8Array(0), { stream: false });
+                            if (decoded) controller.enqueue(decoded);
+                        },
+                    });
+                }
+                get readable() { return this._transform.readable; }
+                get writable() { return this._transform.writable; }
+                get encoding() { return this._decoder.encoding; }
+            }
+
+            globalThis.TextEncoderStream = TextEncoderStream;
+            globalThis.TextDecoderStream = TextDecoderStream;
+        })();
+
+        // Polyfill higher-level stream operations that are easier to implement
+        // in JS on top of the native primitives.
+        (function() {
+            const RSProto = ReadableStream.prototype;
+            const asyncIteratorSymbol = typeof Symbol !== 'undefined' && Symbol.asyncIterator
+                ? Symbol.asyncIterator
+                : '__asyncIterator__';
+
+            RSProto.tee = function() {
+                const reader = this.getReader();
+                let c1, c2;
+                let canceled1 = false;
+                let canceled2 = false;
+                let reason1, reason2;
+
+                function maybeCancel() {
+                    if (canceled1 && canceled2) {
+                        reader.cancel(reason1 !== undefined ? reason1 : reason2);
+                    }
+                }
+
+                async function pump() {
                     try {
-                        const result = source.pull(this._controller);
-                        if (result && typeof result.then === "function") {
-                            result.then(
-                                () => {
-                                    this._pulling = false;
-                                    schedulePull();
-                                },
-                                (e) => { this._pulling = false; this._controller.error(e); }
-                            );
-                        } else {
-                            this._pulling = false;
-                            schedulePull();
+                        while (true) {
+                            if (canceled1 && canceled2) {
+                                reader.cancel(reason1 !== undefined ? reason1 : reason2);
+                                return;
+                            }
+                            const { done, value } = await reader.read();
+                            if (done) {
+                                if (!canceled1) c1.close();
+                                if (!canceled2) c2.close();
+                                return;
+                            }
+                            if (!canceled1) c1.enqueue(value);
+                            if (!canceled2) c2.enqueue(value);
                         }
-                    } catch (e) {
-                        this._pulling = false;
-                        this._controller.error(e);
+                    } catch (err) {
+                        if (!canceled1) { try { c1.error(err); } catch (_) {} }
+                        if (!canceled2) { try { c2.error(err); } catch (_) {} }
                     }
                 }
-            };
 
-            if (typeof underlyingSource.start === "function") {
-                try {
-                    const result = underlyingSource.start(this._controller);
-                    if (result && typeof result.then === "function") {
-                        result.then(
-                            () => { schedulePull(); },
-                            (e) => { this._controller.error(e); }
-                        ).catch((e) => { this._controller.error(e); });
-                    } else {
-                        schedulePull();
+                const branch1 = new ReadableStream({
+                    start(c) { c1 = c; },
+                    pull() {},
+                    cancel(reason) {
+                        canceled1 = true;
+                        reason1 = reason;
+                        maybeCancel();
                     }
-                } catch (e) {
-                    this._controller.error(e);
-                }
-            } else {
-                schedulePull();
-            }
-        }
-        getReader() {
-            if (this._reader) {
-                throw new TypeError("ReadableStream already has a reader");
-            }
-            this._reader = new ReadableStreamDefaultReader(this);
-            return this._reader;
-        }
-        get locked() {
-            return this._reader !== null;
-        }
-        cancel(reason) {
-            this._closed = true;
-            if (this._reader) {
-                this._reader._stream = null;
-                this._reader = null;
-            }
-            if (this._underlyingSource.cancel) {
-                try {
-                    this._underlyingSource.cancel(reason);
-                } catch (e) {}
-            }
-            return Promise.resolve(undefined);
-        }
-    }
-
-    class WritableStreamDefaultController {
-        constructor(stream, strategy = {}) {
-            this._stream = stream;
-            this._highWaterMark = strategy.highWaterMark ?? 1;
-            this._size = strategy.size ?? (() => 1);
-        }
-        error(e) {
-            if (this._stream) {
-                this._stream._errored = true;
-                this._stream._error = e;
-                this._stream._rejectPending(e);
-            }
-        }
-    }
-
-    class WritableStreamDefaultWriter {
-        constructor(stream) {
-            this._stream = stream;
-            this._readyResolve = null;
-            this._readyPromise = Promise.resolve(undefined);
-        }
-        get ready() {
-            return this._readyPromise;
-        }
-        _updateReady() {
-            const stream = this._stream;
-            if (!stream) return;
-            if (stream._queueSize < stream._controller._highWaterMark) {
-                if (this._readyResolve) {
-                    const resolve = this._readyResolve;
-                    this._readyResolve = null;
-                    this._readyPromise = Promise.resolve(undefined);
-                    resolve(undefined);
-                }
-            } else if (!this._readyResolve) {
-                this._readyPromise = new Promise(resolve => {
-                    this._readyResolve = resolve;
                 });
-            }
-        }
-        write(chunk) {
-            const stream = this._stream;
-            if (!stream) {
-                return Promise.reject(new TypeError("This writer has been released"));
-            }
-            if (stream._errored) {
-                return Promise.reject(stream._error);
-            }
-            if (stream._closed) {
-                return Promise.reject(new TypeError("WritableStream is closed"));
-            }
-            let resolveRecord, rejectRecord;
-            const promise = new Promise((resolve, reject) => {
-                resolveRecord = resolve;
-                rejectRecord = reject;
-            });
-            stream._queue.push({ chunk, resolve: resolveRecord, reject: rejectRecord });
-            stream._queueSize += stream._controller._size(chunk);
-            this._updateReady();
-            stream._processQueue();
-            return promise;
-        }
-        close() {
-            const stream = this._stream;
-            if (!stream) {
-                return Promise.reject(new TypeError("This writer has been released"));
-            }
-            if (stream._errored) {
-                return Promise.reject(stream._error);
-            }
-            if (stream._closePromise) {
-                return stream._closePromise;
-            }
-            stream._closeRequested = true;
-            stream._closePromise = new Promise((resolve, reject) => {
-                stream._closeResolve = resolve;
-                stream._closeReject = reject;
-                stream._processQueue();
-            });
-            return stream._closePromise;
-        }
-        abort(reason) {
-            const stream = this._stream;
-            if (!stream) {
-                return Promise.reject(new TypeError("This writer has been released"));
-            }
-            return stream._abort(reason);
-        }
-        releaseLock() {
-            if (this._stream) {
-                this._stream._writer = null;
-            }
-            this._stream = null;
-        }
-        get closed() {
-            const stream = this._stream;
-            if (!stream) return Promise.resolve(undefined);
-            if (stream._closed || stream._errored) return Promise.resolve(undefined);
-            return new Promise(resolve => {
-                stream._closedResolver = resolve;
-            });
-        }
-    }
 
-    class WritableStream {
-        constructor(underlyingSink = {}, strategy = {}) {
-            this._underlyingSink = underlyingSink;
-            this._controller = new WritableStreamDefaultController(this, strategy);
-            this._writer = null;
-            this._closed = false;
-            this._errored = false;
-            this._error = undefined;
-            this._closedResolver = null;
-            this._queue = [];
-            this._queueSize = 0;
-            this._writing = false;
-            this._currentWrite = null;
-            this._closeRequested = false;
-            this._closePromise = null;
-            this._closeResolve = null;
-            this._closeReject = null;
+                const branch2 = new ReadableStream({
+                    start(c) { c2 = c; },
+                    pull() {},
+                    cancel(reason) {
+                        canceled2 = true;
+                        reason2 = reason;
+                        maybeCancel();
+                    }
+                });
 
-            if (typeof underlyingSink.start === "function") {
-                try {
-                    underlyingSink.start(this._controller);
-                } catch (e) {
-                    this._errored = true;
-                    this._error = e;
+                pump();
+                return [branch1, branch2];
+            };
+
+            RSProto.pipeTo = async function(dest, options = {}) {
+                const {
+                    preventClose = false,
+                    preventAbort = false,
+                    preventCancel = false,
+                    signal
+                } = options;
+                const reader = this.getReader();
+                const writer = dest.getWriter();
+                let aborted = false;
+                let abortListener;
+
+                function isAborted() {
+                    return aborted || (signal && signal.aborted);
                 }
-            }
-        }
-        _rejectPending(e) {
-            if (this._currentWrite) {
-                this._currentWrite.reject(e);
-                this._currentWrite = null;
-            }
-            while (this._queue.length > 0) {
-                this._queue.shift().reject(e);
-            }
-            this._queueSize = 0;
-            if (this._closeReject) {
-                this._closeReject(e);
-                this._closeReject = null;
-                this._closeResolve = null;
-                this._closePromise = null;
-            }
-            if (this._closedResolver) {
-                this._closedResolver();
-                this._closedResolver = null;
-            }
-        }
-        _processQueue() {
-            if (this._closeRequested && !this._writing && this._queue.length === 0) {
-                this._closeRequested = false;
-                const finishClose = () => {
-                    this._closed = true;
-                    if (this._closeResolve) {
-                        this._closeResolve(undefined);
-                        this._closeResolve = null;
-                        this._closeReject = null;
-                        this._closePromise = null;
+
+                function release() {
+                    if (signal && abortListener) {
+                        signal.removeEventListener('abort', abortListener);
                     }
-                    if (this._closedResolver) {
-                        this._closedResolver();
-                        this._closedResolver = null;
+                    reader.releaseLock();
+                    writer.releaseLock();
+                }
+
+                async function doAbort(reason) {
+                    await Promise.all([
+                        preventCancel ? Promise.resolve() : reader.cancel(reason).catch(() => {}),
+                        preventAbort ? Promise.resolve() : writer.abort(reason).catch(() => {})
+                    ]);
+                }
+
+                if (signal) {
+                    if (signal.aborted) {
+                        aborted = true;
+                    } else {
+                        abortListener = () => { aborted = true; };
+                        signal.addEventListener('abort', abortListener);
                     }
-                };
-                const failClose = (e) => {
-                    this._errored = true;
-                    this._error = e;
-                    if (this._closeReject) {
-                        this._closeReject(e);
-                        this._closeReject = null;
-                        this._closeResolve = null;
-                        this._closePromise = null;
-                    }
-                    if (this._closedResolver) {
-                        this._closedResolver();
-                        this._closedResolver = null;
-                    }
-                };
-                if (typeof this._underlyingSink.close === "function") {
-                    try {
-                        const result = this._underlyingSink.close(this._controller);
-                        if (result && typeof result.then === "function") {
-                            result.then(finishClose, failClose);
-                        } else {
-                            finishClose();
+                }
+
+                try {
+                    while (true) {
+                        if (isAborted()) {
+                            const reason = signal ? signal.reason : undefined;
+                            await doAbort(reason);
+                            throw reason;
                         }
-                    } catch (e) {
-                        failClose(e);
+                        let done, value;
+                        try {
+                            ({ done, value } = await reader.read());
+                        } catch (err) {
+                            await doAbort(err);
+                            throw err;
+                        }
+                        if (isAborted()) {
+                            const reason = signal ? signal.reason : undefined;
+                            await doAbort(reason);
+                            throw reason;
+                        }
+                        if (done) {
+                            if (!preventClose) await writer.close();
+                            return;
+                        }
+                        try {
+                            await writer.write(value);
+                        } catch (err) {
+                            if (!preventCancel) await reader.cancel(err).catch(() => {});
+                            throw err;
+                        }
                     }
-                } else {
-                    finishClose();
+                } catch (err) {
+                    if (!preventAbort) await writer.abort(err).catch(() => {});
+                    throw err;
+                } finally {
+                    release();
                 }
-                return;
-            }
-            if (this._writing || this._queue.length === 0) return;
-            if (this._closed && !this._closeRequested) return;
-            this._writing = true;
-            const record = this._queue.shift();
-            this._currentWrite = record;
-            const chunk = record.chunk;
-            const done = () => {
-                this._currentWrite = null;
-                this._queueSize -= this._controller._size(chunk);
-                if (this._queueSize < 0) this._queueSize = 0;
-                if (this._writer) this._writer._updateReady();
-                record.resolve(undefined);
-                this._writing = false;
-                this._processQueue();
             };
-            const fail = (e) => {
-                this._currentWrite = null;
-                this._errored = true;
-                this._error = e;
-                record.reject(e);
-                this._rejectPending(e);
-                this._writing = false;
+
+            RSProto.pipeThrough = function(transform, options) {
+                this.pipeTo(transform.writable, options).catch(() => {});
+                return transform.readable;
             };
-            if (typeof this._underlyingSink.write === "function") {
-                try {
-                    const result = this._underlyingSink.write(chunk, this._controller);
-                    if (result && typeof result.then === "function") {
-                        result.then(done, fail);
-                    } else {
-                        done();
+
+            RSProto.getIterator = function() {
+                const reader = this.getReader();
+                const iterator = {
+                    next() {
+                        return reader.read();
+                    },
+                    return() {
+                        reader.releaseLock();
+                        return Promise.resolve({ done: true, value: undefined });
+                    },
+                    [asyncIteratorSymbol]() {
+                        return iterator;
                     }
-                } catch (e) {
-                    fail(e);
-                }
-            } else {
-                done();
-            }
-        }
-        _abort(reason) {
-            this._closed = true;
-            if (this._writer) {
-                this._writer._stream = null;
-                this._writer = null;
-            }
-            const error = reason || new TypeError("Aborted");
-            this._rejectPending(error);
-            if (typeof this._underlyingSink.abort === "function") {
-                try {
-                    const result = this._underlyingSink.abort(reason);
-                    if (result && typeof result.then === "function") {
-                        return result;
-                    }
-                } catch (e) {
-                    return Promise.reject(e);
-                }
-            }
-            return Promise.resolve(undefined);
-        }
-        getWriter() {
-            if (this._writer) {
-                throw new TypeError("WritableStream already has a writer");
-            }
-            this._writer = new WritableStreamDefaultWriter(this);
-            return this._writer;
-        }
-        get locked() {
-            return this._writer !== null;
-        }
-        abort(reason) {
-            return this._abort(reason);
-        }
-        close() {
-            this._closed = true;
-            if (this._writer) {
-                return this._writer.close();
-            }
-            return Promise.resolve(undefined);
-        }
-    }
+                };
+                return iterator;
+            };
 
-    class TransformStreamDefaultController {
-        constructor(stream) {
-            this._stream = stream;
-        }
-        enqueue(chunk) {
-            if (this._stream && this._stream._readableController) {
-                this._stream._readableController.enqueue(chunk);
-            }
-        }
-        terminate() {
-            if (this._stream && this._stream._readableController) {
-                this._stream._readableController.close();
-            }
-        }
-        error(e) {
-            if (this._stream && this._stream._readableController) {
-                this._stream._readableController.error(e);
-            }
-        }
-    }
-
-    class TransformStream {
-        constructor(transformer = {}, writableStrategy = {}, readableStrategy = {}) {
-            this._transformer = transformer;
-            this._readableController = null;
-            this._writableController = null;
-            const self = this;
-
-            this._readable = new ReadableStream({
-                start(controller) {
-                    self._readableController = controller;
-                }
-            });
-
-            this._writable = new WritableStream({
-                start(controller) {
-                    self._writableController = controller;
-                },
-                write(chunk) {
-                    if (typeof self._transformer.transform === "function") {
-                        self._transformer.transform(chunk, self._controller);
-                    } else {
-                        self._controller.enqueue(chunk);
-                    }
-                },
-                close() {
-                    if (typeof self._transformer.flush === "function") {
-                        self._transformer.flush(self._controller);
-                    }
-                    if (self._readableController) {
-                        self._readableController.close();
-                    }
-                }
-            });
-
-            this._controller = new TransformStreamDefaultController(this);
-        }
-        get readable() {
-            return this._readable;
-        }
-        get writable() {
-            return this._writable;
-        }
-    }
-
-    class ByteLengthQueuingStrategy {
-        constructor(options = {}) {
-            this.highWaterMark = options.highWaterMark ?? 0;
-        }
-        size(chunk) {
-            return chunk.byteLength ?? 0;
-        }
-    }
-
-    class CountQueuingStrategy {
-        constructor(options = {}) {
-            this.highWaterMark = options.highWaterMark ?? 1;
-        }
-        size() {
-            return 1;
-        }
-    }
-
-    class TextEncoderStream {
-        constructor() {
-            this._encoder = new TextEncoder();
-            this._pending = new Uint8Array(0);
-            const self = this;
-            this._transform = new TransformStream({
-                transform(chunk, controller) {
-                    const encoded = self._encoder.encode(chunk);
-                    controller.enqueue(encoded);
-                }
-            });
-        }
-        get readable() {
-            return this._transform.readable;
-        }
-        get writable() {
-            return this._transform.writable;
-        }
-        get encoding() {
-            return "utf-8";
-        }
-    }
-
-    class TextDecoderStream {
-        constructor(label = "utf-8", options = {}) {
-            this._decoder = new TextDecoder(label, options);
-            const self = this;
-            this._transform = new TransformStream({
-                transform(chunk, controller) {
-                    const decoded = self._decoder.decode(chunk, { stream: true });
-                    if (decoded) {
-                        controller.enqueue(decoded);
-                    }
-                },
-                flush(controller) {
-                    const decoded = self._decoder.decode(new Uint8Array(0), { stream: false });
-                    if (decoded) {
-                        controller.enqueue(decoded);
-                    }
-                }
-            });
-        }
-        get readable() {
-            return this._transform.readable;
-        }
-        get writable() {
-            return this._transform.writable;
-        }
-        get encoding() {
-            return this._decoder.encoding;
-        }
-    }
-
-    globalThis.ReadableStream = ReadableStream;
-    globalThis.ReadableStreamDefaultReader = ReadableStreamDefaultReader;
-    globalThis.ReadableStreamDefaultController = ReadableStreamDefaultController;
-    globalThis.WritableStream = WritableStream;
-    globalThis.WritableStreamDefaultWriter = WritableStreamDefaultWriter;
-    globalThis.WritableStreamDefaultController = WritableStreamDefaultController;
-    globalThis.TransformStream = TransformStream;
-    globalThis.TransformStreamDefaultController = TransformStreamDefaultController;
-    globalThis.ByteLengthQueuingStrategy = ByteLengthQueuingStrategy;
-    globalThis.CountQueuingStrategy = CountQueuingStrategy;
-    globalThis.TextEncoderStream = TextEncoderStream;
-    globalThis.TextDecoderStream = TextDecoderStream;
-})();
-"#,
+            RSProto[asyncIteratorSymbol] = RSProto.getIterator;
+        })();
+        "#,
     )?;
+
     Ok(())
 }
