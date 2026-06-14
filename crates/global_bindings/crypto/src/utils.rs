@@ -1,7 +1,8 @@
 use rquickjs::{Array, ArrayBuffer, Ctx, IntoJs, Object, Result, TypedArray, Value};
+use vole_core::webidl::buffer_source_to_vec;
 
-pub(crate) fn value_to_bytes<'js>(value: &Value<'js>) -> Result<Vec<u8>> {
-    value_as_bytes(value).ok_or(rquickjs::Error::Exception)
+pub(crate) fn value_to_bytes<'js>(ctx: &Ctx<'js>, value: &Value<'js>) -> Result<Vec<u8>> {
+    buffer_source_to_vec(ctx, value)
 }
 
 pub(crate) fn value_as_bytes<'js>(value: &Value<'js>) -> Option<Vec<u8>> {

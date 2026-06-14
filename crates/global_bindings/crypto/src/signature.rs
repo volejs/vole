@@ -1,11 +1,12 @@
 use rquickjs::{ArrayBuffer, Class, Ctx, Promise, Result, Value};
 use rsa::pkcs8::{DecodePrivateKey, DecodePublicKey};
-use sha1::Sha1;
 use sha2::{Sha256, Sha384, Sha512};
 
 use crate::classes::CryptoKey;
-use crate::key_material::{get_key, KeyInfo, KeyMaterial};
+use crate::key_material::{has_usage, KeyInfo, KeyMaterial};
+use crate::provider::{default_provider, CryptoProvider, HashAlgorithm};
 use crate::utils::{js_value_to_json, value_to_bytes};
+use vole_core::error::{dom_exception_name, reject_dom_exception};
 
 // =============================================================================
 // subtle.sign / subtle.verify
@@ -18,10 +19,19 @@ pub(crate) fn crypto_subtle_sign<'js>(
     data: Value<'js>,
 ) -> Result<Promise<'js>> {
     let algorithm_json = js_value_to_json(&ctx, &algorithm)?;
-    let message = value_to_bytes(&data)?;
-    let key_info = get_key(key.try_borrow()?.id).ok_or(rquickjs::Error::Exception)?;
+    let message = value_to_bytes(&ctx, &data)?;
+    let key_info = key.try_borrow()?.key_info.clone();
 
     let (promise, resolve, reject) = ctx.promise()?;
+    if !has_usage(&key_info, "sign") {
+        reject_dom_exception(
+            &ctx,
+            &reject,
+            dom_exception_name::INVALID_ACCESS,
+            "CryptoKey does not allow sign",
+        )?;
+        return Ok(promise);
+    }
     let ctx_clone = ctx.clone();
 
     vole_global_timers::task_begin();
@@ -62,11 +72,20 @@ pub(crate) fn crypto_subtle_verify<'js>(
     data: Value<'js>,
 ) -> Result<Promise<'js>> {
     let algorithm_json = js_value_to_json(&ctx, &algorithm)?;
-    let sig = value_to_bytes(&signature)?;
-    let message = value_to_bytes(&data)?;
-    let key_info = get_key(key.try_borrow()?.id).ok_or(rquickjs::Error::Exception)?;
+    let sig = value_to_bytes(&ctx, &signature)?;
+    let message = value_to_bytes(&ctx, &data)?;
+    let key_info = key.try_borrow()?.key_info.clone();
 
     let (promise, resolve, reject) = ctx.promise()?;
+    if !has_usage(&key_info, "verify") {
+        reject_dom_exception(
+            &ctx,
+            &reject,
+            dom_exception_name::INVALID_ACCESS,
+            "CryptoKey does not allow verify",
+        )?;
+        return Ok(promise);
+    }
 
     vole_global_timers::task_begin();
 
@@ -118,6 +137,7 @@ pub(crate) fn do_sign(
                 rsa::RsaPrivateKey::from_pkcs8_der(der).map_err(|_| "invalid RSA private key")?;
             let hash_name = hash_name(algorithm);
             let alg_name = key_info.algorithm.as_str();
+            ensure_rsa_pss_salt_length(alg_name, hash_name, algorithm)?;
             rsa_sign(&private_key, alg_name, hash_name, message)
         }
         _ => Err("Invalid key type for signing"),
@@ -141,6 +161,7 @@ pub(crate) fn do_verify(
                 .map_err(|_| "invalid RSA public key")?;
             let hash_name = hash_name(algorithm);
             let alg_name = key_info.algorithm.as_str();
+            ensure_rsa_pss_salt_length(alg_name, hash_name, algorithm)?;
             rsa_verify(&public_key, alg_name, hash_name, message, signature)
         }
         KeyMaterial::RsaPrivate(der) => {
@@ -149,10 +170,35 @@ pub(crate) fn do_verify(
             let public_key = rsa::RsaPublicKey::from(&private_key);
             let hash_name = hash_name(algorithm);
             let alg_name = key_info.algorithm.as_str();
+            ensure_rsa_pss_salt_length(alg_name, hash_name, algorithm)?;
             rsa_verify(&public_key, alg_name, hash_name, message, signature)
         }
         _ => Err("Invalid key type for verification"),
     }
+}
+
+fn ensure_rsa_pss_salt_length(
+    algorithm_name: &str,
+    hash_name: &str,
+    algorithm: &serde_json::Value,
+) -> std::result::Result<(), &'static str> {
+    if algorithm_name != "RSA-PSS" {
+        return Ok(());
+    }
+    let expected = match hash_name {
+        "SHA-1" => 20,
+        "SHA-256" => 32,
+        "SHA-384" => 48,
+        "SHA-512" => 64,
+        _ => return Err("unsupported hash algorithm"),
+    };
+    let salt_length = algorithm["saltLength"]
+        .as_u64()
+        .ok_or("RSA-PSS saltLength is required")?;
+    if salt_length == expected {
+        return Ok(());
+    }
+    Err("RSA-PSS saltLength values other than the digest length are not supported")
 }
 
 pub(crate) fn hmac_sign(
@@ -160,34 +206,10 @@ pub(crate) fn hmac_sign(
     hash_name: &str,
     message: &[u8],
 ) -> std::result::Result<Vec<u8>, &'static str> {
-    use hmac::{Hmac, Mac};
-    match hash_name {
-        "SHA-1" => {
-            type HmacSha = Hmac<Sha1>;
-            let mut mac = HmacSha::new_from_slice(key_bytes).map_err(|_| "Invalid key length")?;
-            mac.update(message);
-            Ok(mac.finalize().into_bytes().to_vec())
-        }
-        "SHA-256" => {
-            type HmacSha = Hmac<Sha256>;
-            let mut mac = HmacSha::new_from_slice(key_bytes).map_err(|_| "Invalid key length")?;
-            mac.update(message);
-            Ok(mac.finalize().into_bytes().to_vec())
-        }
-        "SHA-384" => {
-            type HmacSha = Hmac<Sha384>;
-            let mut mac = HmacSha::new_from_slice(key_bytes).map_err(|_| "Invalid key length")?;
-            mac.update(message);
-            Ok(mac.finalize().into_bytes().to_vec())
-        }
-        "SHA-512" => {
-            type HmacSha = Hmac<Sha512>;
-            let mut mac = HmacSha::new_from_slice(key_bytes).map_err(|_| "Invalid key length")?;
-            mac.update(message);
-            Ok(mac.finalize().into_bytes().to_vec())
-        }
-        _ => Err("unsupported hash algorithm"),
-    }
+    let algorithm = HashAlgorithm::from_web_name(hash_name).ok_or("unsupported hash algorithm")?;
+    default_provider()
+        .hmac_sign(algorithm, key_bytes, message)
+        .map_err(|_| "Invalid key length")
 }
 
 pub(crate) fn rsa_sign(

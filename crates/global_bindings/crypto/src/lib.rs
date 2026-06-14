@@ -4,13 +4,16 @@ use crate::classes::{Crypto, CryptoKey, SubtleCrypto};
 
 pub(crate) mod cipher;
 pub(crate) mod classes;
+pub(crate) mod derive;
 pub(crate) mod digest;
 pub(crate) mod generate_key;
 pub(crate) mod import_export;
 pub(crate) mod key_material;
+pub(crate) mod provider;
 pub(crate) mod random;
 pub(crate) mod signature;
 pub(crate) mod utils;
+pub(crate) mod wrapping;
 
 pub fn init(ctx: &Ctx) -> Result<()> {
     let globals = ctx.globals();
@@ -35,7 +38,6 @@ pub fn init(ctx: &Ctx) -> Result<()> {
             wrapGetter(CryptoKey.prototype, "extractable");
             wrapGetter(CryptoKey.prototype, "algorithm");
             wrapGetter(CryptoKey.prototype, "usages");
-            wrapGetter(CryptoKey.prototype, "_id");
         })();
     "#,
     )?;

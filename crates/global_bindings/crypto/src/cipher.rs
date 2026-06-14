@@ -1,8 +1,10 @@
 use rquickjs::{ArrayBuffer, Class, Ctx, Promise, Result, Value};
 
 use crate::classes::CryptoKey;
-use crate::key_material::{get_key, KeyInfo, KeyMaterial};
+use crate::key_material::{has_usage, KeyInfo, KeyMaterial};
+use crate::provider::{default_provider, AesMode, CryptoError, CryptoProvider};
 use crate::utils::{js_value_to_json, value_to_bytes};
+use vole_core::error::{dom_exception_name, reject_dom_exception};
 
 // =============================================================================
 // subtle.encrypt / subtle.decrypt
@@ -15,10 +17,19 @@ pub(crate) fn crypto_subtle_encrypt<'js>(
     data: Value<'js>,
 ) -> Result<Promise<'js>> {
     let algorithm_json = js_value_to_json(&ctx, &algorithm)?;
-    let plaintext = value_to_bytes(&data)?;
-    let key_info = get_key(key.try_borrow()?.id).ok_or(rquickjs::Error::Exception)?;
+    let plaintext = value_to_bytes(&ctx, &data)?;
+    let key_info = key.try_borrow()?.key_info.clone();
 
     let (promise, resolve, reject) = ctx.promise()?;
+    if !has_usage(&key_info, "encrypt") {
+        reject_dom_exception(
+            &ctx,
+            &reject,
+            dom_exception_name::INVALID_ACCESS,
+            "CryptoKey does not allow encrypt",
+        )?;
+        return Ok(promise);
+    }
     let ctx_clone = ctx.clone();
 
     ctx.spawn(async move {
@@ -48,10 +59,19 @@ pub(crate) fn crypto_subtle_decrypt<'js>(
     data: Value<'js>,
 ) -> Result<Promise<'js>> {
     let algorithm_json = js_value_to_json(&ctx, &algorithm)?;
-    let ciphertext = value_to_bytes(&data)?;
-    let key_info = get_key(key.try_borrow()?.id).ok_or(rquickjs::Error::Exception)?;
+    let ciphertext = value_to_bytes(&ctx, &data)?;
+    let key_info = key.try_borrow()?.key_info.clone();
 
     let (promise, resolve, reject) = ctx.promise()?;
+    if !has_usage(&key_info, "decrypt") {
+        reject_dom_exception(
+            &ctx,
+            &reject,
+            dom_exception_name::INVALID_ACCESS,
+            "CryptoKey does not allow decrypt",
+        )?;
+        return Ok(promise);
+    }
     let ctx_clone = ctx.clone();
 
     ctx.spawn(async move {
@@ -84,84 +104,45 @@ pub(crate) fn do_encrypt(
             let name = algorithm["name"].as_str().unwrap_or("");
             match name {
                 "AES-CBC" => {
-                    let iv = algorithm["iv"]
-                        .as_array()
-                        .ok_or("Missing iv")?
-                        .iter()
-                        .map(|v| v.as_u64().unwrap_or(0) as u8)
-                        .collect::<Vec<u8>>();
-                    if iv.len() != 16 {
-                        return Err("IV must be 16 bytes");
-                    }
-                    let iv_arr: &[u8; 16] = iv.as_slice().try_into().map_err(|_| "Invalid IV")?;
-                    let key_arr: &[u8] = key_bytes.as_slice();
-                    let ciphertext = match key_bytes.len() {
-                        16 => {
-                            use aes::Aes128;
-                            use cbc::Encryptor;
-                            use cipher::{block_padding::Pkcs7, BlockEncryptMut, KeyIvInit};
-                            Encryptor::<Aes128>::new(key_arr.into(), iv_arr.into())
-                                .encrypt_padded_vec_mut::<Pkcs7>(plaintext)
-                        }
-                        24 => {
-                            use aes::Aes192;
-                            use cbc::Encryptor;
-                            use cipher::{block_padding::Pkcs7, BlockEncryptMut, KeyIvInit};
-                            Encryptor::<Aes192>::new(key_arr.into(), iv_arr.into())
-                                .encrypt_padded_vec_mut::<Pkcs7>(plaintext)
-                        }
-                        32 => {
-                            use aes::Aes256;
-                            use cbc::Encryptor;
-                            use cipher::{block_padding::Pkcs7, BlockEncryptMut, KeyIvInit};
-                            Encryptor::<Aes256>::new(key_arr.into(), iv_arr.into())
-                                .encrypt_padded_vec_mut::<Pkcs7>(plaintext)
-                        }
-                        _ => return Err("Invalid AES key length"),
-                    };
-                    Ok(ciphertext)
-                }
+                    let iv = required_bytes_field(algorithm, "iv")?;
+                    default_provider()
+                        .aes_encrypt(AesMode::Cbc, key_bytes, &iv, plaintext, None)
+                        .map_err(provider_error_message)
+                },
+                "AES-CTR" => {
+                    let counter = required_bytes_field(algorithm, "counter")?;
+                    let counter_length = aes_ctr_counter_length(algorithm)?;
+                    default_provider()
+                        .aes_encrypt(
+                            AesMode::Ctr { counter_length },
+                            key_bytes,
+                            &counter,
+                            plaintext,
+                            None,
+                        )
+                        .map_err(provider_error_message)
+                },
                 "AES-GCM" => {
-                    let iv = algorithm["iv"]
-                        .as_array()
-                        .ok_or("Missing iv")?
-                        .iter()
-                        .map(|v| v.as_u64().unwrap_or(0) as u8)
-                        .collect::<Vec<u8>>();
-                    if iv.len() != 12 {
-                        return Err("IV must be 12 bytes for GCM");
-                    }
-                    use aes_gcm::{
-                        aead::{Aead, KeyInit},
-                        Aes128Gcm, Aes256Gcm,
-                    };
-                    let ciphertext = match key_bytes.len() {
-                        16 => {
-                            let key = aes_gcm::Key::<Aes128Gcm>::from_slice(key_bytes);
-                            let cipher = Aes128Gcm::new(key);
-                            let nonce = aes_gcm::Nonce::from_slice(&iv);
-                            cipher
-                                .encrypt(nonce, plaintext)
-                                .map_err(|_| "Encrypt failed")?
-                        }
-                        32 => {
-                            let key = aes_gcm::Key::<Aes256Gcm>::from_slice(key_bytes);
-                            let cipher = Aes256Gcm::new(key);
-                            let nonce = aes_gcm::Nonce::from_slice(&iv);
-                            cipher
-                                .encrypt(nonce, plaintext)
-                                .map_err(|_| "Encrypt failed")?
-                        }
-                        _ => return Err("Invalid AES-GCM key length"),
-                    };
-                    Ok(ciphertext)
-                }
+                    ensure_gcm_tag_length(algorithm)?;
+                    let additional_data = optional_bytes_field(algorithm, "additionalData")?;
+                    let iv = required_bytes_field(algorithm, "iv")?;
+                    default_provider()
+                        .aes_encrypt(
+                            AesMode::Gcm,
+                            key_bytes,
+                            &iv,
+                            plaintext,
+                            Some(additional_data.as_slice()),
+                        )
+                        .map_err(provider_error_message)
+                },
                 _ => Err("Unsupported AES mode"),
             }
-        }
+        },
         _ => Err("Invalid key type for encryption"),
     }
 }
+
 
 pub(crate) fn do_decrypt(
     key_info: &KeyInfo,
@@ -173,84 +154,103 @@ pub(crate) fn do_decrypt(
             let name = algorithm["name"].as_str().unwrap_or("");
             match name {
                 "AES-CBC" => {
-                    let iv = algorithm["iv"]
-                        .as_array()
-                        .ok_or("Missing iv")?
-                        .iter()
-                        .map(|v| v.as_u64().unwrap_or(0) as u8)
-                        .collect::<Vec<u8>>();
-                    if iv.len() != 16 {
-                        return Err("IV must be 16 bytes");
-                    }
-                    let iv_arr: &[u8; 16] = iv.as_slice().try_into().map_err(|_| "Invalid IV")?;
-                    let key_arr: &[u8] = key_bytes.as_slice();
-                    let plaintext = match key_bytes.len() {
-                        16 => {
-                            use aes::Aes128;
-                            use cbc::Decryptor;
-                            use cipher::{block_padding::Pkcs7, BlockDecryptMut, KeyIvInit};
-                            Decryptor::<Aes128>::new(key_arr.into(), iv_arr.into())
-                                .decrypt_padded_vec_mut::<Pkcs7>(ciphertext)
-                                .map_err(|_| "Decrypt failed")?
-                        }
-                        24 => {
-                            use aes::Aes192;
-                            use cbc::Decryptor;
-                            use cipher::{block_padding::Pkcs7, BlockDecryptMut, KeyIvInit};
-                            Decryptor::<Aes192>::new(key_arr.into(), iv_arr.into())
-                                .decrypt_padded_vec_mut::<Pkcs7>(ciphertext)
-                                .map_err(|_| "Decrypt failed")?
-                        }
-                        32 => {
-                            use aes::Aes256;
-                            use cbc::Decryptor;
-                            use cipher::{block_padding::Pkcs7, BlockDecryptMut, KeyIvInit};
-                            Decryptor::<Aes256>::new(key_arr.into(), iv_arr.into())
-                                .decrypt_padded_vec_mut::<Pkcs7>(ciphertext)
-                                .map_err(|_| "Decrypt failed")?
-                        }
-                        _ => return Err("Invalid AES key length"),
-                    };
-                    Ok(plaintext)
-                }
+                    let iv = required_bytes_field(algorithm, "iv")?;
+                    default_provider()
+                        .aes_decrypt(AesMode::Cbc, key_bytes, &iv, ciphertext, None)
+                        .map_err(provider_error_message)
+                },
+                "AES-CTR" => {
+                    let counter = required_bytes_field(algorithm, "counter")?;
+                    let counter_length = aes_ctr_counter_length(algorithm)?;
+                    default_provider()
+                        .aes_decrypt(
+                            AesMode::Ctr { counter_length },
+                            key_bytes,
+                            &counter,
+                            ciphertext,
+                            None,
+                        )
+                        .map_err(provider_error_message)
+                },
                 "AES-GCM" => {
-                    let iv = algorithm["iv"]
-                        .as_array()
-                        .ok_or("Missing iv")?
-                        .iter()
-                        .map(|v| v.as_u64().unwrap_or(0) as u8)
-                        .collect::<Vec<u8>>();
-                    if iv.len() != 12 {
-                        return Err("IV must be 12 bytes for GCM");
-                    }
-                    use aes_gcm::{
-                        aead::{Aead, KeyInit},
-                        Aes128Gcm, Aes256Gcm,
-                    };
-                    let plaintext = match key_bytes.len() {
-                        16 => {
-                            let key = aes_gcm::Key::<Aes128Gcm>::from_slice(key_bytes);
-                            let cipher = Aes128Gcm::new(key);
-                            let nonce = aes_gcm::Nonce::from_slice(&iv);
-                            cipher
-                                .decrypt(nonce, ciphertext)
-                                .map_err(|_| "Decrypt failed")?
-                        }
-                        32 => {
-                            let key = aes_gcm::Key::<Aes256Gcm>::from_slice(key_bytes);
-                            let cipher = Aes256Gcm::new(key);
-                            let nonce = aes_gcm::Nonce::from_slice(&iv);
-                            cipher
-                                .decrypt(nonce, ciphertext)
-                                .map_err(|_| "Decrypt failed")?
-                        }
-                        _ => return Err("Invalid AES-GCM key length"),
-                    };
-                    Ok(plaintext)
-                }
+                    ensure_gcm_tag_length(algorithm)?;
+                    let additional_data = optional_bytes_field(algorithm, "additionalData")?;
+                    let iv = required_bytes_field(algorithm, "iv")?;
+                    default_provider()
+                        .aes_decrypt(
+                            AesMode::Gcm,
+                            key_bytes,
+                            &iv,
+                            ciphertext,
+                            Some(additional_data.as_slice()),
+                        )
+                        .map_err(provider_error_message)
+                },
                 _ => Err("Unsupported AES mode"),
             }
-        }
+        },
         _ => Err("Invalid key type for decryption"),
     }
+}
+
+fn required_bytes_field(
+    algorithm: &serde_json::Value,
+    field: &str,
+) -> std::result::Result<Vec<u8>, &'static str> {
+    algorithm[field]
+        .as_array()
+        .ok_or("Missing required BufferSource field")?
+        .iter()
+        .map(|v| v.as_u64().map(|n| n as u8).ok_or("Invalid BufferSource field"))
+        .collect()
+}
+
+fn provider_error_message(error: CryptoError) -> &'static str {
+    match error {
+        CryptoError::InvalidLength => "Invalid key or IV length",
+        CryptoError::OperationFailed => "Crypto operation failed",
+    }
+}
+
+fn aes_ctr_counter_length(algorithm: &serde_json::Value) -> std::result::Result<u32, &'static str> {
+    let length = algorithm["length"]
+        .as_u64()
+        .ok_or("AES-CTR length is required")?;
+    if !(1..=128).contains(&length) {
+        return Err("AES-CTR length must be between 1 and 128 bits");
+    }
+    Ok(length as u32)
+}
+
+
+fn ensure_gcm_tag_length(algorithm: &serde_json::Value) -> std::result::Result<(), &'static str> {
+    let tag_length = algorithm["tagLength"].as_u64().unwrap_or(128);
+    if tag_length == 128 {
+        return Ok(());
+    }
+    Err("AES-GCM tagLength values other than 128 are not supported")
+}
+
+fn optional_bytes_field(
+    algorithm: &serde_json::Value,
+    name: &str,
+) -> std::result::Result<Vec<u8>, &'static str> {
+    let Some(value) = algorithm.get(name) else {
+        return Ok(Vec::new());
+    };
+    if value.is_null() {
+        return Ok(Vec::new());
+    }
+    let Some(array) = value.as_array() else {
+        return Err("Algorithm byte field must be a BufferSource");
+    };
+    array
+        .iter()
+        .map(|value| {
+            value
+                .as_u64()
+                .and_then(|value| u8::try_from(value).ok())
+                .ok_or("Algorithm byte field contains invalid byte")
+        })
+        .collect()
 }

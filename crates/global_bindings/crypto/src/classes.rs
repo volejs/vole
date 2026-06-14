@@ -1,14 +1,17 @@
 use rquickjs::class::{JsClass, Trace, Tracer, Writable};
 use rquickjs::function::This;
-use rquickjs::{Array, Class, Constructor, Ctx, Function, IntoJs, Object, Result, Value};
+use rquickjs::{Array, Class, Constructor, Ctx, Exception, Function, IntoJs, Object, Result, Value};
 
 use crate::cipher::{crypto_subtle_decrypt, crypto_subtle_encrypt};
+use crate::derive::{crypto_subtle_derive_bits, crypto_subtle_derive_key};
 use crate::digest::crypto_subtle_digest;
 use crate::generate_key::crypto_subtle_generate_key;
 use crate::import_export::{crypto_subtle_export_key, crypto_subtle_import_key};
+use crate::key_material::KeyInfo;
 use crate::random::{crypto_get_random_values, crypto_random_uuid};
 use crate::signature::{crypto_subtle_sign, crypto_subtle_verify};
 use crate::utils::json_value_to_js_value;
+use crate::wrapping::{crypto_subtle_unwrap_key, crypto_subtle_wrap_key};
 
 // =============================================================================
 // Native classes
@@ -49,8 +52,8 @@ impl<'js> JsClass<'js> for Crypto {
     }
 
     fn constructor(ctx: &Ctx<'js>) -> Result<Option<Constructor<'js>>> {
-        fn ctor<'js>(_ctx: Ctx<'js>) -> Result<Crypto> {
-            Ok(Crypto)
+        fn ctor<'js>(ctx: Ctx<'js>) -> Result<Crypto> {
+            Err(Exception::throw_type(&ctx, "Illegal constructor"))
         }
         let constr = Constructor::new_class::<Crypto, _, _>(ctx.clone(), ctor)?;
         Ok(Some(constr))
@@ -103,12 +106,25 @@ impl<'js> JsClass<'js> for SubtleCrypto {
             "exportKey",
             Function::new(ctx.clone(), crypto_subtle_export_key)?,
         )?;
+        proto.set(
+            "deriveBits",
+            Function::new(ctx.clone(), crypto_subtle_derive_bits)?,
+        )?;
+        proto.set(
+            "deriveKey",
+            Function::new(ctx.clone(), crypto_subtle_derive_key)?,
+        )?;
+        proto.set("wrapKey", Function::new(ctx.clone(), crypto_subtle_wrap_key)?)?;
+        proto.set(
+            "unwrapKey",
+            Function::new(ctx.clone(), crypto_subtle_unwrap_key)?,
+        )?;
         Ok(Some(proto))
     }
 
     fn constructor(ctx: &Ctx<'js>) -> Result<Option<Constructor<'js>>> {
-        fn ctor<'js>(_ctx: Ctx<'js>) -> Result<SubtleCrypto> {
-            Ok(SubtleCrypto)
+        fn ctor<'js>(ctx: Ctx<'js>) -> Result<SubtleCrypto> {
+            Err(Exception::throw_type(&ctx, "Illegal constructor"))
         }
         let constr = Constructor::new_class::<SubtleCrypto, _, _>(ctx.clone(), ctor)?;
         Ok(Some(constr))
@@ -117,7 +133,7 @@ impl<'js> JsClass<'js> for SubtleCrypto {
 
 #[derive(Clone, Debug)]
 pub(crate) struct CryptoKey {
-    pub(crate) id: u64,
+    pub(crate) key_info: KeyInfo,
     pub(crate) key_type: String,
     pub(crate) extractable: bool,
     pub(crate) algorithm: serde_json::Value,
@@ -154,13 +170,12 @@ impl<'js> JsClass<'js> for CryptoKey {
             Function::new(ctx.clone(), crypto_key_algorithm)?,
         )?;
         proto.set("usages", Function::new(ctx.clone(), crypto_key_usages)?)?;
-        proto.set("_id", Function::new(ctx.clone(), crypto_key_id)?)?;
         Ok(Some(proto))
     }
 
     fn constructor(ctx: &Ctx<'js>) -> Result<Option<Constructor<'js>>> {
-        fn ctor<'js>(_ctx: Ctx<'js>) -> Result<CryptoKey> {
-            Err(rquickjs::Error::Exception)
+        fn ctor<'js>(ctx: Ctx<'js>) -> Result<CryptoKey> {
+            Err(Exception::throw_type(&ctx, "Illegal constructor"))
         }
         let constr = Constructor::new_class::<CryptoKey, _, _>(ctx.clone(), ctor)?;
         Ok(Some(constr))
@@ -192,8 +207,4 @@ pub(crate) fn crypto_key_usages<'js>(
         arr.set(i, u.clone())?;
     }
     Ok(arr)
-}
-
-pub(crate) fn crypto_key_id<'js>(this: This<Class<'js, CryptoKey>>) -> Result<u64> {
-    Ok(this.try_borrow()?.id)
 }

@@ -1,8 +1,8 @@
 use rquickjs::{ArrayBuffer, Ctx, Promise, Result, Value};
-use sha1::{Digest, Sha1};
-use sha2::{Sha256, Sha384, Sha512};
 
+use crate::provider::{default_provider, CryptoProvider, HashAlgorithm};
 use crate::utils::{js_value_to_json, value_to_bytes};
+use vole_core::error::{dom_exception_name, reject_dom_exception};
 
 // =============================================================================
 // subtle.digest
@@ -19,7 +19,7 @@ pub(crate) fn crypto_subtle_digest<'js>(
         _ => alg["name"].as_str().unwrap_or("").to_string(),
     };
 
-    let bytes = value_to_bytes(&data)?;
+    let bytes = value_to_bytes(&ctx, &data)?;
 
     let (promise, resolve, reject) = ctx.promise()?;
     let ctx_clone = ctx.clone();
@@ -35,29 +35,15 @@ pub(crate) fn crypto_subtle_digest<'js>(
         }
         let _guard = TaskGuard;
 
-        let result = match alg_name.as_str() {
-            "SHA-1" => {
-                let mut hasher = Sha1::new();
-                hasher.update(&bytes);
-                hasher.finalize().to_vec()
-            }
-            "SHA-256" => {
-                let mut hasher = Sha256::new();
-                hasher.update(&bytes);
-                hasher.finalize().to_vec()
-            }
-            "SHA-384" => {
-                let mut hasher = Sha384::new();
-                hasher.update(&bytes);
-                hasher.finalize().to_vec()
-            }
-            "SHA-512" => {
-                let mut hasher = Sha512::new();
-                hasher.update(&bytes);
-                hasher.finalize().to_vec()
-            }
-            _ => {
-                let _ = reject.call::<_, ()>((ctx_clone.clone().catch(),));
+        let result = match HashAlgorithm::from_web_name(alg_name.as_str()) {
+            Some(algorithm) => default_provider().digest(algorithm, &bytes),
+            None => {
+                let _ = reject_dom_exception(
+                    &ctx_clone,
+                    &reject,
+                    dom_exception_name::NOT_SUPPORTED,
+                    "Unrecognized digest algorithm",
+                );
                 return;
             }
         };

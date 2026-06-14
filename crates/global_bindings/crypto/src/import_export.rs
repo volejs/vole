@@ -2,8 +2,9 @@ use rquickjs::{Array, ArrayBuffer, Class, Ctx, Promise, Result, Value};
 use rsa::pkcs8::{DecodePrivateKey, DecodePublicKey};
 
 use crate::classes::CryptoKey;
-use crate::key_material::{store_key, KeyInfo, KeyMaterial};
+use crate::key_material::{KeyInfo, KeyMaterial};
 use crate::utils::{js_value_to_json, json_value_to_js_value, value_to_bytes};
+use vole_core::error::{dom_exception_name, reject_dom_exception, throw_dom_exception};
 
 // =============================================================================
 // subtle.importKey / subtle.exportKey
@@ -19,32 +20,41 @@ pub(crate) fn crypto_subtle_import_key<'js>(
 ) -> Result<Promise<'js>> {
     let algorithm_json = js_value_to_json(&ctx, &algorithm)?;
     let name = algorithm_json["name"].as_str().unwrap_or("").to_string();
+    let stored_algorithm = if name == "HMAC" {
+        hmac_algorithm_name(&algorithm_json).to_string()
+    } else {
+        name.clone()
+    };
 
     let usages_vec: Vec<String> = usages.iter::<String>().collect::<Result<Vec<_>>>()?;
 
     let (material, key_type) = match format.as_str() {
         "raw" => {
-            let bytes = value_to_bytes(&key_data)?;
+            let bytes = value_to_bytes(&ctx, &key_data)?;
             let material = match name.as_str() {
-                "AES-CBC" | "AES-GCM" => KeyMaterial::Aes(bytes),
+                "AES-CBC" | "AES-CTR" | "AES-GCM" | "AES-KW" => {
+                    validate_aes_key_length(&ctx, bytes.len())?;
+                    KeyMaterial::Aes(bytes)
+                },
                 "HMAC" => KeyMaterial::Hmac(bytes),
+                "HKDF" | "PBKDF2" => KeyMaterial::Derive(bytes),
                 _ => return Err(rquickjs::Error::Exception),
             };
             (material, "secret")
         }
         "jwk" => {
             let jwk = js_value_to_json(&ctx, &key_data)?;
-            let material = import_jwk(&jwk, &name)?;
+            let material = import_jwk(&jwk, &name, &stored_algorithm)?;
             (material, "secret")
         }
         "pkcs8" => {
-            let bytes = value_to_bytes(&key_data)?;
+            let bytes = value_to_bytes(&ctx, &key_data)?;
             let _private_key = rsa::RsaPrivateKey::from_pkcs8_der(&bytes)
                 .map_err(|_| rquickjs::Error::Exception)?;
             (KeyMaterial::RsaPrivate(bytes), "private")
         }
         "spki" => {
-            let bytes = value_to_bytes(&key_data)?;
+            let bytes = value_to_bytes(&ctx, &key_data)?;
             let _public_key = rsa::RsaPublicKey::from_public_key_der(&bytes)
                 .map_err(|_| rquickjs::Error::Exception)?;
             (KeyMaterial::RsaPublic(bytes), "public")
@@ -52,15 +62,14 @@ pub(crate) fn crypto_subtle_import_key<'js>(
         _ => return Err(rquickjs::Error::Exception),
     };
 
-    let id = store_key(KeyInfo {
+    let key_info = KeyInfo {
         material,
-        algorithm: name.clone(),
+        algorithm: stored_algorithm,
         usages: usages_vec.clone(),
         extractable,
-    });
-
+    };
     let key = CryptoKey {
-        id,
+        key_info,
         key_type: key_type.to_string(),
         extractable,
         algorithm: algorithm_json,
@@ -73,15 +82,48 @@ pub(crate) fn crypto_subtle_import_key<'js>(
     Ok(promise)
 }
 
+fn hmac_algorithm_name(algorithm: &serde_json::Value) -> &'static str {
+    let hash = algorithm["hash"]
+        .as_str()
+        .or_else(|| algorithm["hash"]["name"].as_str())
+        .unwrap_or("SHA-256");
+    match hash {
+        "SHA-1" => "HMAC-SHA-1",
+        "SHA-384" => "HMAC-SHA-384",
+        "SHA-512" => "HMAC-SHA-512",
+        _ => "HMAC-SHA-256",
+    }
+}
+
+fn validate_aes_key_length<'js>(ctx: &Ctx<'js>, len: usize) -> Result<()> {
+    if matches!(len, 16 | 24 | 32) {
+        return Ok(());
+    }
+    throw_dom_exception(
+        ctx,
+        dom_exception_name::DATA,
+        "AES key length must be 128, 192, or 256 bits",
+    )
+}
+
 pub(crate) fn crypto_subtle_export_key<'js>(
     ctx: Ctx<'js>,
     format: String,
     key: Class<'js, CryptoKey>,
 ) -> Result<Promise<'js>> {
-    let key_info =
-        crate::key_material::get_key(key.try_borrow()?.id).ok_or(rquickjs::Error::Exception)?;
+    let key_info = key.try_borrow()?.key_info.clone();
 
     let (promise, resolve, reject) = ctx.promise()?;
+    if !key_info.extractable {
+        reject_dom_exception(
+            &ctx,
+            &reject,
+            dom_exception_name::INVALID_ACCESS,
+            "CryptoKey is not extractable",
+        )?;
+        return Ok(promise);
+    }
+
     let ctx_clone = ctx.clone();
 
     ctx.spawn(async move {
@@ -128,7 +170,11 @@ pub(crate) fn crypto_subtle_export_key<'js>(
     Ok(promise)
 }
 
-pub(crate) fn import_jwk(jwk: &serde_json::Value, expected_name: &str) -> Result<KeyMaterial> {
+pub(crate) fn import_jwk(
+    jwk: &serde_json::Value,
+    expected_name: &str,
+    expected_algorithm: &str,
+) -> Result<KeyMaterial> {
     let kty = jwk["kty"].as_str().ok_or(rquickjs::Error::Exception)?;
     if kty != "oct" {
         return Err(rquickjs::Error::Exception);
@@ -148,16 +194,29 @@ pub(crate) fn import_jwk(jwk: &serde_json::Value, expected_name: &str) -> Result
                 32 => "A256CBC",
                 _ => return Err(rquickjs::Error::Exception),
             },
+            "AES-CTR" => match bytes.len() {
+                16 => "A128CTR",
+                24 => "A192CTR",
+                32 => "A256CTR",
+                _ => return Err(rquickjs::Error::Exception),
+            },
             "AES-GCM" => match bytes.len() {
                 16 => "A128GCM",
                 24 => "A192GCM",
                 32 => "A256GCM",
                 _ => return Err(rquickjs::Error::Exception),
             },
-            "HMAC" => match bytes.len() {
-                32 => "HS256",
-                48 => "HS384",
-                64 => "HS512",
+            "AES-KW" => match bytes.len() {
+                16 => "A128KW",
+                24 => "A192KW",
+                32 => "A256KW",
+                _ => return Err(rquickjs::Error::Exception),
+            },
+            "HMAC" => match expected_algorithm {
+                "HMAC-SHA-1" => "HS1",
+                "HMAC-SHA-256" => "HS256",
+                "HMAC-SHA-384" => "HS384",
+                "HMAC-SHA-512" => "HS512",
                 _ => return Err(rquickjs::Error::Exception),
             },
             _ => return Err(rquickjs::Error::Exception),
@@ -168,7 +227,7 @@ pub(crate) fn import_jwk(jwk: &serde_json::Value, expected_name: &str) -> Result
     }
 
     match expected_name {
-        "AES-CBC" | "AES-GCM" => Ok(KeyMaterial::Aes(bytes)),
+        "AES-CBC" | "AES-CTR" | "AES-GCM" | "AES-KW" => Ok(KeyMaterial::Aes(bytes)),
         "HMAC" => Ok(KeyMaterial::Hmac(bytes)),
         _ => Err(rquickjs::Error::Exception),
     }
@@ -179,7 +238,7 @@ pub(crate) fn export_jwk(key_info: &KeyInfo) -> Result<serde_json::Value> {
     let bytes = match &key_info.material {
         KeyMaterial::Aes(b) => b,
         KeyMaterial::Hmac(b) => b,
-        KeyMaterial::RsaPrivate(_) | KeyMaterial::RsaPublic(_) => {
+        KeyMaterial::RsaPrivate(_) | KeyMaterial::RsaPublic(_) | KeyMaterial::Derive(_) => {
             return Err(rquickjs::Error::Exception)
         }
     };
@@ -192,18 +251,28 @@ pub(crate) fn export_jwk(key_info: &KeyInfo) -> Result<serde_json::Value> {
             32 => "A256CBC",
             _ => return Err(rquickjs::Error::Exception),
         },
+        "AES-CTR" => match bytes.len() {
+            16 => "A128CTR",
+            24 => "A192CTR",
+            32 => "A256CTR",
+            _ => return Err(rquickjs::Error::Exception),
+        },
         "AES-GCM" => match bytes.len() {
             16 => "A128GCM",
             24 => "A192GCM",
             32 => "A256GCM",
             _ => return Err(rquickjs::Error::Exception),
         },
-        alg if alg.starts_with("HMAC-") => match bytes.len() {
-            32 => "HS256",
-            48 => "HS384",
-            64 => "HS512",
+        "AES-KW" => match bytes.len() {
+            16 => "A128KW",
+            24 => "A192KW",
+            32 => "A256KW",
             _ => return Err(rquickjs::Error::Exception),
         },
+        "HMAC-SHA-1" => "HS1",
+        "HMAC-SHA-256" => "HS256",
+        "HMAC-SHA-384" => "HS384",
+        "HMAC-SHA-512" => "HS512",
         _ => return Err(rquickjs::Error::Exception),
     };
 

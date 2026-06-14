@@ -20,3 +20,4 @@ pkcs8 = { workspace = true, features = ["encryption"] }
 spki = { workspace = true }
 serde_json = { workspace = true }
 vole-global-timers = { path = "../timers" }
+vole-core = { path = "../../core" }
