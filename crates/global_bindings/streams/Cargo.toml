@@ -4,4 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-rquickjs = { workspace = true, features = ["macro"] }
+rquickjs = { workspace = true, features = ["macro", "futures"] }
+vole-core = { path = "../../core" }
+vole-global-events = { path = "../events" }
