@@ -225,7 +225,9 @@ unsafe fn result_to_value<'js>(
             if ptr.is_null() {
                 Ok(Value::new_null(ctx.clone()))
             } else {
-                let cstr = std::ffi::CStr::from_ptr(ptr);
+                // SAFETY: `ptr` is either null-checked above or points to a valid
+                // NUL-terminated C string provided by user-supplied FFI call.
+                let cstr = unsafe { std::ffi::CStr::from_ptr(ptr) };
                 let s = cstr.to_str().unwrap_or("").to_string();
                 let js_str = rquickjs::String::from_str(ctx.clone(), &s)?;
                 Ok(Value::from_string(js_str))

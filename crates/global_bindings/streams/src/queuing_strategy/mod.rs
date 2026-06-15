@@ -94,7 +94,7 @@ impl<'js> SizeAlgorithm<'js> {
             | Self::SizeFunction(SizeFunction::Native(NativeSizeFunction::Count)) => {
                 Ok(SizeValue::Native(1.0))
             },
-            Self::SizeFunction(SizeFunction::Js(ref f)) => {
+            Self::SizeFunction(SizeFunction::Js(f)) => {
                 f.call((This(Value::new_undefined(ctx.clone())), chunk.clone()))
             },
             Self::SizeFunction(SizeFunction::Native(NativeSizeFunction::ByteLength)) => {

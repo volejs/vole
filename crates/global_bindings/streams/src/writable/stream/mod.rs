@@ -647,7 +647,7 @@ impl<'js> WritableStream<'js> {
                 // Perform ! WritableStreamStartErroring(stream, error).
                 Self::writable_stream_start_erroring(ctx, objects, error)
             },
-            WritableStreamState::Erroring(ref stored_error) => {
+            WritableStreamState::Erroring(stored_error) => {
                 let stored_error = stored_error.clone();
                 // Perform ! WritableStreamFinishErroring(stream).
                 Self::writable_stream_finish_erroring(ctx, objects, stored_error)

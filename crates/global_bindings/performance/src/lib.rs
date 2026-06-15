@@ -3,11 +3,11 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use rquickjs::{
     atom::PredefinedAtom,
     class::Trace,
-    function::{Opt, This},
+    function::Opt,
     Array, Class, Coerced, Ctx, Exception, FromJs, Function, Object, Result, Value,
 };
 use vole_core::{
-    json::{json_parse, json_stringify},
+    json::{parse::json_parse, stringify::json_stringify},
     time::TimeOrigin,
 };
 
@@ -249,7 +249,7 @@ impl Performance {
                 let object = start_value.as_object().ok_or_else(|| {
                     Exception::throw_type(ctx, "Performance.measure options must be an object")
                 })?;
-                let (start_time, end_time) = parse_measure_options(self, ctx, object)?;
+                let (start_time, end_time) = parse_measure_options(self, ctx, &object)?;
                 Ok((start_time.unwrap_or(default_start_time), end_time.unwrap_or(default_end_time)))
             }
             (Some(start_value), None) => {
@@ -269,7 +269,7 @@ impl Performance {
                 let object = end_value.as_object().ok_or_else(|| {
                     Exception::throw_type(ctx, "Performance.measure options must be an object")
                 })?;
-                let (start_time, end_time) = parse_measure_options(self, ctx, object)?;
+                let (start_time, end_time) = parse_measure_options(self, ctx, &object)?;
                 Ok((start_time.unwrap_or(default_start_time), end_time.unwrap_or(default_end_time)))
             }
             (None, Some(end_value)) => {
@@ -342,10 +342,10 @@ fn is_measure_options<'js>(ctx: &Ctx<'js>, value: &Value<'js>) -> Result<bool> {
     let start_time = get_optional_property(ctx, &object, "startTime")?;
     let end_time = get_optional_property(ctx, &object, "endTime")?;
 
-    !start.is_undefined()
+    Ok(!start.is_undefined()
         || !end.is_undefined()
         || !start_time.is_undefined()
-        || !end_time.is_undefined()
+        || !end_time.is_undefined())
 }
 
 fn parse_mark_options<'js>(
@@ -375,7 +375,7 @@ fn parse_mark_options<'js>(
 fn parse_measure_options<'js>(
     performance: &Performance,
     ctx: &Ctx<'js>,
-    object: Object<'js>,
+    object: &Object<'js>,
 ) -> Result<(Option<f64>, Option<f64>)> {
     let parse_time = |value: Value<'js>| -> Result<f64> {
         if value.is_undefined() {
@@ -387,25 +387,25 @@ fn parse_measure_options<'js>(
     let mut start = None;
     let mut end = None;
 
-    let start_value = get_optional_property(ctx, &object, "start")?;
+    let start_value = get_optional_property(ctx, object, "start")?;
     if !start_value.is_undefined() {
         start = Some(parse_time(start_value)?);
     }
 
-    let end_value = get_optional_property(ctx, &object, "end")?;
+    let end_value = get_optional_property(ctx, object, "end")?;
     if !end_value.is_undefined() {
         end = Some(parse_time(end_value)?);
     }
 
     if start.is_none() {
-        let start_time = get_optional_property(ctx, &object, "startTime")?;
+        let start_time = get_optional_property(ctx, object, "startTime")?;
         if !start_time.is_undefined() {
             start = Some(parse_time(start_time)?);
         }
     }
 
     if end.is_none() {
-        let end_time = get_optional_property(ctx, &object, "endTime")?;
+        let end_time = get_optional_property(ctx, object, "endTime")?;
         if !end_time.is_undefined() {
             end = Some(parse_time(end_time)?);
         }
@@ -459,24 +459,28 @@ fn entry_to_object<'js>(
     object.set("entryType", entry.entry_type)?;
     object.set("startTime", entry.start_time)?;
     object.set("duration", entry.duration)?;
-    match &entry.detail {
-        Some(detail_json) => {
-            let detail = json_parse(ctx, detail_json.clone()).unwrap_or_else(|_| Value::new_undefined(ctx.clone()));
-            object.set("detail", detail)?;
-        }
-        None => object.set("detail", Value::new_undefined(ctx.clone()))?,
-    }
 
-    let to_json = Function::new(ctx.clone(), |This(this): This<Object>| -> Result<Object> {
-        let clone = Object::new(this.ctx())?;
-        clone.set("name", this.get::<_, String>("name")?)?;
-        clone.set("entryType", this.get::<_, String>("entryType")?)?;
-        clone.set("startTime", this.get::<_, f64>("startTime")?)?;
-        clone.set("duration", this.get::<_, f64>("duration")?)?;
-        let detail: Value = this
-            .get::<_, Value>("detail")
-            .or_else(|_| Ok(Value::new_undefined(this.ctx())))?;
-        clone.set("detail", detail)?;
+    let detail_value = match &entry.detail {
+        Some(detail_json) => {
+            json_parse(ctx, detail_json.clone()).unwrap_or_else(|_| Value::new_undefined(ctx.clone()))
+        }
+        None => Value::new_undefined(ctx.clone()),
+    };
+    object.set("detail", detail_value.clone())?;
+
+    let name = entry.name.clone();
+    let entry_type = entry.entry_type;
+    let start_time = entry.start_time;
+    let duration = entry.duration;
+    let detail = detail_value;
+    let to_json_ctx = ctx.clone();
+    let to_json = Function::new(ctx.clone(), move || -> Result<Object<'_>> {
+        let clone = Object::new(to_json_ctx.clone())?;
+        clone.set("name", name.clone())?;
+        clone.set("entryType", entry_type)?;
+        clone.set("startTime", start_time)?;
+        clone.set("duration", duration)?;
+        clone.set("detail", detail.clone())?;
         Ok(clone)
     })?;
     object.set("toJSON", to_json)?;

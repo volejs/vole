@@ -36,7 +36,10 @@ pub fn load_dotenv() {
             let value = line[eq_pos + 1..].trim();
 
             if !key.is_empty() {
-                std::env::set_var(key, value);
+                // SAFETY: key and value are valid UTF-8 Rust strings for the call duration.
+                unsafe {
+                    std::env::set_var(key, value);
+                }
             }
         }
     }
@@ -47,7 +50,10 @@ fn env_get(name: String) -> Option<String> {
 }
 
 fn env_set(name: String, value: String) {
-    std::env::set_var(&name, &value);
+    // SAFETY: name/value are owned Rust UTF-8 strings in current call frame.
+    unsafe {
+        std::env::set_var(&name, &value);
+    }
 }
 
 fn env_has(name: String) -> bool {
@@ -55,7 +61,10 @@ fn env_has(name: String) -> bool {
 }
 
 fn env_remove(name: String) {
-    std::env::remove_var(&name);
+    // SAFETY: name is an owned Rust UTF-8 string in current call frame.
+    unsafe {
+        std::env::remove_var(&name);
+    }
 }
 
 fn env_entries() -> HashMap<String, String> {
