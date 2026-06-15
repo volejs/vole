@@ -109,6 +109,7 @@ impl<'js> ReadableStream<'js> {
             abort_callback: None,
             // Let promise be a new promise.
             promise: ResolveablePromise::new(&ctx)?,
+            prevent_close,
             promise_primordials: promise_primordials.clone(),
         };
 
@@ -367,6 +368,7 @@ struct PipeTo<'js> {
     signal: Option<AbortSignal<'js>>,
     abort_callback: Option<Function<'js>>,
     promise: ResolveablePromise<'js>,
+    prevent_close: bool,
 
     promise_primordials: PromisePrimordials<'js>,
 }
@@ -385,7 +387,30 @@ impl<'js> PipeTo<'js> {
 
     fn next(&self, ctx: Ctx<'js>, done: bool, loop_promise: ResolveablePromise<'js>) -> Result<()> {
         if done {
-            loop_promise.resolve_undefined()?
+            if self.shutting_down.load(Ordering::Acquire) {
+                loop_promise.resolve_undefined()?;
+                return Ok(());
+            }
+
+            if self.prevent_close {
+                self.shutdown(ctx.clone(), None)?
+            } else {
+                self.shutdown_with_action(
+                    ctx.clone(),
+                    {
+                        let pipe_to = self.clone();
+                        move |ctx| {
+                            let dest_objects = WritableStreamObjects::from_class(pipe_to.dest_objects);
+                            WritableStreamDefaultWriter::writable_stream_default_writer_close_with_error_propagation(
+                                ctx, dest_objects
+                            )
+                        }
+                    },
+                    None,
+                )?;
+            }
+
+            loop_promise.resolve_undefined()?;
         } else {
             let pipe_step_promise = self.pipe_step(ctx.clone())?;
             upon_promise(ctx, pipe_step_promise, {
