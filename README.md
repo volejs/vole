@@ -8,7 +8,7 @@
 
 - **语言核心**：以 ECMAScript / TC39 语义为基础。
 - **通用 API**：优先实现 WinterTC 相关 Web API，例如 `console`、`URL`、`TextEncoder`、`Blob`、`Streams`、`CompressionStream`、`crypto`、`structuredClone`。
-- **系统能力**：通过 `vole:*` 模块提供文件、进程、网络、FFI、shell、package 等能力。
+- **系统能力**：通过 `vole:*` 模块提供文件、进程（含子进程）、网络、FFI、包系统等能力。
 - **异步模型**：runtime 基于 Tokio，`Vm` 使用 `rquickjs::AsyncRuntime` 和 `AsyncContext`。
 - **非目标**：不直接追求 Node.js API 兼容；Node 风格能力只在确有必要时作为参考，不做适配层。
 
@@ -107,12 +107,11 @@ vole install some-package
 
 常用模块：
 
-- `vole:env`
-- `vole:fs`
 - `vole:path`
-- `vole:process`（对外兼容 API；底层由 `vole:raw:os` 系列实现）
-- `vole:shell`
-- `vole:spawn`
+- `vole:os`（统一系统能力入口，含 env/exec/fs 子能力）
+- `vole:os/env`
+- `vole:os/exec`
+- `vole:os/fs`
 - `vole:ffi`
 - `vole:net/http`
 - `vole:net/tcp`
@@ -126,10 +125,20 @@ vole install some-package
 
 ```js
 import { join } from "vole:path";
-import { readFileSync } from "vole:fs";
+import { readFileSync } from "vole:os/fs";
+import { get } from "vole:os/env";
+import { exec } from "vole:os/exec";
+import { exit, pid } from "vole:os";
 
 const file = join("data", "hello.txt");
 console.log(readFileSync(file, "utf8"));
+console.log(`current pid=${pid}`);
+await exec("echo os/exec is unified into vole:os/exec");
+get("PATH");
+
+// 统一入口示例
+const os = await import("vole:os");
+console.log(os.platform, os.version);
 ```
 
 ## `vole:until`

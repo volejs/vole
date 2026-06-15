@@ -9,10 +9,11 @@
 - [设计原则](#设计原则)
 - [全局 Web API](#全局-web-api)
 - [内置模块 `vole:`](#内置模块-std)
-  - [vole:fs](#stdfs)
-  - [vole:path](#stdpath)
-  - [vole:env](#stdenv)
-  - [vole:process](#stdprocess)
+  - vole:os
+  - vole:os/env
+  - vole:os/fs
+  - vole:os/exec
+  - vole:path
   - [vole:net/http](#stdhttp)
   - [vole:net/tcp / vole:net/udp / vole:net/socket](#stdtcp--stdudp--stdsocket)
   - [vole:ffi](#stdffi)
@@ -50,7 +51,7 @@
 | 来源                                  | 对应模块                    | 参考价值                                                               |
 | ------------------------------------- | --------------------------- | ---------------------------------------------------------------------- |
 | **AWS LLRT** `llrt_modules::crypto`   | `crypto` 全局 API           | **极高**。SHA、AES、HMAC、RSA 的 rquickjs 绑定方式                     |
-| **AWS LLRT** `llrt_modules::fs`       | `vole:fs`                    | **高**。文件操作 Rust → JS 的异步封装模式                              |
+| **AWS LLRT** `llrt_modules::fs`       | `vole:os/fs`                 | **高**。文件操作 Rust → JS 的异步封装模式                              |
 | **AWS LLRT** `llrt_modules::fetch`    | `fetch` / `vole:net/http`        | **高**。`reqwest` + rquickjs `Response` 对象封装                       |
 | **AWS LLRT** `llrt_modules::timers`   | `setTimeout` 等             | **中**。tokio timer + rquickjs callback 调度                           |
 | **AWS LLRT** `llrt_modules::encoding` | `TextEncoder`/`TextDecoder` | **中**。字符串 ↔ Uint8Array 转换                                       |
@@ -182,7 +183,7 @@ AWS LLRT 的模块实现方式和我们"Rust 原生实现 → JS shim 封装 →
 
 ```javascript
 // app.js
-import { readFile } from "vole:fs"; // ✅ 内置模块，直接使用 vole: 前缀
+import { readFile } from "vole:os/fs"; // ✅ 内置模块，直接使用 vole: 前缀
 import _ from "lodash"; // ✅ 映射到 npm:lodash（需在 vole.json 中声明）
 import { helper } from "utils"; // ✅ 映射到 gh:mycompany/utils（需在 vole.json 中声明）
 import { something } from "unregistered"; // ❌ 报错：未在 vole.json 中声明
@@ -192,7 +193,7 @@ import { something } from "unregistered"; // ❌ 报错：未在 vole.json 中�
 
 | 前缀         | 来源                      | 示例                             | 状态                |
 | ------------ | ------------------------- | -------------------------------- | ------------------- |
-| `vole:`       | 内置标准库                | `vole:fs`、`vole:net/tcp`、`vole:net/udp`   | ✅ 已有             |
+| `vole:`       | 内置标准库                | `vole:os`、`vole:os/fs`、`vole:net/tcp`、`vole:net/udp`   | ✅ 已有             |
 | `./` / `../` | 相对路径                  | `./utils.js`                     | ✅ 已有             |
 | `npm:`       | npm 注册表                | `npm:lodash@4.17.21`             | 🔵 未来             |
 | `jsr:`       | JSR (JavaScript Registry) | `jsr:@std/path@1.0.0`            | 🔵 未来             |
@@ -243,10 +244,11 @@ import.meta.main; // true | false
 
 | 模块          | 核心 Rust 依赖                      | 说明                                   |
 | ------------- | ----------------------------------- | -------------------------------------- |
-| `vole:fs`      | `std::fs` / `tokio::fs`             | 文件系统操作                           |
+| `vole:os`      | `std::os` + `std::process`           | 进程元信息、标准 I/O、生命周期控制接口 |
+| `vole:os/env`  | `std::env`                          | 环境变量读取/写入和 `.env` 加载         |
+| `vole:os/fs`   | `std::fs` / `tokio::fs`             | 文件与目录读写、`FileHandle`、`Stats`    |
+| `vole:os/exec` | `std::process`                       | 命令执行与子进程控制                     |
 | `vole:path`    | `std::path`                         | 路径处理，纯计算                       |
-| `vole:env`     | `std::env`                          | 环境变量与运行时信息                   |
-| `vole:process` | `std::process` / `tokio::process`   | 进程控制、Shell、子进程                |
 | `vole:net/http`    | `reqwest` / `hyper` / `axum`        | HTTP 客户端（reqwest）+ 服务端（axum） |
 | `vole:net/tcp`     | `tokio::net::TcpStream/TcpListener` | TCP connect/listen/Server              |
 | `vole:net/udp`     | `tokio::net::UdpSocket`             | UDP socket                             |
@@ -254,11 +256,122 @@ import.meta.main; // true | false
 | `vole:ffi`     | `libloading` / `dlopen`             | 动态链接库调用                         |
 | `vole:test`    | 自定义测试运行器                    | 类似 Deno test，基于 Rust 调度         |
 
-### vole:fs
+### vole:os
 
-文件系统操作模块，同时提供同步与异步 API。
+系统能力聚合入口，覆盖运行时环境信息、标准流写入、以及 `env`/`fs`/`exec` 子模块。
 
 ```typescript
+export * from "./os.js";
+
+export const env: typeof import("vole:os/env");
+export const fs: typeof import("vole:os/fs");
+export const exec: typeof import("vole:os/exec");
+
+export function exit(code?: number): never;
+export function abort(): never;
+export function kill(pid: number, signal?: string): boolean;
+export function cwd(): string;
+export function chdir(path: string): void;
+export function uptime(): number;
+export function getExitCode(): number;
+export function setExitCode(code: number): void;
+export function memoryUsage(): {
+  rss: number;
+  heapTotal: number;
+  heapUsed: number;
+  external: number;
+};
+
+export const args: string[];
+export const argv0: string;
+export const pid: number;
+export const ppid: number;
+export const platform: string;
+export const arch: string;
+export const version: string;
+export const versions: Record<string, string>;
+
+export const stdout: {
+  write(data: string): void;
+  writeAsync(data: string): Promise<void>;
+  flush(): void;
+};
+
+export const stderr: {
+  write(data: string): void;
+  writeAsync(data: string): Promise<void>;
+  flush(): void;
+};
+```
+
+### vole:os/env
+
+环境变量与 `.env` 加载能力。
+
+```typescript
+/** 获取环境变量 */
+export function get(name: string): string | undefined;
+
+/** 设置环境变量 */
+export function set(name: string, value: string): void;
+
+/** 检查环境变量是否存在 */
+export function has(name: string): boolean;
+
+/** 删除环境变量 */
+export function remove(name: string): void;
+
+/** 获取所有环境变量 */
+export function entries(): Record<string, string>;
+
+/** 从指定路径加载 .env 文件（仅当文件存在） */
+export function load(path: string): void;
+
+/** 环境变量代理对象（等价于以上函数） */
+export const env: {
+  get(name: string): string | undefined;
+  set(name: string, value: string): void;
+  has(name: string): boolean;
+  remove(name: string): void;
+  entries(): Record<string, string>;
+  load(path: string): void;
+};
+```
+
+### vole:os/fs
+
+文件系统操作模块，支持文件与目录的同步 / 异步 API、路径归一化元信息、以及 `FileHandle`。
+
+```typescript
+/** 打开路径，返回 FileHandle（文件或目录） */
+export interface OpenOptions {
+  write?: boolean;
+  append?: boolean;
+  create?: boolean;
+  truncate?: boolean;
+}
+
+/** 文件与目录元信息 */
+export class Stats {
+  size(): number;
+  mtime(): Date | undefined;
+  ctime(): Date | undefined;
+  mtimeMs(): number | undefined;
+  ctimeMs(): number | undefined;
+  isFile(): boolean;
+  isDirectory(): boolean;
+  isSymbolicLink(): boolean;
+}
+
+/** 文件句柄 */
+export class FileHandle {
+  read(size?: number): Promise<Uint8Array>;
+  readEntries(): Promise<string[]>;
+  write(data: Uint8Array): Promise<number>;
+  seek(offset: number, whence?: "start" | "current" | "end"): Promise<number>;
+  close(): Promise<void>;
+}
+
 // --- 同步 API ---
 
 /** 读取文件内容为 Uint8Array */
@@ -279,37 +392,76 @@ export function mkdirSync(path: string, options?: { recursive?: boolean }): void
 /** 读取目录内容 */
 export function readdirSync(path: string): string[];
 
-/** 获取文件/目录元信息 */
-export function statSync(path: string): {
-  size: number;
-  isFile: boolean;
-  isDirectory: boolean;
-  mtime: Date;
-  ctime: Date;
-};
+/** 获取文件元信息 */
+export function statSync(path: string): Stats;
 
 /** 删除文件或目录 */
 export function removeSync(path: string): void;
 
-/** 重命名/移动文件 */
+/** 重命名/移动 */
 export function renameSync(oldPath: string, newPath: string): void;
 
 /** 复制文件 */
 export function copyFileSync(src: string, dest: string): void;
+
+/** 获取真实路径 */
+export function realPathSync(path: string): string;
 
 // --- 异步 API ---
 
 export function readFile(path: string): Promise<Uint8Array>;
 export function readTextFile(path: string): Promise<string>;
 export function writeFile(path: string, data: Uint8Array | string): Promise<void>;
+export function exists(path: string): Promise<boolean>;
 export function mkdir(path: string, options?: { recursive?: boolean }): Promise<void>;
 export function readdir(path: string): Promise<string[]>;
-export function stat(
-  path: string,
-): Promise<{ size: number; isFile: boolean; isDirectory: boolean; mtime: Date; ctime: Date }>;
+export function stat(path: string): Promise<Stats>;
 export function remove(path: string): Promise<void>;
 export function rename(oldPath: string, newPath: string): Promise<void>;
 export function copyFile(src: string, dest: string): Promise<void>;
+export function realPath(path: string): Promise<string>;
+export function open(path: string, options?: OpenOptions): Promise<FileHandle>;
+```
+
+### vole:os/exec
+
+命令执行与子进程启动。
+
+```typescript
+export interface ExecResult {
+  stdout: string;
+  stderr: string;
+  status: {
+    success: boolean;
+    code: number;
+  };
+}
+
+export interface ExecOptions {
+  cwd?: string;
+}
+
+/** 异步执行 shell 风格命令（POSIX 下 `/bin/sh -c`，Windows 下 `cmd /C`） */
+export function exec(command: string, options?: ExecOptions): Promise<ExecResult>;
+
+/** 同步执行 shell 风格命令（POSIX 下 `/bin/sh -c`，Windows 下 `cmd /C`） */
+export function execSync(command: string, options?: ExecOptions): ExecResult;
+
+export interface SpawnOptions {
+  cwd?: string;
+}
+
+export class ChildProcess {
+  readonly pid: number;
+  kill(signal?: string): boolean;
+}
+
+/** 启动子进程 */
+export function spawn(
+  command: string,
+  args?: readonly string[],
+  options?: SpawnOptions,
+): ChildProcess;
 ```
 
 ### vole:path
@@ -363,154 +515,13 @@ export const sep: string;
 export const delimiter: string;
 ```
 
-### vole:env
+### 旧模块说明
 
-环境变量操作模块。仅提供环境变量的读写能力，不涉及进程控制。
+`vole:env` 与 `vole:process` 在当前设计中已被移除，相关能力并入 `vole:os` 体系：
 
-```typescript
-/** 获取环境变量 */
-export function get(name: string): string | undefined;
-
-/** 设置环境变量 */
-export function set(name: string, value: string): void;
-
-/** 检查环境变量是否存在 */
-export function has(name: string): boolean;
-
-/** 删除环境变量 */
-export function remove(name: string): void;
-
-/** 获取所有环境变量 */
-export function entries(): Record<string, string>;
-
-/** 环境变量代理对象（等价于以上函数） */
-export const env: {
-  get(key: string): string | undefined;
-  set(key: string, value: string): void;
-  has(key: string): boolean;
-  remove(key: string): void;
-  entries(): Record<string, string>;
-};
-```
-
-### vole:process
-
-进程控制与生命周期管理。参考 POSIX 进程语义，非 Node.js `process` 对象兼容。
-
-```typescript
-/** 退出进程 */
-export function exit(code?: number): never;
-
-/** 异常终止进程 */
-export function abort(): never;
-
-/** 获取当前工作目录 */
-export function cwd(): string;
-
-/** 切换工作目录 */
-export function chdir(path: string): void;
-
-/** 获取进程运行时长（秒） */
-export function uptime(): number;
-
-/** 获取内存使用信息 */
-export function memoryUsage(): {
-  rss: number;
-  heapTotal: number;
-  heapUsed: number;
-  external: number;
-};
-
-/** 命令行参数 */
-export const args: string[];
-
-/** 主程序路径 */
-export const argv0: string;
-
-/** 当前进程 ID */
-export const pid: number;
-
-/** 父进程 ID */
-export const ppid: number;
-
-/** 操作系统平台 */
-export const platform: string;
-
-/** CPU 架构 */
-export const arch: string;
-
-/** 运行时版本 */
-export const version: string;
-
-/** 各组件版本信息 */
-export const versions: Record<string, string>;
-
-// --- 标准 I/O（Phase 0 简化版，不依赖 Streams API） ---
-
-export const stdout: {
-  /** 同步写入数据到标准输出 */
-  write(data: string | Uint8Array): void;
-  /** 异步写入数据到标准输出 */
-  writeAsync(data: string | Uint8Array): Promise<void>;
-  /** 刷新缓冲区 */
-  flush(): void;
-};
-
-export const stderr: {
-  /** 同步写入数据到标准错误 */
-  write(data: string | Uint8Array): void;
-  /** 异步写入数据到标准错误 */
-  writeAsync(data: string | Uint8Array): Promise<void>;
-  /** 刷新缓冲区 */
-  flush(): void;
-};
-
-// --- Shell 命令执行 ---
-
-export interface ExecOptions {
-  cwd?: string;
-  env?: Record<string, string>;
-  timeout?: number;
-  capture?: boolean;
-}
-
-export interface ExecResult {
-  stdout: string;
-  stderr: string;
-  status: { success: boolean; code: number };
-}
-
-/** 异步执行 Shell 命令 */
-export function exec(command: string, options?: ExecOptions): Promise<ExecResult>;
-
-/** 同步执行 Shell 命令 */
-export function execSync(command: string, options?: ExecOptions): ExecResult;
-
-// --- 子进程管理 ---
-
-export interface SpawnOptions {
-  cwd?: string;
-  env?: Record<string, string>;
-  stdio?: "inherit" | "piped" | "null";
-}
-
-export class ChildProcess {
-  readonly pid: number;
-  kill(signal?: string): boolean;
-  wait(): Promise<{ success: boolean; code: number }>;
-  output(): Promise<ExecResult>;
-  // stdin/stdout/stderr 已补充基础读写 API；待迁移为 ReadableStream/WritableStream
-}
-
-/** 创建子进程 */
-export function spawn(command: string, args?: string[], options?: SpawnOptions): ChildProcess;
-
-// --- 事件接口（依赖 EventTarget，Phase 2 后实现） ---
-export function on(
-  event: "exit" | "uncaughtException",
-  handler: (...args: unknown[]) => void,
-): void;
-```
+- `vole:os/env`：环境变量读写与 `.env` 加载；
+- `vole:os/exec`：进程与子进程能力（`exec`、`execSync`、`spawn`）；
+- `vole:os`：运行时进程信息、标准流、`exit`、`abort`、`kill`、`cwd/chdir/uptime/memoryUsage` 等。
 
 ### vole:net/http
 
@@ -738,8 +749,8 @@ vole <file>                           # vole index.js 的快捷形式，等价�
 
 | 阶段        | 全局 Web API                                                                                         | 内置模块 `vole:`                                  | 优先级  |
 | ----------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------ | :-----: |
-| **Phase 0** | `console` 补全；`performance.now()`；Timers；`atob`/`btoa`；`DOMException`；`reportError`            | `vole:env`；`vole:process`                         |  🔴 高  |
-| **Phase 1** | `TextEncoder`/`TextDecoder`；`URL`/`URLSearchParams`/`URLPattern`；`Blob`/`File`；`structuredClone`  | `vole:fs` 异步扩展；`vole:path` 扩展               |  🟡 中  |
+| **Phase 0** | `console` 补全；`performance.now()`；Timers；`atob`/`btoa`；`DOMException`；`reportError`            | `vole:os` / `vole:ffi`                            |  🔴 高  |
+| **Phase 1** | `TextEncoder`/`TextDecoder`；`URL`/`URLSearchParams`/`URLPattern`；`Blob`/`File`；`structuredClone`  | `vole:path`；`vole:os/fs` 扩展                        |  🟡 中  |
 | **Phase 2** | `Event`/`EventTarget`/`CustomEvent`；`AbortController`/`AbortSignal`；`MessageChannel`/`MessagePort` | —                                                |  🟡 中  |
 | **Phase 3** | `fetch`/`Request`/`Response`/`Headers`/`FormData`                                                    | `vole:net/http` 服务端/客户端                         |  🟡 中  |
 | **Phase 4** | `crypto` / `Crypto` / `SubtleCrypto` / `CryptoKey` 全套（含 RSA pkcs8/spki）                         | `vole:net/tcp` / `vole:net/udp` / `vole:net/socket`；`vole:test` |  🟢 低  |

@@ -25,7 +25,7 @@
 - 本文档追踪的是 **vole 对 WinterTC 的运行时适配结果**，不是浏览器兼容性认证。
 - `✅` 必须代表当前实现满足 vole 定义的目标语义，并具备基础测试覆盖。
 - `⚠️` 用于保留已可用但有已知规范缺口的能力，避免把“可用”误写成“完整”。
-- `🔁` 用于记录“概念被替代”的场景，例如用 `globalThis` 事件、`process` 或 `vole:*` 模块承担浏览器接口职责。
+- `🔁` 用于记录“概念被替代”的场景，例如用 `globalThis` 事件、`vole:os` / `vole:*` 模块承担浏览器接口职责。
 - `➖` 是主动产品取舍或确实不适用，不应在汇总和路线图中被当作待补齐任务。
 
 ---
@@ -172,7 +172,7 @@ WinterTC snapshot 列出以下 Common Methods and Properties。vole 按运行时
 | `btoa()`               |   ✅   | —                                                                                                                |
 | `clearTimeout()`       |   ✅   | —                                                                                                                |
 | `clearInterval()`      |   ✅   | —                                                                                                                |
-| `navigator.userAgent`  |   🔁   | 浏览器 `navigator` 概念；vole 已移除 `navigator`，运行时信息通过 `process` / `vole:env` 等机制提供                |
+| `navigator.userAgent`  |   🔁   | 浏览器 `navigator` 概念；vole 已移除 `navigator`，运行时信息通过 `vole:os`（进程/运行时信息）提供 |
 | `onerror`              |   🔁   | HTML `Window` / `WorkerGlobalScope` 事件处理器；vole 不实现该属性，错误通过 `"error"` 事件在 `globalThis` 上派发 |
 | `onunhandledrejection` |   🔁   | HTML 属性；已用 `globalThis` 的 `"unhandledrejection"` 事件替代                                                  |
 | `onrejectionhandled`   |   🔁   | HTML 属性；已用 `globalThis` 的 `"rejectionhandled"` 事件替代                                                    |
