@@ -45,6 +45,7 @@ pub const PUBLIC_VOLE_MODULES: &[&str] = &[
     vole_mod!(shell),
     vole_mod!(spawn),
     vole_mod!(test),
+    vole_mod!(until),
     vole_mod!(wasm),
     // Network namespace
     vole_mod!("net/http"),

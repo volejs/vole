@@ -32,6 +32,7 @@ impl ModuleLoader {
         insert_shim!(vole_modules, "shell");
         insert_shim!(vole_modules, "spawn");
         insert_shim!(vole_modules, "test");
+        insert_shim!(vole_modules, "until");
         insert_shim!(vole_modules, "wasm");
         // Network namespace
         insert_shim!(vole_modules, "net/http");

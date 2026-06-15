@@ -9,6 +9,7 @@ use vole_raw_net::{
 };
 use vole_raw_path::PathRawModule as path;
 use vole_raw_process::ProcessRawModule as process;
+use vole_raw_until::UntilRawModule as until;
 use vole_raw_wasm::WasmRawModule as wasm;
 
 pub struct RuntimeNativeModuleProvider;
@@ -27,6 +28,7 @@ impl NativeModuleProvider for RuntimeNativeModuleProvider {
             }
             vole_raw_mod!("net/tcp") => Some(Module::declare_def::<tcp, _>(ctx.clone(), name)),
             vole_raw_mod!("net/udp") => Some(Module::declare_def::<udp, _>(ctx.clone(), name)),
+            vole_raw_mod!(until) => Some(Module::declare_def::<until, _>(ctx.clone(), name)),
             vole_raw_mod!(wasm) => Some(Module::declare_def::<wasm, _>(ctx.clone(), name)),
             _ => None,
         }

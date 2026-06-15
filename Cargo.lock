@@ -3464,6 +3464,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "vole-raw-until"
+version = "0.1.0"
+dependencies = [
+ "rquickjs",
+ "tokio",
+ "vole-core",
+]
+
+[[package]]
 name = "vole-raw-wasm"
 version = "0.1.0"
 dependencies = [
@@ -3478,6 +3487,7 @@ dependencies = [
  "rquickjs",
  "thiserror 1.0.69",
  "tokio",
+ "vole-core",
  "vole-global-base64",
  "vole-global-blob",
  "vole-global-compression",
@@ -3500,6 +3510,7 @@ dependencies = [
  "vole-raw-net",
  "vole-raw-path",
  "vole-raw-process",
+ "vole-raw-until",
  "vole-raw-wasm",
 ]
 

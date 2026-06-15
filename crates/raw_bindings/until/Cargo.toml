@@ -1,0 +1,9 @@
+[package]
+name = "vole-raw-until"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rquickjs = { workspace = true, features = ["futures", "loader"] }
+tokio = { workspace = true, features = ["time"] }
+vole-core = { path = "../../core" }

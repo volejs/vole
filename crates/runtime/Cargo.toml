@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 rquickjs = { workspace = true, features = ["futures", "loader"] }
+vole-core = { path = "../core" }
 vole-module = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }
@@ -29,5 +30,5 @@ vole-raw-fs = { path = "../raw_bindings/fs" }
 vole-raw-net = { path = "../raw_bindings/net" }
 vole-raw-path = { path = "../raw_bindings/path" }
 vole-raw-process = { path = "../raw_bindings/process" }
-
+vole-raw-until = { path = "../raw_bindings/until" }
 vole-raw-wasm = { path = "../raw_bindings/wasm" }

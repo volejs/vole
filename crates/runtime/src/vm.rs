@@ -1,12 +1,14 @@
 use rquickjs::context::EvalOptions;
-use rquickjs::{AsyncContext, AsyncRuntime, Ctx, FromJs, Function, Value};
+use rquickjs::{AsyncContext, AsyncRuntime, Ctx, FromJs, Function, Promise, Value};
 use std::path::Path;
 use std::time::Duration;
+use vole_core::until::{UntilRegistry, WaitUntilError};
 use vole_module::{ModuleLoader, ModuleResolver};
 
 pub struct Vm {
     pub runtime: AsyncRuntime,
     pub ctx: AsyncContext,
+    pub until_registry: UntilRegistry,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -17,6 +19,8 @@ pub enum VmError {
     ExecutionError(String),
     #[error("Type conversion error: {0}")]
     ConversionError(String),
+    #[error("Lifecycle error: {0}")]
+    LifecycleError(String),
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
 }
@@ -38,6 +42,15 @@ impl Vm {
             .await
             .map_err(|e| VmError::CreationFailed(e.to_string()))?;
 
+        let until_registry = UntilRegistry::new();
+        let registry_for_ctx = until_registry.clone();
+        ctx.with(move |ctx| {
+            let _ = ctx.store_userdata(registry_for_ctx);
+            Ok::<_, rquickjs::Error>(())
+        })
+        .await
+        .map_err(|e| VmError::CreationFailed(e.to_string()))?;
+
         // Initialize all bindings: global APIs, raw module backends, and shims.
         crate::bindings::init(&ctx)
             .await
@@ -57,11 +70,16 @@ impl Vm {
             )))
             .await;
 
-        Ok(Vm { runtime, ctx })
+        Ok(Vm {
+            runtime,
+            ctx,
+            until_registry,
+        })
     }
 
     pub async fn eval(&self, code: &str) -> Result<String, VmError> {
-        self.ctx
+        let output = self
+            .ctx
             .with(|ctx| match ctx.eval::<rquickjs::Value, _>(code) {
                 Ok(result) => Ok::<_, rquickjs::Error>(format_js_value(&result)),
                 Err(e) => {
@@ -71,7 +89,10 @@ impl Vm {
                 }
             })
             .await
-            .map_err(|e| VmError::ExecutionError(e.to_string()))
+            .map_err(|e| VmError::ExecutionError(e.to_string()))?;
+        self.drain_managed_until(Duration::from_millis(30_000))
+            .await?;
+        Ok(output)
     }
 
     pub async fn eval_file(&self, path: &Path) -> Result<String, VmError> {
@@ -86,7 +107,8 @@ impl Vm {
         } else {
             source
         };
-        self.ctx
+        let output = self
+            .ctx
             .async_with(async |ctx| {
                 let module_name = path.to_string_lossy().to_string();
                 let promise = rquickjs::Module::evaluate(ctx.clone(), module_name, code)?;
@@ -113,7 +135,10 @@ impl Vm {
                 Ok::<_, rquickjs::Error>(format_js_value(&result))
             })
             .await
-            .map_err(|e| VmError::ExecutionError(e.to_string()))
+            .map_err(|e| VmError::ExecutionError(e.to_string()))?;
+        self.drain_managed_until(Duration::from_millis(30_000))
+            .await?;
+        Ok(output)
     }
 
     pub async fn set_global_string(&self, name: &str, value: &str) -> Result<(), VmError> {
@@ -182,18 +207,69 @@ impl Vm {
         self.runtime.idle().await;
     }
 
+    pub fn managed_until_pending_count(&self) -> usize {
+        self.until_registry.pending_count()
+    }
+
+    pub fn managed_until_scope_count(&self) -> usize {
+        self.until_registry.scope_count()
+    }
+
+    pub fn managed_until_is_idle(&self) -> bool {
+        self.until_registry.is_idle()
+    }
+
+    pub fn close_managed_until(&self) {
+        self.until_registry.close();
+    }
+
+    pub async fn drain_managed_until(&self, timeout: Duration) -> Result<(), VmError> {
+        if self.until_registry.is_idle() {
+            return Ok(());
+        }
+
+        let started_at = tokio::time::Instant::now();
+        while !self.until_registry.is_idle() {
+            if started_at.elapsed() >= timeout {
+                return Err(wait_until_error(WaitUntilError::Timeout));
+            }
+
+            self.ctx
+                .with(|ctx| {
+                    let _ = ctx.execute_pending_job();
+                    Ok::<_, rquickjs::Error>(())
+                })
+                .await
+                .map_err(|e| VmError::LifecycleError(e.to_string()))?;
+
+            tokio::task::yield_now().await;
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+
+        Ok(())
+    }
+
     pub async fn run_tests(&self, files: &[std::path::PathBuf]) -> Result<String, VmError> {
         for file in files {
             self.eval_file(file).await?;
         }
 
         let code = r#"import { run } from "vole:test"; await run();"#;
-        self.ctx
+        let output = self
+            .ctx
             .async_with(async |ctx| {
                 let mut options = EvalOptions::default();
                 options.global = false;
                 options.promise = true;
-                let result: rquickjs::Value = ctx.eval_with_options(code, options)?;
+                let promise: Promise = ctx.eval_with_options(code, options)?;
+                let result: rquickjs::Value = match promise.into_future().await {
+                    Ok(v) => v,
+                    Err(e) => {
+                        let err = ctx.catch();
+                        let _ = vole_global_events::dispatch_error_event(&ctx, err);
+                        return Err(e);
+                    }
+                };
 
                 for _ in 0..3 {
                     tokio::task::yield_now().await;
@@ -208,7 +284,19 @@ impl Vm {
                 Ok::<_, rquickjs::Error>(format_js_value(&result))
             })
             .await
-            .map_err(|e| VmError::ExecutionError(e.to_string()))
+            .map_err(|e| VmError::ExecutionError(e.to_string()))?;
+        self.drain_managed_until(Duration::from_millis(60_000))
+            .await?;
+        Ok(output)
+    }
+}
+
+fn wait_until_error(err: WaitUntilError) -> VmError {
+    match err {
+        WaitUntilError::Closed => VmError::LifecycleError("WaitUntil registry is closed".into()),
+        WaitUntilError::Timeout => {
+            VmError::LifecycleError("WaitUntil registry drain timed out".into())
+        }
     }
 }
 
