@@ -4,7 +4,33 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-rquickjs = { workspace = true, features = ["futures"] }
-tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }
-reqwest = { workspace = true }
-vole-global-timers = { path = "../timers" }
+bytes = { version = "1", default-features = false }
+either = { version = "1", default-features = false }
+http-body = { version = "1", default-features = false }
+http-body-util = { version = "0.1", default-features = false }
+hyper = { version = "1", features = ["client", "http1", "http2"], default-features = false }
+hyper-rustls = { version = "0.27", features = ["http1", "http2", "webpki-roots", "ring"], default-features = false }
+hyper-util = { version = "0.1", features = ["client", "client-legacy", "http1", "http2", "tokio"], default-features = false }
+itoa = { version = "1", default-features = false }
+once_cell = { version = "1", features = ["std"], default-features = false }
+pin-project-lite = { version = "0.2", default-features = false }
+percent-encoding = { workspace = true }
+rand = { version = "0.10.1", features = ["std", "thread_rng"], default-features = false }
+rquickjs = { workspace = true, features = ["macro", "futures"] }
+rustls = { version = "0.23", features = ["ring"], default-features = false }
+rustls-pemfile = "2"
+sha2 = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "sync", "time"] }
+tracing = { version = "0.1", default-features = false }
+url = { workspace = true }
+webpki-roots = "1"
+vole-core = { path = "../../core" }
+vole-global-blob = { path = "../blob" }
+vole-global-compression = { path = "../compression" }
+vole-global-events = { path = "../events" }
+vole-global-streams = { path = "../streams" }
+vole-global-url = { path = "../url" }
+
+[dev-dependencies]
+flate2 = { workspace = true }
+wiremock = "0.6"
