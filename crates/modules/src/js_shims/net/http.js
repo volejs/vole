@@ -48,8 +48,13 @@ globalThis.__vole_http_dispatcher = async function (handlerId, method, url, head
     init.body = bodyBuf;
   }
 
-  const request = new Request(url, init);
-  const response = await handler(request);
+  const host = headers.get("host") || "localhost";
+  const requestUrl = /^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(url)
+    ? url
+    : `http://${host}${url.startsWith("/") ? url : `/${url}`}`;
+  const request = new Request(requestUrl, init);
+  const handlerResult = await handler(request);
+  const response = handlerResult instanceof Response ? handlerResult : new Response(handlerResult);
 
   const respHeaders = [];
   if (response.headers) {
@@ -58,18 +63,9 @@ globalThis.__vole_http_dispatcher = async function (handlerId, method, url, head
     });
   }
 
-  let respBodyBuf;
-  if (response._bodyBuf) {
-    respBodyBuf = response._bodyBuf;
-  } else if (typeof response._bodyStream === "string") {
-    respBodyBuf = new TextEncoder().encode(response._bodyStream);
-  } else if (response._bodyStream instanceof Uint8Array) {
-    respBodyBuf = response._bodyStream;
-  } else if (response._bodyStream instanceof ArrayBuffer) {
-    respBodyBuf = new Uint8Array(response._bodyStream);
-  } else {
-    respBodyBuf = new Uint8Array(0);
-  }
+  const respBodyBuf = response.body === null
+    ? new Uint8Array(0)
+    : new Uint8Array(await response.arrayBuffer());
 
   return {
     status: response.status || 200,

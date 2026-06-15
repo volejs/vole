@@ -137,62 +137,65 @@ fn http_server_shutdown<'js>(ctx: Ctx<'js>, id: u64) -> Result<Promise<'js>> {
 }
 
 async fn run_axum_server(listener: tokio::net::TcpListener, req_tx: mpsc::Sender<HttpRequest>) {
-    let app =
-        Router::new().route(
+    let root_req_tx = req_tx.clone();
+    let app = Router::new()
+        .route(
+            "/",
+            any(move |method: Method, uri: Uri, headers: HeaderMap, body: Bytes| {
+                forward_axum_request(root_req_tx.clone(), method, uri, headers, body)
+            }),
+        )
+        .route(
             "/{*path}",
-            any(
-                move |method: Method,
-                      uri: Uri,
-                      headers: HeaderMap,
-                      body: Bytes|
-                      -> std::pin::Pin<
-                    Box<dyn std::future::Future<Output = AxumResponse> + Send>,
-                > {
-                    let req_tx = req_tx.clone();
-                    Box::pin(async move {
-                        let headers_vec: Vec<Vec<String>> = headers
-                            .iter()
-                            .map(|(k, v)| {
-                                vec![k.as_str().to_string(), v.to_str().unwrap_or("").to_string()]
-                            })
-                            .collect();
-
-                        let (response_tx, response_rx) = oneshot::channel::<HttpResponse>();
-                        let req = HttpRequest {
-                            method: method.as_str().to_string(),
-                            uri: uri.to_string(),
-                            headers: headers_vec,
-                            body: body.to_vec(),
-                            response_tx,
-                        };
-
-                        if req_tx.send(req).await.is_err() {
-                            return (StatusCode::SERVICE_UNAVAILABLE, "server shutting down")
-                                .into_response();
-                        }
-
-                        match response_rx.await {
-                            Ok(resp) => {
-                                let mut axum_resp = AxumResponse::builder().status(resp.status);
-                                for pair in resp.headers {
-                                    if pair.len() >= 2 {
-                                        axum_resp = axum_resp.header(&pair[0], &pair[1]);
-                                    }
-                                }
-                                axum_resp
-                                    .body(axum::body::Body::from(resp.body))
-                                    .unwrap_or_else(|_| {
-                                        StatusCode::INTERNAL_SERVER_ERROR.into_response()
-                                    })
-                            }
-                            Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-                        }
-                    })
-                },
-            ),
+            any(move |method: Method, uri: Uri, headers: HeaderMap, body: Bytes| {
+                forward_axum_request(req_tx.clone(), method, uri, headers, body)
+            }),
         );
 
     let _ = axum::serve(listener, app).await;
+}
+
+fn forward_axum_request(
+    req_tx: mpsc::Sender<HttpRequest>,
+    method: Method,
+    uri: Uri,
+    headers: HeaderMap,
+    body: Bytes,
+) -> std::pin::Pin<Box<dyn std::future::Future<Output = AxumResponse> + Send>> {
+    Box::pin(async move {
+        let headers_vec: Vec<Vec<String>> = headers
+            .iter()
+            .map(|(k, v)| vec![k.as_str().to_string(), v.to_str().unwrap_or("").to_string()])
+            .collect();
+
+        let (response_tx, response_rx) = oneshot::channel::<HttpResponse>();
+        let req = HttpRequest {
+            method: method.as_str().to_string(),
+            uri: uri.to_string(),
+            headers: headers_vec,
+            body: body.to_vec(),
+            response_tx,
+        };
+
+        if req_tx.send(req).await.is_err() {
+            return (StatusCode::SERVICE_UNAVAILABLE, "server shutting down").into_response();
+        }
+
+        match response_rx.await {
+            Ok(resp) => {
+                let mut axum_resp = AxumResponse::builder().status(resp.status);
+                for pair in resp.headers {
+                    if pair.len() >= 2 {
+                        axum_resp = axum_resp.header(&pair[0], &pair[1]);
+                    }
+                }
+                axum_resp
+                    .body(axum::body::Body::from(resp.body))
+                    .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
+            }
+            Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        }
+    })
 }
 
 async fn handle_request<'js>(

@@ -5,5 +5,5 @@ edition = "2021"
 
 [dependencies]
 rquickjs = { workspace = true, features = ["futures", "loader"] }
-tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time", "net"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time", "net", "io-util"] }
 axum = { workspace = true }
