@@ -38,7 +38,7 @@ tests/fixtures/*.tmp
 tests/fixtures/*.out
 
 # LLRT upstream TS backups (只保留适配后的 JS 测试)
-/llrt
+llrt/
 tests/external/llrt/*.ts
 
 # FFI build artifacts
