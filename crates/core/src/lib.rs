@@ -35,6 +35,7 @@ pub mod promise;
 pub mod queue;
 pub mod string;
 pub mod time;
+pub mod until;
 pub mod webidl;
 
 /// 跨模块共享的错误消息常量。

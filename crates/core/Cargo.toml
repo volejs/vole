@@ -12,4 +12,4 @@ memchr = { version = "2", default-features = false }
 itoa = { version = "1", default-features = false }
 ryu = { version = "1", default-features = false }
 simd-json = { version = "0.17", features = ["big-int-as-float"], default-features = false }
-tokio = { workspace = true, features = ["sync"] }
+tokio = { workspace = true, features = ["sync", "time"] }
