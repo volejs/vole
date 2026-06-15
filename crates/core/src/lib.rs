@@ -29,6 +29,7 @@ pub mod latch;
 pub mod mc_oneshot;
 pub mod object;
 pub mod option;
+pub mod policy;
 pub mod primordials;
 pub mod result;
 pub mod promise;
