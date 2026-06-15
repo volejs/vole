@@ -60,6 +60,16 @@ declare module "vole:env" {
   export function entries(): Record<string, string>;
 
   /**
+   * Load variables from a `.env`-style file.
+   *
+   * `path` is required and must be a file path. If the file does not exist,
+   * the call throws.
+   *
+   * @param path File path, e.g. `/absolute/path/.env` or `./config/.env`.
+   */
+  export function load(path: string): void;
+
+  /**
    * Object-style facade for the same environment helpers.
    *
    * This is useful when passing the environment API around as a single value.
@@ -75,5 +85,7 @@ declare module "vole:env" {
     remove(name: string): void;
     /** See `entries`. */
     entries(): Record<string, string>;
+    /** See `load`. */
+    load(path: string): void;
   };
 }

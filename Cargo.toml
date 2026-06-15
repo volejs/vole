@@ -54,6 +54,8 @@ percent-encoding = "2.3"
 
 flate2 = "1.0"
 
+dotenvy = "0.15"
+
 libffi = "4.1"
 libloading = "0.8"
 

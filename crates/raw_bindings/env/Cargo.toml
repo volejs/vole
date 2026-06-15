@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 rquickjs = { workspace = true, features = ["futures", "loader"] }
+dotenvy = { workspace = true }
