@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use rquickjs::{
     atom::PredefinedAtom,
@@ -6,7 +6,10 @@ use rquickjs::{
     function::{Opt, This},
     Array, Class, Coerced, Ctx, Exception, FromJs, Function, Object, Result, Value,
 };
-use vole_core::time::TimeOrigin;
+use vole_core::{
+    json::{json_parse, json_stringify},
+    time::TimeOrigin,
+};
 
 #[derive(Clone)]
 struct PerformanceEntryRecord {
@@ -14,6 +17,7 @@ struct PerformanceEntryRecord {
     entry_type: &'static str,
     start_time: f64,
     duration: f64,
+    detail: Option<String>,
 }
 
 #[derive(Default)]
@@ -68,9 +72,9 @@ impl<'js> Performance {
         options: Opt<Value<'js>>,
     ) -> Result<Object<'js>> {
         let now = TimeOrigin::get_or_init(&ctx)?.now();
-        let start_time = match options.0.as_ref() {
-            Some(value) if !value.is_undefined() => parse_mark_start_time(&ctx, value, now)?,
-            _ => now,
+        let (start_time, detail) = match options.0.as_ref() {
+            Some(value) if !value.is_undefined() => parse_mark_options(&ctx, value, now)?,
+            _ => (now, None),
         };
 
         if start_time < 0.0 {
@@ -84,6 +88,7 @@ impl<'js> Performance {
             name: name.0,
             entry_type: PERFORMANCE_ENTRY_MARK,
             start_time,
+            detail,
             duration: 0.0,
         };
         self.push_entry(entry.clone());
@@ -98,8 +103,11 @@ impl<'js> Performance {
         end: Opt<Value<'js>>,
     ) -> Result<Object<'js>> {
         let now = TimeOrigin::get_or_init(&ctx)?.now();
+        let start_value = start.0.clone();
+        let end_value = end.0.clone();
         let (start_time, end_time) =
-            self.resolve_measure_inputs(&ctx, start.0, end.0, now)?;
+            self.resolve_measure_inputs(&ctx, start_value.clone(), end_value.clone(), now)?;
+        let detail = self.resolve_measure_detail(&ctx, start_value, end_value)?;
 
         let duration = end_time - start_time;
         let entry = PerformanceEntryRecord {
@@ -107,6 +115,7 @@ impl<'js> Performance {
             entry_type: PERFORMANCE_ENTRY_MEASURE,
             start_time,
             duration,
+            detail,
         };
         self.push_entry(entry.clone());
         entry_to_object(&ctx, &entry)
@@ -122,6 +131,35 @@ impl<'js> Performance {
             PERFORMANCE_ENTRY_MEASURE,
             name.0.map(|name| name.0),
         );
+    }
+
+    #[qjs(get)]
+    pub fn event_counts(&self, ctx: Ctx<'js>) -> Result<Object<'js>> {
+        let mut counts: HashMap<String, u32> = HashMap::new();
+        for entry in self.state.borrow().entries.iter() {
+            *counts.entry(entry.entry_type.to_string()).or_default() += 1;
+        }
+
+        let object = Object::new(ctx.clone())?;
+        for (key, value) in counts {
+            object.set(key, value)?;
+        }
+        Ok(object)
+    }
+
+    pub fn clear_resource_timings(&self) {
+        // 当前实现仅维护 mark/measure，暂不持有 resource timing 条目。
+    }
+
+    pub fn set_resource_timing_buffer_size(&self, ctx: Ctx<'js>, max_size: Coerced<f64>) -> Result<()> {
+        let max_size = max_size.0;
+        if !max_size.is_finite() || max_size <= 0.0 {
+            return Err(Exception::throw_range(
+                &ctx,
+                "Resource timing buffer size must be a finite positive number",
+            ));
+        }
+        Ok(())
     }
 
     pub fn get_entries(&self, ctx: Ctx<'js>) -> Result<Array<'js>> {
@@ -244,6 +282,25 @@ impl Performance {
             }
         }
     }
+
+    fn resolve_measure_detail<'js>(
+        &self,
+        ctx: &Ctx<'js>,
+        start: Option<Value<'js>>,
+        end: Option<Value<'js>>,
+    ) -> Result<Option<String>> {
+        if let Some(start) = start {
+            if is_measure_options(ctx, &start)? {
+                return parse_measure_detail(ctx, start);
+            }
+        }
+
+        if let Some(end) = end && is_measure_options(ctx, &end)? {
+            return parse_measure_detail(ctx, end);
+        }
+
+        Ok(None)
+    }
 }
 
 fn clear_entries(state: &mut PerformanceState, entry_type: &'static str, name: Option<String>) {
@@ -289,18 +346,18 @@ fn is_measure_options<'js>(ctx: &Ctx<'js>, value: &Value<'js>) -> Result<bool> {
         || !end_time.is_undefined()
 }
 
-fn parse_mark_start_time<'js>(
+fn parse_mark_options<'js>(
     ctx: &Ctx<'js>,
     value: &Value<'js>,
     fallback: f64,
-) -> Result<f64> {
+) -> Result<(f64, Option<String>)> {
     let object = value
         .as_object()
         .ok_or_else(|| Exception::throw_type(ctx, "PerformanceMarkOptions must be an object"))?;
 
     let raw = get_optional_property(ctx, &object, "startTime")?;
     if raw.is_undefined() {
-        return Ok(fallback);
+        return Ok((fallback, read_entry_detail(ctx, &object)?));
     }
 
     let start_time = Coerced::<f64>::from_js(ctx, raw)?.0;
@@ -310,7 +367,7 @@ fn parse_mark_start_time<'js>(
             "Performance mark startTime must not be negative",
         ));
     }
-    Ok(start_time)
+    Ok((start_time, read_entry_detail(ctx, &object)?))
 }
 
 fn parse_measure_options<'js>(
@@ -355,6 +412,26 @@ fn parse_measure_options<'js>(
     Ok((start, end))
 }
 
+fn parse_measure_detail<'js>(ctx: &Ctx<'js>, value: Value<'js>) -> Result<Option<String>> {
+    let object = value
+        .as_object()
+        .ok_or_else(|| Exception::throw_type(ctx, "Performance.measure options must be an object"))?;
+    read_entry_detail(ctx, &object)
+}
+
+fn read_entry_detail<'js>(ctx: &Ctx<'js>, object: &Object<'js>) -> Result<Option<String>> {
+    let detail = get_optional_property(ctx, object, "detail")?;
+    if detail.is_undefined() || detail.is_null() {
+        return Ok(None);
+    }
+
+    match json_stringify(ctx, detail) {
+        Ok(Some(json)) => Ok(Some(json)),
+        Ok(None) => Ok(None),
+        Err(_) => Ok(None),
+    }
+}
+
 fn get_optional_property<'js>(ctx: &Ctx<'js>, object: &Object<'js>, key: &str) -> Result<Value<'js>> {
     object.get::<_, Value>(key).or_else(|_| Ok(Value::new_undefined(ctx.clone())))
 }
@@ -380,7 +457,13 @@ fn entry_to_object<'js>(
     object.set("entryType", entry.entry_type)?;
     object.set("startTime", entry.start_time)?;
     object.set("duration", entry.duration)?;
-    object.set("detail", Value::new_undefined(ctx.clone()))?;
+    match &entry.detail {
+        Some(detail_json) => {
+            let detail = json_parse(ctx, detail_json.clone()).unwrap_or_else(|_| Value::new_undefined(ctx.clone()));
+            object.set("detail", detail)?;
+        }
+        None => object.set("detail", Value::new_undefined(ctx.clone()))?,
+    }
 
     let to_json = Function::new(ctx.clone(), |This(this): This<Object>| -> Result<Object> {
         let clone = Object::new(this.ctx())?;

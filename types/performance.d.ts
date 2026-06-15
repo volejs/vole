@@ -53,6 +53,10 @@ declare global {
     readonly entryType: "measure";
   }
 
+  interface PerformanceEntryMap {
+    [entryType: string]: number;
+  }
+
   interface Performance {
     /**
      * High-resolution monotonic timestamp since `timeOrigin`, in milliseconds.
@@ -76,11 +80,23 @@ declare global {
     getEntries(): PerformanceEntry[];
     getEntriesByType(type: string): PerformanceEntry[];
     getEntriesByName(name: string, type?: string): PerformanceEntry[];
+    /**
+     * Clear resource timing entries. For current runtime this is a compatible no-op.
+     */
+    clearResourceTimings(): void;
+    /**
+     * Configure resource timing buffer size. For current runtime this only validates input.
+     */
+    setResourceTimingBufferSize(maxSize: number): void;
 
     /**
      * Web standard `timeOrigin` value (Unix epoch in ms at context bootstrap).
      */
     readonly timeOrigin: number;
+    /**
+     * Readonly map of entry counts by entryType.
+     */
+    readonly eventCounts: PerformanceEntryMap;
     /**
      * Additional metadata form; Vole uses `{ timeOrigin }`.
      */
