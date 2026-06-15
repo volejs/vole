@@ -1,14 +1,14 @@
 use rquickjs::{
-    function::Rest, Array, ArrayBuffer, Class, Coerced, Ctx, Exception, FromJs, IntoJs, Promise,
-    Result, Value,
+    Array, ArrayBuffer, Class, Coerced, Ctx, Exception, FromJs, IntoJs, Promise, Result, Value,
+    function::Rest,
 };
 use rsa::pkcs8::{DecodePrivateKey, DecodePublicKey};
 
 use crate::cipher::{do_decrypt, do_encrypt};
 use crate::classes::CryptoKey;
 use crate::import_export::{export_jwk, import_jwk};
-use crate::key_material::{has_usage, KeyInfo, KeyMaterial};
-use crate::provider::{default_provider, CryptoProvider};
+use crate::key_material::{KeyInfo, KeyMaterial, has_usage};
+use crate::provider::{CryptoProvider, default_provider};
 use crate::utils::{js_value_to_json, value_to_bytes};
 use vole_core::error::{dom_exception_name, reject_dom_exception, throw_dom_exception};
 
@@ -60,14 +60,14 @@ pub(crate) fn crypto_subtle_wrap_key<'js>(
             Ok(bytes) => match ArrayBuffer::new_copy(ctx_clone, bytes) {
                 Ok(buffer) => {
                     let _ = resolve.call::<_, ()>((buffer,));
-                },
+                }
                 Err(_) => {
                     let _ = reject.call::<_, ()>(("wrapKey output failed",));
-                },
+                }
             },
             Err(err) => {
                 let _ = reject.call::<_, ()>((err,));
-            },
+            }
         }
     });
 
@@ -83,10 +83,8 @@ pub(crate) fn crypto_subtle_unwrap_key<'js>(
     let format = Coerced::<String>::from_js(&ctx, format)?.0;
     let wrapped_key = required_arg(&ctx, args.next(), "wrappedKey")?;
     let wrapped_key = value_to_bytes(&ctx, &wrapped_key)?;
-    let unwrapping_key = Class::<CryptoKey>::from_js(
-        &ctx,
-        required_arg(&ctx, args.next(), "unwrappingKey")?,
-    )?;
+    let unwrapping_key =
+        Class::<CryptoKey>::from_js(&ctx, required_arg(&ctx, args.next(), "unwrappingKey")?)?;
     let unwrap_algorithm = required_arg(&ctx, args.next(), "unwrapAlgorithm")?;
     let unwrap_algorithm_json = js_value_to_json(&ctx, &unwrap_algorithm)?;
     let unwrapped_key_algorithm = required_arg(&ctx, args.next(), "unwrappedKeyAlgorithm")?;
@@ -120,8 +118,9 @@ pub(crate) fn crypto_subtle_unwrap_key<'js>(
         let _guard = TaskGuard;
 
         let result: std::result::Result<Value<'js>, rquickjs::Error> = (|| {
-            let bytes = unwrap_key_bytes(&wrapped_key, &unwrapping_key_info, &unwrap_algorithm_json)
-                .map_err(|_| rquickjs::Error::Exception)?;
+            let bytes =
+                unwrap_key_bytes(&wrapped_key, &unwrapping_key_info, &unwrap_algorithm_json)
+                    .map_err(|_| rquickjs::Error::Exception)?;
             let key = import_unwrapped_key(
                 &ctx_clone,
                 &format,
@@ -136,21 +135,17 @@ pub(crate) fn crypto_subtle_unwrap_key<'js>(
         match result {
             Ok(value) => {
                 let _ = resolve.call::<_, ()>((value,));
-            },
+            }
             Err(_) => {
                 let _ = reject.call::<_, ()>(("unwrapKey failed",));
-            },
+            }
         }
     });
 
     Ok(promise)
 }
 
-fn required_arg<'js>(
-    ctx: &Ctx<'js>,
-    value: Option<Value<'js>>,
-    name: &str,
-) -> Result<Value<'js>> {
+fn required_arg<'js>(ctx: &Ctx<'js>, value: Option<Value<'js>>, name: &str) -> Result<Value<'js>> {
     value.ok_or_else(|| Exception::throw_type(ctx, &format!("{name} is required")))
 }
 
@@ -188,7 +183,10 @@ fn unwrap_key_bytes(
     do_decrypt(unwrapping_key_info, unwrap_algorithm, wrapped_key)
 }
 
-fn export_key_bytes(format: &str, key_info: &KeyInfo) -> std::result::Result<Vec<u8>, &'static str> {
+fn export_key_bytes(
+    format: &str,
+    key_info: &KeyInfo,
+) -> std::result::Result<Vec<u8>, &'static str> {
     match format {
         "raw" => match &key_info.material {
             KeyMaterial::Aes(bytes) | KeyMaterial::Hmac(bytes) => Ok(bytes.clone()),
@@ -197,7 +195,7 @@ fn export_key_bytes(format: &str, key_info: &KeyInfo) -> std::result::Result<Vec
         "jwk" => {
             let jwk = export_jwk(key_info).map_err(|_| "jwk export failed")?;
             serde_json::to_vec(&jwk).map_err(|_| "jwk serialization failed")
-        },
+        }
         "pkcs8" => match &key_info.material {
             KeyMaterial::RsaPrivate(bytes) => Ok(bytes.clone()),
             _ => Err("pkcs8 export requires a private key"),
@@ -230,28 +228,28 @@ fn import_unwrapped_key<'js>(
                 "AES-CBC" | "AES-CTR" | "AES-GCM" | "AES-KW" => {
                     validate_aes_key_length(ctx, bytes.len())?;
                     KeyMaterial::Aes(bytes)
-                },
+                }
                 "HMAC" => KeyMaterial::Hmac(bytes),
                 _ => return Err(rquickjs::Error::Exception),
             };
             (material, "secret")
-        },
+        }
         "jwk" => {
             let jwk = serde_json::from_slice::<serde_json::Value>(&bytes)
                 .map_err(|_| rquickjs::Error::Exception)?;
             let material = import_jwk(&jwk, &name, &stored_algorithm)?;
             (material, "secret")
-        },
+        }
         "pkcs8" => {
             let _private_key = rsa::RsaPrivateKey::from_pkcs8_der(&bytes)
                 .map_err(|_| rquickjs::Error::Exception)?;
             (KeyMaterial::RsaPrivate(bytes), "private")
-        },
+        }
         "spki" => {
             let _public_key = rsa::RsaPublicKey::from_public_key_der(&bytes)
                 .map_err(|_| rquickjs::Error::Exception)?;
             (KeyMaterial::RsaPublic(bytes), "public")
-        },
+        }
         _ => return Err(rquickjs::Error::Exception),
     };
 

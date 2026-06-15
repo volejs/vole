@@ -8,8 +8,8 @@
 //! hash the response body and compare against one of the listed hashes. A
 //! mismatch rejects the fetch promise with a `TypeError`.
 
-use vole_core::encoding::bytes_from_b64;
 use sha2::{Digest, Sha256, Sha384, Sha512};
+use vole_core::encoding::bytes_from_b64;
 
 #[derive(Clone, Copy, Debug)]
 pub enum SriAlgorithm {

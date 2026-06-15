@@ -1,7 +1,7 @@
 use rquickjs::{
+    Array, Class, Constructor, Ctx, Function, Object, Result, Value,
     class::{JsClass, Trace, Tracer, Writable},
     function::{Opt, This},
-    Array, Class, Constructor, Ctx, Function, Object, Result, Value,
 };
 
 #[derive(Clone, Debug)]
@@ -54,16 +54,15 @@ fn listener_key(type_: &str, capture: bool) -> String {
     }
 }
 
-fn listener_from_value<'js>(
-    ctx: &Ctx<'js>,
-    callback: Value<'js>,
-) -> Result<Option<Function<'js>>> {
+fn listener_from_value<'js>(ctx: &Ctx<'js>, callback: Value<'js>) -> Result<Option<Function<'js>>> {
     if callback.is_null() || callback.is_undefined() {
         return Ok(None);
     }
-    callback.as_function().cloned().map(Some).ok_or_else(|| {
-        rquickjs::Exception::throw_type(ctx, "Event listener must be a function")
-    })
+    callback
+        .as_function()
+        .cloned()
+        .map(Some)
+        .ok_or_else(|| rquickjs::Exception::throw_type(ctx, "Event listener must be a function"))
 }
 
 fn add_event_listener<'js>(

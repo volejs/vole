@@ -4,9 +4,9 @@ use std::{
 };
 
 use rquickjs::{
+    Array, ArrayBuffer, Ctx, Exception, Function, Object, Result, Type, Value,
     atom::PredefinedAtom,
     function::{Opt, This},
-    Array, ArrayBuffer, Ctx, Exception, Function, Object, Result, Type, Value,
 };
 use vole_core::{
     error::{dom_exception_name, throw_dom_exception},
@@ -44,13 +44,16 @@ fn clone_value<'js>(
     state: &mut CloneState<'js>,
 ) -> Result<Value<'js>> {
     match value.type_of() {
-        Type::Symbol | Type::Function | Type::Constructor | Type::Promise | Type::Proxy | Type::Module => {
-            throw_dom_exception(
-                ctx,
-                dom_exception_name::DATA_CLONE,
-                "Value cannot be cloned",
-            )
-        },
+        Type::Symbol
+        | Type::Function
+        | Type::Constructor
+        | Type::Promise
+        | Type::Proxy
+        | Type::Module => throw_dom_exception(
+            ctx,
+            dom_exception_name::DATA_CLONE,
+            "Value cannot be cloned",
+        ),
         Type::Array => clone_array(ctx, value, state),
         Type::Object | Type::Exception => clone_object_like(ctx, value, state),
         _ => Ok(value),
@@ -68,14 +71,21 @@ fn clone_array<'js>(
 
     let source = value.as_array().expect("value checked as array");
     let target = Array::new(ctx.clone())?;
-    state.seen.insert(value_hash(&value), target.clone().into_value());
+    state
+        .seen
+        .insert(value_hash(&value), target.clone().into_value());
 
     for index in 0..source.len() {
         let item: Value<'js> = source.get(index)?;
         target.set(index, clone_value(ctx, item, state)?)?;
     }
 
-    clone_string_properties(ctx, &source.clone().into_object(), &target.clone().into_object(), state)?;
+    clone_string_properties(
+        ctx,
+        &source.clone().into_object(),
+        &target.clone().into_object(),
+        state,
+    )?;
     Ok(target.into_value())
 }
 
@@ -89,9 +99,9 @@ fn clone_object_like<'js>(
     }
 
     if let Some(array_buffer) = ArrayBuffer::from_value(value.clone()) {
-        let bytes = array_buffer.as_bytes().ok_or_else(|| {
-            Exception::throw_type(ctx, "Cannot clone a detached ArrayBuffer")
-        })?;
+        let bytes = array_buffer
+            .as_bytes()
+            .ok_or_else(|| Exception::throw_type(ctx, "Cannot clone a detached ArrayBuffer"))?;
         return Ok(ArrayBuffer::new_copy(ctx.clone(), bytes)?.into_value());
     }
 
@@ -131,7 +141,9 @@ fn clone_plain_object<'js>(
     state: &mut CloneState<'js>,
 ) -> Result<Value<'js>> {
     let target = Object::new(ctx.clone())?;
-    state.seen.insert(value_hash(original), target.clone().into_value());
+    state
+        .seen
+        .insert(value_hash(original), target.clone().into_value());
     clone_string_properties(ctx, source, &target, state)?;
     Ok(target.into_value())
 }
@@ -142,21 +154,35 @@ fn clone_error_like<'js>(
     original: &Value<'js>,
     state: &mut CloneState<'js>,
 ) -> Result<Value<'js>> {
-    let name = source.get::<_, String>("name").unwrap_or_else(|_| "Error".to_string());
+    let name = source
+        .get::<_, String>("name")
+        .unwrap_or_else(|_| "Error".to_string());
     let message = source.get::<_, String>("message").unwrap_or_default();
 
     let target: Value<'js> = if name.ends_with("Error") && name != "Error" {
-        match ctx.globals().get::<_, rquickjs::function::Constructor>(name.as_str()) {
+        match ctx
+            .globals()
+            .get::<_, rquickjs::function::Constructor>(name.as_str())
+        {
             Ok(ctor) => ctor.construct((message.clone(),))?,
-            Err(_) => BasePrimordials::get(ctx)?.constructor_error.construct((message.clone(),))?,
+            Err(_) => BasePrimordials::get(ctx)?
+                .constructor_error
+                .construct((message.clone(),))?,
         }
     } else if is_dom_exception(ctx, source)? {
-        match ctx.globals().get::<_, rquickjs::function::Constructor>("DOMException") {
+        match ctx
+            .globals()
+            .get::<_, rquickjs::function::Constructor>("DOMException")
+        {
             Ok(ctor) => ctor.construct((message.clone(), name.clone()))?,
-            Err(_) => BasePrimordials::get(ctx)?.constructor_error.construct((message.clone(),))?,
+            Err(_) => BasePrimordials::get(ctx)?
+                .constructor_error
+                .construct((message.clone(),))?,
         }
     } else {
-        BasePrimordials::get(ctx)?.constructor_error.construct((message.clone(),))?
+        BasePrimordials::get(ctx)?
+            .constructor_error
+            .construct((message.clone(),))?
     };
 
     state.seen.insert(value_hash(original), target.clone());
@@ -201,9 +227,9 @@ fn clone_array_buffer_view<'js>(
     let buffer: ArrayBuffer<'js> = object.get("buffer")?;
     let offset: usize = object.get("byteOffset").unwrap_or(0);
     let length: usize = object.get("byteLength").unwrap_or(0);
-    let bytes = buffer.as_bytes().ok_or_else(|| {
-        Exception::throw_type(ctx, "Cannot clone a detached ArrayBuffer")
-    })?;
+    let bytes = buffer
+        .as_bytes()
+        .ok_or_else(|| Exception::throw_type(ctx, "Cannot clone a detached ArrayBuffer"))?;
     let end = offset.saturating_add(length).min(bytes.len());
     let cloned_buffer = ArrayBuffer::new_copy(ctx.clone(), &bytes[offset..end])?;
     let ctor: rquickjs::function::Constructor = object.get(PredefinedAtom::Constructor)?;
@@ -220,7 +246,9 @@ fn clone_set<'js>(
 ) -> Result<Value<'js>> {
     let ctor = BasePrimordials::get(ctx)?.constructor_set.clone();
     let target: Object<'js> = ctor.construct(())?;
-    state.seen.insert(value_hash(original), target.clone().into_value());
+    state
+        .seen
+        .insert(value_hash(original), target.clone().into_value());
 
     let values: Array<'js> = BasePrimordials::get(ctx)?
         .function_array_from
@@ -241,7 +269,9 @@ fn clone_map<'js>(
 ) -> Result<Value<'js>> {
     let ctor = BasePrimordials::get(ctx)?.constructor_map.clone();
     let target: Object<'js> = ctor.construct(())?;
-    state.seen.insert(value_hash(original), target.clone().into_value());
+    state
+        .seen
+        .insert(value_hash(original), target.clone().into_value());
 
     let entries: Array<'js> = BasePrimordials::get(ctx)?
         .function_array_from
@@ -299,10 +329,7 @@ fn is_dom_exception<'js>(ctx: &Ctx<'js>, object: &Object<'js>) -> Result<bool> {
     Ok(object.is_instance_of(&dom_exception))
 }
 
-fn reject_unsupported_transfer<'js>(
-    ctx: &Ctx<'js>,
-    options: Option<&Value<'js>>,
-) -> Result<()> {
+fn reject_unsupported_transfer<'js>(ctx: &Ctx<'js>, options: Option<&Value<'js>>) -> Result<()> {
     let Some(options) = options else {
         return Ok(());
     };

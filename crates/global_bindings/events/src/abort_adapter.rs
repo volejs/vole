@@ -1,7 +1,7 @@
 use rquickjs::{
+    Ctx, Exception, Function, JsLifetime, Object, Result, Value,
     class::{Trace, Tracer},
     function::{Constructor, This},
-    Ctx, Exception, Function, JsLifetime, Object, Result, Value,
 };
 
 /// Rust 侧的 `AbortSignal` 引用适配器。

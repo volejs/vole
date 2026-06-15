@@ -1,4 +1,4 @@
-use rquickjs::{loader::Loader, module::ModuleDef, Ctx, Error, Module};
+use rquickjs::{Ctx, Error, Module, loader::Loader, module::ModuleDef};
 use std::collections::HashMap;
 
 use crate::{vole_js_shim, vole_mod};
@@ -24,13 +24,12 @@ impl ModuleLoader {
             };
         }
 
-        insert_shim!(vole_modules, "env");
         insert_shim!(vole_modules, "ffi");
-        insert_shim!(vole_modules, "fs");
         insert_shim!(vole_modules, "path");
-        insert_shim!(vole_modules, "process");
-        insert_shim!(vole_modules, "shell");
-        insert_shim!(vole_modules, "spawn");
+        insert_shim!(vole_modules, "os");
+        insert_shim!(vole_modules, "os/env");
+        insert_shim!(vole_modules, "os/fs");
+        insert_shim!(vole_modules, "os/exec");
         insert_shim!(vole_modules, "test");
         insert_shim!(vole_modules, "until");
         insert_shim!(vole_modules, "wasm");

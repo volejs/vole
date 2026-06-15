@@ -1,15 +1,15 @@
-use vole_core::{option::Undefined, promise::ResolveablePromise};
 use rquickjs::{
+    Class, Ctx, Exception, JsLifetime, Object, Promise, Result, Value,
     class::Trace,
     prelude::{Opt, This},
-    Class, Ctx, Exception, JsLifetime, Object, Promise, Result, Value,
 };
+use vole_core::{option::Undefined, promise::ResolveablePromise};
 
 use crate::{
     queuing_strategy::QueuingStrategy,
     readable::stream::{
-        algorithms::{CancelAlgorithm, PullAlgorithm, StartAlgorithm},
         ReadableStream,
+        algorithms::{CancelAlgorithm, PullAlgorithm, StartAlgorithm},
     },
     writable::WritableStream,
 };
@@ -166,11 +166,11 @@ impl<'js> TransformStream<'js> {
             match start_fn.call::<_, Value>((This(transformer_obj), controller_class)) {
                 Ok(val) => {
                     start_promise.resolve(val)?;
-                },
+                }
                 Err(_) => {
                     let err = ctx.catch();
                     start_promise.reject(err)?;
-                },
+                }
             }
         } else {
             start_promise.resolve_undefined()?;
@@ -273,11 +273,11 @@ pub(crate) fn sink_close_algorithm<'js>(
                         )?;
                     }
                     Ok(Value::new_undefined(ctx))
-                },
+                }
                 Err(r) => {
                     controller::transform_stream_error(ctx.clone(), &sc, r.clone())?;
                     Err(ctx.throw(r))
-                },
+                }
             }
         },
     )

@@ -1,5 +1,5 @@
 /**
- * Child process spawn helper exposed by `vole:spawn`.
+ * Process spawn helper exposed by `vole:spawn`.
  *
  * Unlike `vole:shell`, this API starts a command directly and passes arguments
  * without shell interpolation.
@@ -8,14 +8,13 @@
  * ```ts
  * import { spawn } from "vole:spawn";
  *
- * const child = spawn("echo", ["hello", "vole"]);
- * console.log(child.pid);
+ * const proc = spawn("echo", ["hello", "vole"]);
+ * console.log(proc.pid);
  * ```
  *
  * @remarks
- * The current handle is intentionally minimal. The child is detached by the
- * backend and `kill()` currently reports whether termination was requested, not
- * whether the process has fully exited.
+ * The returned value is a lightweight process handle. `kill()` sends a
+ * termination signal and returns whether the request was accepted.
  */
 declare module "vole:spawn" {
   /** Spawn options. */
@@ -24,8 +23,8 @@ declare module "vole:spawn" {
     cwd?: string;
   }
 
-  /** Minimal detached child process handle. */
-  export interface ChildProcess {
+  /** Minimal process handle. */
+  export interface ProcessHandle {
     /** Operating-system process id. */
     pid: number;
     /**
@@ -49,5 +48,8 @@ declare module "vole:spawn" {
     command: string,
     args?: readonly string[],
     options?: SpawnOptions,
-  ): ChildProcess;
+  ): ProcessHandle;
+
+  /** Backward-compatible alias for existing imports. */
+  export type ChildProcess = ProcessHandle;
 }

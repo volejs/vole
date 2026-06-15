@@ -1,6 +1,8 @@
 use rquickjs::class::{JsClass, Trace, Tracer, Writable};
 use rquickjs::function::This;
-use rquickjs::{Array, Class, Constructor, Ctx, Exception, Function, IntoJs, Object, Result, Value};
+use rquickjs::{
+    Array, Class, Constructor, Ctx, Exception, Function, IntoJs, Object, Result, Value,
+};
 
 use crate::cipher::{crypto_subtle_decrypt, crypto_subtle_encrypt};
 use crate::derive::{crypto_subtle_derive_bits, crypto_subtle_derive_key};
@@ -114,7 +116,10 @@ impl<'js> JsClass<'js> for SubtleCrypto {
             "deriveKey",
             Function::new(ctx.clone(), crypto_subtle_derive_key)?,
         )?;
-        proto.set("wrapKey", Function::new(ctx.clone(), crypto_subtle_wrap_key)?)?;
+        proto.set(
+            "wrapKey",
+            Function::new(ctx.clone(), crypto_subtle_wrap_key)?,
+        )?;
         proto.set(
             "unwrapKey",
             Function::new(ctx.clone(), crypto_subtle_unwrap_key)?,

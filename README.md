@@ -110,7 +110,7 @@ vole install some-package
 - `vole:env`
 - `vole:fs`
 - `vole:path`
-- `vole:process`
+- `vole:process`（对外兼容 API；底层由 `vole:raw:os` 系列实现）
 - `vole:shell`
 - `vole:spawn`
 - `vole:ffi`

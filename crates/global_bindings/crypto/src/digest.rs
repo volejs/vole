@@ -1,6 +1,6 @@
 use rquickjs::{ArrayBuffer, Ctx, Promise, Result, Value};
 
-use crate::provider::{default_provider, CryptoProvider, HashAlgorithm};
+use crate::provider::{CryptoProvider, HashAlgorithm, default_provider};
 use crate::utils::{js_value_to_json, value_to_bytes};
 use vole_core::error::{dom_exception_name, reject_dom_exception};
 

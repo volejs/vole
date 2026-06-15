@@ -1,15 +1,15 @@
-use vole_core::{
-    option::Null,
-    promise::{
-        promise_rejected_with, promise_rejected_with_constructor, PromisePrimordials,
-        ResolveablePromise,
-    },
-};
 use rquickjs::{
+    Class, Ctx, Exception, JsLifetime, Promise, Result, Value,
     class::{JsClass, OwnedBorrow, OwnedBorrowMut, Trace},
     function::Constructor,
     prelude::{Opt, This},
-    Class, Ctx, Exception, JsLifetime, Promise, Result, Value,
+};
+use vole_core::{
+    option::Null,
+    promise::{
+        PromisePrimordials, ResolveablePromise, promise_rejected_with,
+        promise_rejected_with_constructor,
+    },
 };
 
 use crate::{
@@ -82,7 +82,7 @@ impl<'js> WritableStreamDefaultWriter<'js> {
                 Self::writable_stream_default_writer_get_desired_size(&OwnedBorrowMut::from_class(
                     stream.clone(),
                 ))
-            },
+            }
         }
     }
 
@@ -212,7 +212,7 @@ impl<'js> WritableStreamDefaultWriter<'js> {
 
                 // Set writer.[[closedPromise]] to a new promise.
                 (ready_promise, ResolveablePromise::new(ctx)?)
-            },
+            }
             WritableStreamState::Erroring(ref stored_error) => {
                 let ready_promise = ResolveablePromise::rejected_with(
                     &stream.promise_primordials,
@@ -221,14 +221,14 @@ impl<'js> WritableStreamDefaultWriter<'js> {
                 ready_promise.set_is_handled()?;
                 // Set writer.[[closedPromise]] to a new promise.
                 (ready_promise, ResolveablePromise::new(ctx)?)
-            },
+            }
             WritableStreamState::Closed => {
                 let promise =
                     ResolveablePromise::resolved_with_undefined(&stream.promise_primordials);
                 // Set writer.[[readyPromise]] to a promise resolved with undefined.
                 // Set writer.[[closedPromise]] to a promise resolved with undefined.
                 (promise.clone(), promise)
-            },
+            }
             // Let storedError be stream.[[storedError]].
             WritableStreamState::Errored(ref stored_error) => {
                 let promise = ResolveablePromise::rejected_with(
@@ -241,7 +241,7 @@ impl<'js> WritableStreamDefaultWriter<'js> {
                 // Set writer.[[closedPromise]] to a promise rejected with storedError.
                 // Set writer.[[closedPromise]].[[PromiseIsHandled]] to true.
                 (promise.clone(), promise)
-            },
+            }
         };
 
         let writer = Self {

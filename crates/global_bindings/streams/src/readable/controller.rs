@@ -1,6 +1,6 @@
 use rquickjs::{
-    class::{OwnedBorrowMut, Trace},
     Ctx, IntoJs, JsLifetime, Promise, Result, Value,
+    class::{OwnedBorrowMut, Trace},
 };
 
 use crate::readable::{
@@ -64,7 +64,7 @@ impl<'js> IntoJs<'js> for ReadableStreamControllerClass<'js> {
             Self::ReadableStreamByteController(c) => c.into_js(ctx),
             Self::Uninitialised => {
                 panic!("Tried to convert an uninitialised controller class to JS")
-            },
+            }
         }
     }
 }
@@ -93,11 +93,11 @@ impl<'js> ReadableStreamController<'js> for ReadableStreamControllerOwned<'js> {
             ReadableStreamControllerOwned::ReadableStreamDefaultController(r) => {
                 let (ctx, r) = default(ctx, r)?;
                 Ok((ctx, Self::ReadableStreamDefaultController(r)))
-            },
+            }
             ReadableStreamControllerOwned::ReadableStreamByteController(r) => {
                 let (ctx, r) = byob(ctx, r)?;
                 Ok((ctx, Self::ReadableStreamByteController(r)))
-            },
+            }
         }
     }
 
@@ -105,10 +105,10 @@ impl<'js> ReadableStreamController<'js> for ReadableStreamControllerOwned<'js> {
         match self {
             ReadableStreamControllerOwned::ReadableStreamDefaultController(c) => {
                 ReadableStreamControllerClass::ReadableStreamDefaultController(c.into_inner())
-            },
+            }
             ReadableStreamControllerOwned::ReadableStreamByteController(c) => {
                 ReadableStreamControllerClass::ReadableStreamByteController(c.into_inner())
-            },
+            }
         }
     }
 
@@ -118,15 +118,15 @@ impl<'js> ReadableStreamController<'js> for ReadableStreamControllerOwned<'js> {
                 ReadableStreamControllerOwned::ReadableStreamDefaultController(
                     OwnedBorrowMut::from_class(class),
                 )
-            },
+            }
             ReadableStreamControllerClass::ReadableStreamByteController(class) => {
                 ReadableStreamControllerOwned::ReadableStreamByteController(
                     OwnedBorrowMut::from_class(class),
                 )
-            },
+            }
             ReadableStreamControllerClass::Uninitialised => {
                 panic!("Tried to borrow an uninitialised controller class")
-            },
+            }
         }
     }
 

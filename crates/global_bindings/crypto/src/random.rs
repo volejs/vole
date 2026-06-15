@@ -1,11 +1,10 @@
 use rquickjs::{Ctx, Exception, Result, TypedArray, Value};
 
-use crate::provider::{default_provider, CryptoProvider};
+use crate::provider::{CryptoProvider, default_provider};
 use vole_core::{
     error::{dom_exception_name, throw_dom_exception},
     webidl::{
-        ensure_integer_typed_array_max_byte_length, integer_typed_array_kind,
-        IntegerTypedArrayKind,
+        IntegerTypedArrayKind, ensure_integer_typed_array_max_byte_length, integer_typed_array_kind,
     },
 };
 
@@ -16,10 +15,22 @@ pub(crate) fn crypto_random_uuid<'js>(ctx: Ctx<'js>) -> Result<String> {
     bytes[8] = (bytes[8] & 0x3f) | 0x80;
     Ok(format!(
         "{:02x}{:02x}{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
-        bytes[0], bytes[1], bytes[2], bytes[3],
-        bytes[4], bytes[5], bytes[6], bytes[7],
-        bytes[8], bytes[9], bytes[10], bytes[11],
-        bytes[12], bytes[13], bytes[14], bytes[15]
+        bytes[0],
+        bytes[1],
+        bytes[2],
+        bytes[3],
+        bytes[4],
+        bytes[5],
+        bytes[6],
+        bytes[7],
+        bytes[8],
+        bytes[9],
+        bytes[10],
+        bytes[11],
+        bytes[12],
+        bytes[13],
+        bytes[14],
+        bytes[15]
     ))
 }
 
@@ -35,21 +46,25 @@ pub(crate) fn crypto_get_random_values<'js>(
         IntegerTypedArrayKind::Int8 => fill_typed_array(&ctx, array.get::<TypedArray<'js, i8>>()?)?,
         IntegerTypedArrayKind::Uint8 | IntegerTypedArrayKind::Uint8Clamped => {
             fill_typed_array(&ctx, array.get::<TypedArray<'js, u8>>()?)?
-        },
-        IntegerTypedArrayKind::Int16 => fill_typed_array(&ctx, array.get::<TypedArray<'js, i16>>()?)?,
+        }
+        IntegerTypedArrayKind::Int16 => {
+            fill_typed_array(&ctx, array.get::<TypedArray<'js, i16>>()?)?
+        }
         IntegerTypedArrayKind::Uint16 => {
             fill_typed_array(&ctx, array.get::<TypedArray<'js, u16>>()?)?
-        },
-        IntegerTypedArrayKind::Int32 => fill_typed_array(&ctx, array.get::<TypedArray<'js, i32>>()?)?,
+        }
+        IntegerTypedArrayKind::Int32 => {
+            fill_typed_array(&ctx, array.get::<TypedArray<'js, i32>>()?)?
+        }
         IntegerTypedArrayKind::Uint32 => {
             fill_typed_array(&ctx, array.get::<TypedArray<'js, u32>>()?)?
-        },
+        }
         IntegerTypedArrayKind::BigInt64 => {
             fill_typed_array(&ctx, array.get::<TypedArray<'js, i64>>()?)?
-        },
+        }
         IntegerTypedArrayKind::BigUint64 => {
             fill_typed_array(&ctx, array.get::<TypedArray<'js, u64>>()?)?
-        },
+        }
     }
 
     Ok(array)
@@ -60,8 +75,7 @@ fn fill_typed_array<'js, T>(ctx: &Ctx<'js>, array: TypedArray<'js, T>) -> Result
         return Err(Exception::throw_type(ctx, "TypedArray buffer is detached"));
     };
     let byte_len = raw.len * std::mem::size_of::<T>();
-    let bytes =
-        unsafe { std::slice::from_raw_parts_mut(raw.ptr.as_ptr().cast::<u8>(), byte_len) };
+    let bytes = unsafe { std::slice::from_raw_parts_mut(raw.ptr.as_ptr().cast::<u8>(), byte_len) };
     fill_random_bytes(ctx, bytes)
 }
 

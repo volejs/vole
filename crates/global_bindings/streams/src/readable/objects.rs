@@ -1,6 +1,6 @@
 use rquickjs::{
-    class::{OwnedBorrowMut, Trace, Tracer},
     Result,
+    class::{OwnedBorrowMut, Trace, Tracer},
 };
 
 use crate::readable::{

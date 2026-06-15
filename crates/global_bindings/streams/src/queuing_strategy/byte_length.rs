@@ -1,4 +1,4 @@
-use rquickjs::{class::Trace, methods, Class, Ctx, JsLifetime, Result};
+use rquickjs::{Class, Ctx, JsLifetime, Result, class::Trace, methods};
 
 use super::{NativeSizeFunction, QueueingStrategyInit};
 

@@ -5,38 +5,32 @@ use std::{
 };
 
 use rquickjs::{
+    ArrayBuffer, Class, Ctx, Error, Function, IntoJs, JsLifetime, Promise, Result, Value,
     class::{OwnedBorrowMut, Trace, Tracer},
     function::Constructor,
     prelude::{List, OnceFn},
-    ArrayBuffer, Class, Ctx, Error, Function, IntoJs, JsLifetime, Promise, Result, Value,
 };
-use vole_core::promise::{upon_promise, ResolveablePromise};
+use vole_core::promise::{ResolveablePromise, upon_promise};
 
-use crate::{
-    readable::{
-        byob_reader::{ReadableStreamBYOBReader, ReadableStreamReadIntoRequest, ViewBytes},
-        byte_controller::{ReadableByteStreamController, ReadableByteStreamControllerOwned},
-        controller::{ReadableStreamController, ReadableStreamControllerClass},
-        default_controller::{
-            ReadableStreamDefaultController, ReadableStreamDefaultControllerOwned,
-        },
-        default_reader::{
-            ReadableStreamDefaultReader, ReadableStreamDefaultReaderOwned,
-            ReadableStreamReadRequest,
-        },
-        objects::{ReadableByteStreamObjects, ReadableStreamDefaultControllerObjects},
-        objects::{
-            ReadableStreamBYOBObjects, ReadableStreamClassObjects,
-            ReadableStreamDefaultReaderObjects, ReadableStreamObjects,
-        },
-        reader::{
-            ReadableStreamReader, ReadableStreamReaderClass, ReadableStreamReaderOwned,
-            UndefinedReader,
-        },
-        stream::{
-            algorithms::{CancelAlgorithm, PullAlgorithm, StartAlgorithm},
-            ReadableStream, ReadableStreamClass,
-        },
+use crate::readable::{
+    byob_reader::{ReadableStreamBYOBReader, ReadableStreamReadIntoRequest, ViewBytes},
+    byte_controller::{ReadableByteStreamController, ReadableByteStreamControllerOwned},
+    controller::{ReadableStreamController, ReadableStreamControllerClass},
+    default_controller::{ReadableStreamDefaultController, ReadableStreamDefaultControllerOwned},
+    default_reader::{
+        ReadableStreamDefaultReader, ReadableStreamDefaultReaderOwned, ReadableStreamReadRequest,
+    },
+    objects::{ReadableByteStreamObjects, ReadableStreamDefaultControllerObjects},
+    objects::{
+        ReadableStreamBYOBObjects, ReadableStreamClassObjects, ReadableStreamDefaultReaderObjects,
+        ReadableStreamObjects,
+    },
+    reader::{
+        ReadableStreamReader, ReadableStreamReaderClass, ReadableStreamReaderOwned, UndefinedReader,
+    },
+    stream::{
+        ReadableStream, ReadableStreamClass,
+        algorithms::{CancelAlgorithm, PullAlgorithm, StartAlgorithm},
     },
 };
 
@@ -262,7 +256,7 @@ impl<'js> ReadableStream<'js> {
                         }
 
                         Ok(())
-                    },
+                    }
                 }
             },
         )?;
@@ -569,10 +563,12 @@ impl<'js> ReadableStream<'js> {
                 let branch_2_controller = match branch_2.controller {
                     ReadableStreamControllerClass::ReadableStreamByteController(ref c) => {
                         OwnedBorrowMut::from_class(c.clone())
-                    },
+                    }
                     _ => {
-                        panic!("ReadableByteStream tee pull1 algorithm called without branch2 having a byte controller")
-                    },
+                        panic!(
+                            "ReadableByteStream tee pull1 algorithm called without branch2 having a byte controller"
+                        )
+                    }
                 };
 
                 Self::readable_byte_stream_pull_1_algorithm(
@@ -610,20 +606,24 @@ impl<'js> ReadableStream<'js> {
                 let branch_2_controller = match branch_2_controller {
                     ReadableStreamControllerClass::ReadableStreamByteController(ref c) => {
                         OwnedBorrowMut::from_class(c.clone())
-                    },
+                    }
                     _ => {
-                        panic!("ReadableByteStream tee pull2 algorithm called without branch2 having a byte controller")
-                    },
+                        panic!(
+                            "ReadableByteStream tee pull2 algorithm called without branch2 having a byte controller"
+                        )
+                    }
                 };
 
                 let branch_1 = OwnedBorrowMut::from_class(branch_1.get().cloned().expect("ReadableByteStream tee pull2 algorithm called without branch1 being initialised"));
                 let branch_1_controller = match branch_1.controller {
                     ReadableStreamControllerClass::ReadableStreamByteController(ref c) => {
                         OwnedBorrowMut::from_class(c.clone())
-                    },
+                    }
                     _ => {
-                        panic!("ReadableByteStream tee pull2 algorithm called without branch1 having a byte controller")
-                    },
+                        panic!(
+                            "ReadableByteStream tee pull2 algorithm called without branch1 having a byte controller"
+                        )
+                    }
                 };
                 Self::readable_byte_stream_pull_2_algorithm(
                     ctx,
@@ -790,7 +790,7 @@ impl<'js> ReadableStream<'js> {
                         cancel_promise.resolve_undefined()?;
                     }
                     Ok(())
-                },
+                }
                 Ok(()) => Ok(()),
             },
         )?;
@@ -847,7 +847,7 @@ impl<'js> ReadableStream<'js> {
                     cancel_promise.clone(),
                 )?;
                 new_reader
-            },
+            }
             ReadableStreamReaderClass::ReadableStreamDefaultReader(r) => r,
         };
 
@@ -1175,7 +1175,7 @@ impl<'js> ReadableStream<'js> {
                 )?;
 
                 new_reader
-            },
+            }
             ReadableStreamReaderClass::ReadableStreamBYOBReader(r) => r.clone(),
         };
 
@@ -1324,7 +1324,7 @@ impl<'js> ReadableStream<'js> {
 
                                     // Return.
                                     return Ok(());
-                                },
+                                }
                                 // Otherwise, let clonedChunk be cloneResult.[[Value]].
                                 Ok(cloned_chunk) => {
                                     // If byobCanceled is false, perform ! ReadableByteStreamControllerRespondWithNewView(byobBranch.[[controller]], chunk).
@@ -1346,7 +1346,7 @@ impl<'js> ReadableStream<'js> {
 
                                     // Perform ! ReadableByteStreamControllerEnqueue(otherBranch.[[controller]], clonedChunk).
                                     ReadableByteStreamController::readable_byte_stream_controller_enqueue(&ctx, other_objects, cloned_chunk)?;
-                                },
+                                }
                                 Err(err) => return Err(err),
                             };
                         } else if !byob_canceled {
@@ -1594,7 +1594,7 @@ impl<'js> ReadableStream<'js> {
                     view,
                     false,
                 )?
-            },
+            }
         };
 
         // Return a promise resolved with undefined.

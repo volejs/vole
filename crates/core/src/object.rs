@@ -18,8 +18,8 @@
 use std::collections::BTreeMap;
 
 use rquickjs::{
-    atom::PredefinedAtom, function::IntoJsFunc, prelude::Func, Array, Coerced, Ctx, Error,
-    Exception, FromJs, IntoAtom, IntoJs, Object, Result, Undefined, Value,
+    Array, Coerced, Ctx, Error, Exception, FromJs, IntoAtom, IntoJs, Object, Result, Undefined,
+    Value, atom::PredefinedAtom, function::IntoJsFunc, prelude::Func,
 };
 
 use crate::primordials::{BasePrimordials, Primordial};
@@ -39,7 +39,7 @@ pub trait ObjectExt<'js> {
     ) -> Result<V>;
     /// 把当前值转换为 object，失败时抛带 API 名称的 `TypeError`。
     fn into_object_or_throw(self, ctx: &Ctx<'js>, object_name: &'static str)
-        -> Result<Object<'js>>;
+    -> Result<Object<'js>>;
 }
 
 impl<'js> ObjectExt<'js> for Object<'js> {

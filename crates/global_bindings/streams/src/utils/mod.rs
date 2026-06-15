@@ -1,9 +1,8 @@
-use vole_core::option::Undefined;
 use rquickjs::{
-    class::{JsClass, OwnedBorrowMut},
     Class, Ctx, FromJs, IntoAtom, Object, Result, Value,
+    class::{JsClass, OwnedBorrowMut},
 };
-
+use vole_core::option::Undefined;
 
 // the trait used elsewhere in this repo accepts null values as 'None', which causes many web platform tests to fail as they
 // like to check that undefined is accepted and null isn't.

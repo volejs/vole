@@ -1,15 +1,15 @@
 use std::{
     collections::HashSet,
     sync::{
-        atomic::{AtomicU32, AtomicUsize, Ordering},
         Mutex, OnceLock,
+        atomic::{AtomicU32, AtomicUsize, Ordering},
     },
     time::Duration,
 };
 
 use rquickjs::{
-    function::{Opt, Rest},
     Coerced, Ctx, Function, Object, Result, Value,
+    function::{Opt, Rest},
 };
 use vole_core::error::ErrorExtensions;
 
@@ -30,9 +30,11 @@ pub fn task_begin() {
 }
 
 pub fn task_end() {
-    ACTIVE_TASKS.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |count| {
-        Some(count.saturating_sub(1))
-    }).ok();
+    ACTIVE_TASKS
+        .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |count| {
+            Some(count.saturating_sub(1))
+        })
+        .ok();
 }
 
 pub fn has_pending_tasks() -> bool {

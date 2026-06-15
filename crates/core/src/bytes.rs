@@ -19,11 +19,11 @@
 use std::rc::Rc;
 
 use rquickjs::{
+    ArrayBuffer, Coerced, Ctx, Error, Exception, FromJs, IntoJs, JsLifetime, Object, Result,
+    TypedArray, Value,
     atom::PredefinedAtom,
     class::{Trace, Tracer},
     function::Constructor,
-    ArrayBuffer, Coerced, Ctx, Error, Exception, FromJs, IntoJs, JsLifetime, Object, Result,
-    TypedArray, Value,
 };
 
 use crate::result::ResultExt;
@@ -89,7 +89,7 @@ impl<'js> IntoJs<'js> for ObjectBytes<'js> {
             ObjectBytes::DataView(buffer, offset, length) => {
                 let ctor: Constructor = ctx.globals().get(PredefinedAtom::DataView)?;
                 ctor.construct((buffer, offset, length))
-            },
+            }
             ObjectBytes::Vec(v) => v.into_js(ctx),
         }
     }
@@ -186,9 +186,9 @@ impl<'js> ObjectBytes<'js> {
             ObjectBytes::I64Array(array) => array.as_bytes(),
             ObjectBytes::F32Array(array) => array.as_bytes(),
             ObjectBytes::F64Array(array) => array.as_bytes(),
-            ObjectBytes::DataView(array_buffer, offset, length) => {
-                array_buffer.as_bytes().map(|b| &b[*offset..*offset + *length])
-            },
+            ObjectBytes::DataView(array_buffer, offset, length) => array_buffer
+                .as_bytes()
+                .map(|b| &b[*offset..*offset + *length]),
             ObjectBytes::Vec(bytes) => Some(bytes.as_ref()),
         }
         .ok_or(ERROR_MSG_ARRAY_BUFFER_DETACHED.into())
@@ -266,17 +266,57 @@ impl<'js> ObjectBytes<'js> {
         let buffer = match self {
             ObjectBytes::DataView(array_buffer, offset, length) => {
                 (array_buffer.clone(), *length, *offset)
-            },
-            ObjectBytes::U8Array(typed_array) => (typed_array.arraybuffer()?, typed_array.len(), typed_array.get("byteOffset")?),
-            ObjectBytes::I8Array(typed_array) => (typed_array.arraybuffer()?, typed_array.len(), typed_array.get("byteOffset")?),
-            ObjectBytes::U16Array(typed_array) => (typed_array.arraybuffer()?, typed_array.len() * 2, typed_array.get("byteOffset")?),
-            ObjectBytes::I16Array(typed_array) => (typed_array.arraybuffer()?, typed_array.len() * 2, typed_array.get("byteOffset")?),
-            ObjectBytes::U32Array(typed_array) => (typed_array.arraybuffer()?, typed_array.len() * 4, typed_array.get("byteOffset")?),
-            ObjectBytes::I32Array(typed_array) => (typed_array.arraybuffer()?, typed_array.len() * 4, typed_array.get("byteOffset")?),
-            ObjectBytes::U64Array(typed_array) => (typed_array.arraybuffer()?, typed_array.len() * 8, typed_array.get("byteOffset")?),
-            ObjectBytes::I64Array(typed_array) => (typed_array.arraybuffer()?, typed_array.len() * 8, typed_array.get("byteOffset")?),
-            ObjectBytes::F32Array(typed_array) => (typed_array.arraybuffer()?, typed_array.len() * 4, typed_array.get("byteOffset")?),
-            ObjectBytes::F64Array(typed_array) => (typed_array.arraybuffer()?, typed_array.len() * 8, typed_array.get("byteOffset")?),
+            }
+            ObjectBytes::U8Array(typed_array) => (
+                typed_array.arraybuffer()?,
+                typed_array.len(),
+                typed_array.get("byteOffset")?,
+            ),
+            ObjectBytes::I8Array(typed_array) => (
+                typed_array.arraybuffer()?,
+                typed_array.len(),
+                typed_array.get("byteOffset")?,
+            ),
+            ObjectBytes::U16Array(typed_array) => (
+                typed_array.arraybuffer()?,
+                typed_array.len() * 2,
+                typed_array.get("byteOffset")?,
+            ),
+            ObjectBytes::I16Array(typed_array) => (
+                typed_array.arraybuffer()?,
+                typed_array.len() * 2,
+                typed_array.get("byteOffset")?,
+            ),
+            ObjectBytes::U32Array(typed_array) => (
+                typed_array.arraybuffer()?,
+                typed_array.len() * 4,
+                typed_array.get("byteOffset")?,
+            ),
+            ObjectBytes::I32Array(typed_array) => (
+                typed_array.arraybuffer()?,
+                typed_array.len() * 4,
+                typed_array.get("byteOffset")?,
+            ),
+            ObjectBytes::U64Array(typed_array) => (
+                typed_array.arraybuffer()?,
+                typed_array.len() * 8,
+                typed_array.get("byteOffset")?,
+            ),
+            ObjectBytes::I64Array(typed_array) => (
+                typed_array.arraybuffer()?,
+                typed_array.len() * 8,
+                typed_array.get("byteOffset")?,
+            ),
+            ObjectBytes::F32Array(typed_array) => (
+                typed_array.arraybuffer()?,
+                typed_array.len() * 4,
+                typed_array.get("byteOffset")?,
+            ),
+            ObjectBytes::F64Array(typed_array) => (
+                typed_array.arraybuffer()?,
+                typed_array.len() * 8,
+                typed_array.get("byteOffset")?,
+            ),
             ObjectBytes::Vec(_) => return Ok(None),
         };
         Ok(Some(buffer))

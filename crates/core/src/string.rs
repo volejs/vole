@@ -40,8 +40,5 @@ pub fn get_lossy_string(value: Value<'_>) -> Result<String> {
         return string.to_string();
     }
 
-    Err(Exception::throw_type(
-        value.ctx(),
-        "value must be a string",
-    ))
+    Err(Exception::throw_type(value.ctx(), "value must be a string"))
 }

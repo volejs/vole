@@ -1,8 +1,8 @@
-use rquickjs::{
-    module::{Declarations, Exports, ModuleDef},
-    Ctx, Exception, Result,
-};
 use dotenvy;
+use rquickjs::{
+    Ctx, Exception, Result,
+    module::{Declarations, Exports, ModuleDef},
+};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::result::Result as StdResult;
@@ -13,13 +13,12 @@ fn resolve_env_file(path: String) -> PathBuf {
 
 fn apply_dotenv_file(dotenv_path: &Path) -> StdResult<(), String> {
     let path_display = dotenv_path.to_string_lossy();
-    let mut parsed = dotenvy::from_path_iter(dotenv_path).map_err(|err| {
-        format!("failed to parse env file {path_display}: {err}")
-    })?;
+    let mut parsed = dotenvy::from_path_iter(dotenv_path)
+        .map_err(|err| format!("failed to parse env file {path_display}: {err}"))?;
 
     for item in parsed.by_ref() {
-        let (key, value) = item
-            .map_err(|err| format!("failed to parse env entry in {path_display}: {err}"))?;
+        let (key, value) =
+            item.map_err(|err| format!("failed to parse env entry in {path_display}: {err}"))?;
         // SAFETY: key/value come from dotenvy and the process environment API accepts owned
         // string types provided by the parser.
         unsafe {
@@ -69,7 +68,10 @@ fn env_load(ctx: Ctx, path: String) -> Result<()> {
 
 fn validate_env_key<'js>(ctx: &Ctx<'js>, name: &str) -> Result<()> {
     if name.is_empty() {
-        return Err(Exception::throw_type(ctx, "Environment variable name must not be empty"));
+        return Err(Exception::throw_type(
+            ctx,
+            "Environment variable name must not be empty",
+        ));
     }
 
     if name.contains('\0') {
@@ -133,7 +135,7 @@ fn env_entries() -> HashMap<String, String> {
     std::env::vars().collect()
 }
 
-/// Native module exposing the low-level env operations used by the `vole:env` JS shim.
+/// Native module exposing the low-level env operations used by `vole:os/env`.
 pub struct EnvRawModule;
 
 impl ModuleDef for EnvRawModule {
@@ -168,13 +170,10 @@ impl ModuleDef for EnvRawModule {
             "__std_env_entries",
             rquickjs::Function::new(ctx.clone(), env_entries),
         )?;
-        exports.export("__std_env_load", rquickjs::Function::new(ctx.clone(), env_load))?;
+        exports.export(
+            "__std_env_load",
+            rquickjs::Function::new(ctx.clone(), env_load),
+        )?;
         Ok(())
     }
-}
-
-/// Legacy global init is now a no-op for `vole:env`.
-/// All env helpers are provided through the native module `vole:raw:env`.
-pub fn init(_ctx: &Ctx) -> Result<()> {
-    Ok(())
 }

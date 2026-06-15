@@ -18,13 +18,15 @@ impl StreamingDecoder {
     pub(crate) fn new(format: CompressionFormat) -> io::Result<Self> {
         match format {
             CompressionFormat::Gzip => Ok(Self::Gzip(flate2::write::GzDecoder::new(Vec::new()))),
-            CompressionFormat::Deflate => Ok(Self::Deflate(flate2::write::ZlibDecoder::new(
-                Vec::new(),
-            ))),
+            CompressionFormat::Deflate => {
+                Ok(Self::Deflate(flate2::write::ZlibDecoder::new(Vec::new())))
+            }
             CompressionFormat::DeflateRaw => Ok(Self::DeflateRaw(
                 flate2::write::DeflateDecoder::new(Vec::new()),
             )),
-            CompressionFormat::Brotli => Ok(Self::Brotli(brotlic::DecompressorWriter::new(Vec::new()))),
+            CompressionFormat::Brotli => {
+                Ok(Self::Brotli(brotlic::DecompressorWriter::new(Vec::new())))
+            }
         }
     }
 
@@ -47,22 +49,22 @@ impl StreamingDecoder {
                 decoder.write_all(input)?;
                 decoder.flush()?;
                 Ok(std::mem::take(decoder.get_mut()))
-            },
+            }
             Self::Deflate(decoder) => {
                 decoder.write_all(input)?;
                 decoder.flush()?;
                 Ok(std::mem::take(decoder.get_mut()))
-            },
+            }
             Self::DeflateRaw(decoder) => {
                 decoder.write_all(input)?;
                 decoder.flush()?;
                 Ok(std::mem::take(decoder.get_mut()))
-            },
+            }
             Self::Brotli(decoder) => {
                 decoder.write_all(input)?;
                 decoder.flush()?;
                 Ok(std::mem::take(decoder.get_mut()))
-            },
+            }
         }
     }
 

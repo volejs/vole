@@ -12,15 +12,16 @@ pub(crate) use byob_reader::{ArrayConstructorPrimordials, ReadableStreamBYOBRead
 pub use byte_controller::ReadableByteStreamController;
 pub(crate) use byte_controller::ReadableStreamBYOBRequest;
 pub use byte_controller::{
-    readable_byte_stream_controller_close_stream, readable_byte_stream_controller_enqueue_bytes,
-    readable_byte_stream_controller_enqueue_bytes_borrowed, ReadableByteStreamControllerClass,
+    ReadableByteStreamControllerClass, readable_byte_stream_controller_close_stream,
+    readable_byte_stream_controller_enqueue_bytes,
+    readable_byte_stream_controller_enqueue_bytes_borrowed,
 };
 pub(crate) use default_controller::ReadableStreamDefaultController;
 pub use default_controller::{
+    NativePull, NativePullFn, NativePullResult, ReadableStreamDefaultControllerClass,
     readable_stream_default_controller_close_stream,
     readable_stream_default_controller_enqueue_value,
-    readable_stream_default_controller_error_stream, NativePull, NativePullFn, NativePullResult,
-    ReadableStreamDefaultControllerClass,
+    readable_stream_default_controller_error_stream,
 };
 pub(crate) use default_reader::ReadableStreamDefaultReader;
 pub(crate) use iterator::IteratorPrimordials;

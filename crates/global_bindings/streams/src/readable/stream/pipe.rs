@@ -4,17 +4,17 @@ use std::{
     sync::atomic::{AtomicBool, Ordering},
 };
 
+use rquickjs::{
+    Coerced, Ctx, Error, FromJs, Function, Promise, Result, Value,
+    class::{OwnedBorrow, Trace},
+    prelude::{OnceFn, This},
+};
 use vole_core::{
     option::Undefined,
     promise::{
-        promise_resolved_with, upon_promise, upon_promise_fulfilment, PromisePrimordials,
-        ResolveablePromise,
+        PromisePrimordials, ResolveablePromise, promise_resolved_with, upon_promise,
+        upon_promise_fulfilment,
     },
-};
-use rquickjs::{
-    class::{OwnedBorrow, Trace},
-    prelude::{OnceFn, This},
-    Coerced, Ctx, Error, FromJs, Function, Promise, Result, Value,
 };
 
 use crate::{

@@ -26,7 +26,7 @@ import {
   __fs_open,
   FileHandle,
   Stats,
-} from "vole:raw:fs";
+} from "vole:raw:os/fs";
 
 function encodeData(data) {
   if (data instanceof Uint8Array) {
@@ -43,8 +43,6 @@ function encodeData(data) {
   }
   return new Uint8Array(0);
 }
-
-// --- Synchronous path-based API ---
 
 export function readFileSync(path) {
   return __fs_readFileSync(path);
@@ -94,8 +92,6 @@ export function realPathSync(path) {
   return __fs_realPathSync(path);
 }
 
-// --- Asynchronous path-based API (real async tokio::fs implementations) ---
-
 export async function readFile(path) {
   return __fs_readFile(path);
 }
@@ -132,8 +128,8 @@ export async function remove(path) {
   return __fs_remove(path);
 }
 
-export async function rename(oldPath, newPath) {
-  return __fs_rename(oldPath, newPath);
+export async function rename(path, newPath) {
+  return __fs_rename(path, newPath);
 }
 
 export async function copyFile(src, dest) {
@@ -143,8 +139,6 @@ export async function copyFile(src, dest) {
 export async function realPath(path) {
   return __fs_realPath(path);
 }
-
-// --- File-handle API (merged from the old vole:file module) ---
 
 export async function open(path, options = {}) {
   return __fs_open(path, options);

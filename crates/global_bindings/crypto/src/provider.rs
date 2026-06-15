@@ -1,9 +1,9 @@
 use aes::cipher::{
-    generic_array::GenericArray, BlockDecrypt, BlockEncrypt, KeyInit as BlockKeyInit,
+    BlockDecrypt, BlockEncrypt, KeyInit as BlockKeyInit, generic_array::GenericArray,
 };
 use aes_gcm::{
-    aead::{Aead, Payload},
     Aes128Gcm, Aes256Gcm,
+    aead::{Aead, Payload},
 };
 use hmac::{Hmac, Mac};
 use sha1::{Digest, Sha1};
@@ -126,22 +126,22 @@ impl CryptoProvider for RustCryptoProvider {
                 let mut hasher = Sha1::new();
                 hasher.update(data);
                 hasher.finalize().to_vec()
-            },
+            }
             HashAlgorithm::Sha256 => {
                 let mut hasher = Sha256::new();
                 hasher.update(data);
                 hasher.finalize().to_vec()
-            },
+            }
             HashAlgorithm::Sha384 => {
                 let mut hasher = Sha384::new();
                 hasher.update(data);
                 hasher.finalize().to_vec()
-            },
+            }
             HashAlgorithm::Sha512 => {
                 let mut hasher = Sha512::new();
                 hasher.update(data);
                 hasher.finalize().to_vec()
-            },
+            }
         }
     }
 
@@ -154,32 +154,32 @@ impl CryptoProvider for RustCryptoProvider {
         match algorithm {
             HashAlgorithm::Sha1 => {
                 type HmacSha = Hmac<Sha1>;
-                let mut mac =
-                    <HmacSha as Mac>::new_from_slice(key).map_err(|_| CryptoError::InvalidLength)?;
+                let mut mac = <HmacSha as Mac>::new_from_slice(key)
+                    .map_err(|_| CryptoError::InvalidLength)?;
                 mac.update(data);
                 Ok(mac.finalize().into_bytes().to_vec())
-            },
+            }
             HashAlgorithm::Sha256 => {
                 type HmacSha = Hmac<Sha256>;
-                let mut mac =
-                    <HmacSha as Mac>::new_from_slice(key).map_err(|_| CryptoError::InvalidLength)?;
+                let mut mac = <HmacSha as Mac>::new_from_slice(key)
+                    .map_err(|_| CryptoError::InvalidLength)?;
                 mac.update(data);
                 Ok(mac.finalize().into_bytes().to_vec())
-            },
+            }
             HashAlgorithm::Sha384 => {
                 type HmacSha = Hmac<Sha384>;
-                let mut mac =
-                    <HmacSha as Mac>::new_from_slice(key).map_err(|_| CryptoError::InvalidLength)?;
+                let mut mac = <HmacSha as Mac>::new_from_slice(key)
+                    .map_err(|_| CryptoError::InvalidLength)?;
                 mac.update(data);
                 Ok(mac.finalize().into_bytes().to_vec())
-            },
+            }
             HashAlgorithm::Sha512 => {
                 type HmacSha = Hmac<Sha512>;
-                let mut mac =
-                    <HmacSha as Mac>::new_from_slice(key).map_err(|_| CryptoError::InvalidLength)?;
+                let mut mac = <HmacSha as Mac>::new_from_slice(key)
+                    .map_err(|_| CryptoError::InvalidLength)?;
                 mac.update(data);
                 Ok(mac.finalize().into_bytes().to_vec())
-            },
+            }
         }
     }
 
@@ -270,21 +270,24 @@ fn aes_cbc_encrypt(
         16 => {
             use aes::Aes128;
             use cbc::Encryptor;
-            use cipher::{block_padding::Pkcs7, BlockEncryptMut, KeyIvInit};
-            Ok(Encryptor::<Aes128>::new(key.into(), iv.into()).encrypt_padded_vec_mut::<Pkcs7>(data))
-        },
+            use cipher::{BlockEncryptMut, KeyIvInit, block_padding::Pkcs7};
+            Ok(Encryptor::<Aes128>::new(key.into(), iv.into())
+                .encrypt_padded_vec_mut::<Pkcs7>(data))
+        }
         24 => {
             use aes::Aes192;
             use cbc::Encryptor;
-            use cipher::{block_padding::Pkcs7, BlockEncryptMut, KeyIvInit};
-            Ok(Encryptor::<Aes192>::new(key.into(), iv.into()).encrypt_padded_vec_mut::<Pkcs7>(data))
-        },
+            use cipher::{BlockEncryptMut, KeyIvInit, block_padding::Pkcs7};
+            Ok(Encryptor::<Aes192>::new(key.into(), iv.into())
+                .encrypt_padded_vec_mut::<Pkcs7>(data))
+        }
         32 => {
             use aes::Aes256;
             use cbc::Encryptor;
-            use cipher::{block_padding::Pkcs7, BlockEncryptMut, KeyIvInit};
-            Ok(Encryptor::<Aes256>::new(key.into(), iv.into()).encrypt_padded_vec_mut::<Pkcs7>(data))
-        },
+            use cipher::{BlockEncryptMut, KeyIvInit, block_padding::Pkcs7};
+            Ok(Encryptor::<Aes256>::new(key.into(), iv.into())
+                .encrypt_padded_vec_mut::<Pkcs7>(data))
+        }
         _ => Err(CryptoError::InvalidLength),
     }
 }
@@ -301,27 +304,27 @@ fn aes_cbc_decrypt(
         16 => {
             use aes::Aes128;
             use cbc::Decryptor;
-            use cipher::{block_padding::Pkcs7, BlockDecryptMut, KeyIvInit};
+            use cipher::{BlockDecryptMut, KeyIvInit, block_padding::Pkcs7};
             Decryptor::<Aes128>::new(key.into(), iv.into())
                 .decrypt_padded_vec_mut::<Pkcs7>(data)
                 .map_err(|_| CryptoError::OperationFailed)
-        },
+        }
         24 => {
             use aes::Aes192;
             use cbc::Decryptor;
-            use cipher::{block_padding::Pkcs7, BlockDecryptMut, KeyIvInit};
+            use cipher::{BlockDecryptMut, KeyIvInit, block_padding::Pkcs7};
             Decryptor::<Aes192>::new(key.into(), iv.into())
                 .decrypt_padded_vec_mut::<Pkcs7>(data)
                 .map_err(|_| CryptoError::OperationFailed)
-        },
+        }
         32 => {
             use aes::Aes256;
             use cbc::Decryptor;
-            use cipher::{block_padding::Pkcs7, BlockDecryptMut, KeyIvInit};
+            use cipher::{BlockDecryptMut, KeyIvInit, block_padding::Pkcs7};
             Decryptor::<Aes256>::new(key.into(), iv.into())
                 .decrypt_padded_vec_mut::<Pkcs7>(data)
                 .map_err(|_| CryptoError::OperationFailed)
-        },
+        }
         _ => Err(CryptoError::InvalidLength),
     }
 }
@@ -339,15 +342,27 @@ fn aes_gcm_encrypt(
         16 => {
             let cipher = Aes128Gcm::new(aes_gcm::Key::<Aes128Gcm>::from_slice(key));
             cipher
-                .encrypt(aes_gcm::Nonce::from_slice(iv), Payload { msg: data, aad: additional_data })
+                .encrypt(
+                    aes_gcm::Nonce::from_slice(iv),
+                    Payload {
+                        msg: data,
+                        aad: additional_data,
+                    },
+                )
                 .map_err(|_| CryptoError::OperationFailed)
-        },
+        }
         32 => {
             let cipher = Aes256Gcm::new(aes_gcm::Key::<Aes256Gcm>::from_slice(key));
             cipher
-                .encrypt(aes_gcm::Nonce::from_slice(iv), Payload { msg: data, aad: additional_data })
+                .encrypt(
+                    aes_gcm::Nonce::from_slice(iv),
+                    Payload {
+                        msg: data,
+                        aad: additional_data,
+                    },
+                )
                 .map_err(|_| CryptoError::OperationFailed)
-        },
+        }
         _ => Err(CryptoError::InvalidLength),
     }
 }
@@ -365,15 +380,27 @@ fn aes_gcm_decrypt(
         16 => {
             let cipher = Aes128Gcm::new(aes_gcm::Key::<Aes128Gcm>::from_slice(key));
             cipher
-                .decrypt(aes_gcm::Nonce::from_slice(iv), Payload { msg: data, aad: additional_data })
+                .decrypt(
+                    aes_gcm::Nonce::from_slice(iv),
+                    Payload {
+                        msg: data,
+                        aad: additional_data,
+                    },
+                )
                 .map_err(|_| CryptoError::OperationFailed)
-        },
+        }
         32 => {
             let cipher = Aes256Gcm::new(aes_gcm::Key::<Aes256Gcm>::from_slice(key));
             cipher
-                .decrypt(aes_gcm::Nonce::from_slice(iv), Payload { msg: data, aad: additional_data })
+                .decrypt(
+                    aes_gcm::Nonce::from_slice(iv),
+                    Payload {
+                        msg: data,
+                        aad: additional_data,
+                    },
+                )
                 .map_err(|_| CryptoError::OperationFailed)
-        },
+        }
         _ => Err(CryptoError::InvalidLength),
     }
 }
@@ -413,7 +440,12 @@ where
     for chunk in data.chunks(16) {
         let mut keystream = GenericArray::clone_from_slice(&counter_block);
         cipher.encrypt_block(&mut keystream);
-        output.extend(chunk.iter().zip(keystream.iter()).map(|(byte, key)| *byte ^ *key));
+        output.extend(
+            chunk
+                .iter()
+                .zip(keystream.iter())
+                .map(|(byte, key)| *byte ^ *key),
+        );
         increment_counter_bits(&mut counter_block, counter_length);
     }
 

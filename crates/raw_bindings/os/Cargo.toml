@@ -1,8 +1,9 @@
 [package]
-name = "vole-raw-env"
+name = "vole-raw-os"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 rquickjs = { workspace = true, features = ["futures", "loader"] }
 dotenvy = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time", "fs", "io-util", "sync"] }

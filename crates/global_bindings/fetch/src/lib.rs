@@ -6,14 +6,14 @@ use self::{
     request::Request,
     response::Response,
 };
-use vole_global_blob::Blob;
 use crate::http::HTTP_CLIENT;
+use rquickjs::{Class, Ctx, Result};
 use vole_core::{
     class::{CustomInspectExtension, WebIdlIteratorExtension},
     primordials::{BasePrimordials, Primordial},
     result::ResultExt,
 };
-use rquickjs::{Class, Ctx, Result};
+use vole_global_blob::Blob;
 
 pub(crate) mod abort;
 pub(crate) mod body_helpers;

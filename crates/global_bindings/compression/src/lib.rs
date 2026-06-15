@@ -1,11 +1,11 @@
 use std::io;
 
 use rquickjs::{
+    Class, Coerced, Constructor, Ctx, Exception, Function, JsLifetime, Object, Result, TypedArray,
+    Value,
     atom::PredefinedAtom,
     class::{JsClass, Trace, Tracer, Writable},
     function::{Opt, This},
-    Class, Coerced, Constructor, Ctx, Exception, Function, JsLifetime, Object, Result, TypedArray,
-    Value,
 };
 use vole_core::bytes::ObjectBytes;
 

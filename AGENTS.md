@@ -112,7 +112,7 @@ known runtime differences.
 | fs      | vole:fs      | Implemented | Path-based sync/async + file-handle open/read/write/seek |
 | http    | vole:net/http    | Implemented | Client request + axum server with JS handler callbacks   |
 | path    | vole:path    | Implemented | Cross-platform path helpers                              |
-| process | vole:process | Implemented | exit/abort/cwd/argv/stdout/stderr/stdin/pid/platform     |
+| process | vole:process | Implemented | compatibility wrapper；底层能力来自 `vole:raw:os` 系列 |
 | shell   | vole:shell   | Implemented | `exec()` / `execSync()`                                  |
 | socket  | vole:net/socket  | Implemented | Unix domain socket (Unix only)                           |
 | spawn   | vole:spawn   | Implemented | `spawn()` child process                                  |

@@ -1,11 +1,13 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 use super::{
-    headers::{Headers, HeadersGuard},
     Blob, FormData, MIME_TYPE_FORM_DATA, MIME_TYPE_FORM_URLENCODED, MIME_TYPE_JSON_STATIC,
     MIME_TYPE_OCTET_STREAM, MIME_TYPE_TEXT,
+    headers::{Headers, HeadersGuard},
 };
+use crate::abort::AbortSignal;
 use crate::body_helpers::{self, strip_bom};
+use crate::ctx::CtxExtension;
 use crate::{body_helpers::collect_readable_stream, utils::BodyDrain};
 use http_body::Body as _;
 use http_body_util::BodyExt;
@@ -13,38 +15,36 @@ use hyper::{
     body::Incoming,
     header::{CONTENT_ENCODING, CONTENT_TYPE, LOCATION},
 };
-use crate::abort::AbortSignal;
-use crate::ctx::CtxExtension;
-use vole_global_compression::StreamingDecoder;
-use vole_core::json::{parse::json_parse, stringify::json_stringify};
-use vole_global_streams::{
-    readable_stream_default_controller_close_stream,
-    readable_stream_default_controller_enqueue_value,
-    readable_stream_default_controller_error_stream,
-    CancelAlgorithm, NativePullResult, PullAlgorithm, ReadableStream,
-    ReadableStreamControllerClass, ReadableStreamDefaultControllerClass,
-};
-use vole_global_url::{url_class::URL, url_search_params::URLSearchParams};
-use vole_core::{bytes::ObjectBytes, mc_oneshot};
-use vole_core::promise::ResolveablePromise;
 use rquickjs::{
+    ArrayBuffer, Class, Coerced, Ctx, Exception, FromJs, IntoJs, JsLifetime, Object, Promise,
+    Result, TypedArray, Value,
     atom::PredefinedAtom,
     class::{Trace, Tracer},
     function::Opt,
     prelude::This,
-    ArrayBuffer, Class, Coerced, Ctx, Exception, FromJs, IntoJs, JsLifetime, Object, Promise,
-    Result, TypedArray, Value,
 };
 use std::{
     pin::Pin,
     rc::Rc,
     sync::{
-        atomic::{AtomicBool, Ordering},
         Arc, RwLock,
+        atomic::{AtomicBool, Ordering},
     },
     task::{Context, Poll, Waker},
     time::Instant,
 };
+use vole_core::json::{parse::json_parse, stringify::json_stringify};
+use vole_core::promise::ResolveablePromise;
+use vole_core::{bytes::ObjectBytes, mc_oneshot};
+use vole_global_compression::StreamingDecoder;
+use vole_global_streams::{
+    CancelAlgorithm, NativePullResult, PullAlgorithm, ReadableStream,
+    ReadableStreamControllerClass, ReadableStreamDefaultControllerClass,
+    readable_stream_default_controller_close_stream,
+    readable_stream_default_controller_enqueue_value,
+    readable_stream_default_controller_error_stream,
+};
+use vole_global_url::{url_class::URL, url_search_params::URLSearchParams};
 
 /// A validated HTTP status code (200-599 per WHATWG Fetch spec).
 #[derive(Clone, Copy)]
@@ -342,7 +342,7 @@ impl<'js> Response<'js> {
                 let stream = create_body_stream(&ctx, incoming, content_encoding)?;
                 *self.body_stream.write().unwrap() = Some(stream.clone());
                 Ok(stream)
-            },
+            }
             // Per WHATWG Fetch spec, body should be null for null body responses
             BodyVariant::Empty => Ok(Value::new_null(ctx)),
             BodyVariant::Provided(None) => {
@@ -350,7 +350,7 @@ impl<'js> Response<'js> {
                 let stream = body_helpers::create_disturbed_stream(&ctx)?;
                 *self.body_stream.write().unwrap() = Some(stream.clone());
                 Ok(stream)
-            },
+            }
             BodyVariant::Provided(Some(value)) => {
                 // If already a ReadableStream, return it directly
                 if let Some(stream) = value
@@ -367,7 +367,7 @@ impl<'js> Response<'js> {
                 let stream = body_helpers::create_body_value_stream(&ctx, body_value)?;
                 *self.body_stream.write().unwrap() = Some(stream.clone());
                 Ok(stream)
-            },
+            }
         }
     }
 
@@ -429,7 +429,7 @@ impl<'js> Response<'js> {
                         Ok(s) => s,
                         Err(e) => String::from_utf8_lossy(e.as_bytes()).into_owned(),
                     })
-                },
+                }
                 None => Ok(String::new()),
             }
         })
@@ -568,7 +568,7 @@ impl<'js> Response<'js> {
                     headers: Class::<Headers>::instance(ctx, self.headers.borrow().clone())?,
                     abort_receiver: self.abort_receiver.clone(),
                 });
-            },
+            }
             BodyVariant::Provided(provided) => {
                 let Some(provided) = provided else {
                     return Err(Exception::throw_type(
@@ -605,7 +605,7 @@ impl<'js> Response<'js> {
                     });
                 }
                 BodyVariant::Provided(Some(provided.clone()))
-            },
+            }
             BodyVariant::Empty => BodyVariant::Empty,
         };
         drop(body);
@@ -646,10 +646,9 @@ impl<'js> Response<'js> {
 
     #[qjs(static, rename = "json")]
     fn json_static(ctx: Ctx<'js>, body: Value<'js>, options: Opt<Value<'js>>) -> Result<Self> {
-        let options: Option<Object<'js>> =
-            options
-                .0
-                .and_then(|v| if v.is_object() { v.into_object() } else { None });
+        let options: Option<Object<'js>> = options
+            .0
+            .and_then(|v| if v.is_object() { v.into_object() } else { None });
         let mut status = 200;
         let mut status_text = None;
 
@@ -698,7 +697,7 @@ impl<'js> Response<'js> {
                 // `\uXXXX` escapes produced by json_stringify.
                 let bytes = v.into_bytes();
                 BodyVariant::Provided(Some(TypedArray::new(ctx.clone(), bytes)?.into_value()))
-            },
+            }
             None => return Err(Exception::throw_type(&ctx, "Failed to convert JSON string")),
         };
 
@@ -718,11 +717,7 @@ impl<'js> Response<'js> {
     }
 
     #[qjs(static)]
-    fn redirect(
-        ctx: Ctx<'js>,
-        url: Value<'js>,
-        status: Opt<u16>,
-    ) -> Result<Self> {
+    fn redirect(ctx: Ctx<'js>, url: Value<'js>, status: Opt<u16>) -> Result<Self> {
         let status = status.0.unwrap_or(302_u16);
 
         // Validate redirect status (301, 302, 303, 307, 308 per WHATWG Fetch spec)
@@ -918,16 +913,16 @@ impl<'js> Response<'js> {
                         return Ok(Some(decompressed));
                     }
                     return Ok(Some(raw.into()));
-                },
+                }
                 BodyVariant::Empty => return Ok(None),
                 BodyVariant::Provided(None) => {
-                    return Err(Exception::throw_type(ctx, "Body is already read"))
-                },
+                    return Err(Exception::throw_type(ctx, "Body is already read"));
+                }
                 BodyVariant::Provided(Some(_)) => {
                     // Fall through to take_provided
                     drop(body_guard);
                     return take_provided(ctx, &self.body).await;
-                },
+                }
             }
         }
 
@@ -946,8 +941,8 @@ impl<'js> Response<'js> {
             match &*body_guard {
                 BodyVariant::Incoming(incoming, enc) => Some((incoming.clone(), enc.clone())),
                 BodyVariant::Provided(None) => {
-                    return Err(Exception::throw_type(ctx, "Body is already read"))
-                },
+                    return Err(Exception::throw_type(ctx, "Body is already read"));
+                }
                 BodyVariant::Empty => return Ok(None),
                 BodyVariant::Provided(Some(_)) => None,
             }
@@ -999,7 +994,9 @@ async fn take_incoming<'js>(
         .await
         .map_err(|e| Exception::throw_message(ctx, &e.to_string()))?;
     let raw = collected.to_bytes();
-    if let Some(mut dec) = content_encoding.and_then(|enc| StreamingDecoder::from_encoding(enc).ok()) {
+    if let Some(mut dec) =
+        content_encoding.and_then(|enc| StreamingDecoder::from_encoding(enc).ok())
+    {
         let mut decompressed = dec
             .decompress_chunk(&raw)
             .map_err(|e| Exception::throw_message(ctx, &e.to_string()))?;
@@ -1065,7 +1062,7 @@ async fn read_body_chunk(
                 (!r.is_empty()).then_some(r)
             });
             return Ok(remaining);
-        },
+        }
     };
 
     // 2. Extract initial data
@@ -1138,8 +1135,8 @@ fn create_body_stream<'js>(
                     return Err(rquickjs::Exception::throw_type(
                         &ctx,
                         "Expected default controller",
-                    ))
-                },
+                    ));
+                }
             };
 
             // Create a promise that resolves when the async read completes.
@@ -1156,7 +1153,7 @@ fn create_body_stream<'js>(
                     None => {
                         resolveable.resolve_undefined()?;
                         return Ok(());
-                    },
+                    }
                 };
 
                 match read_body_chunk(&mut body, &decoder_state, has_decoder).await {
@@ -1169,16 +1166,16 @@ fn create_body_stream<'js>(
                             ctrl_class,
                             array.into_value(),
                         )?;
-                    },
+                    }
                     Ok(None) => {
                         // EOF — close the stream
                         readable_stream_default_controller_close_stream(ctx2, ctrl_class)?;
-                    },
+                    }
                     Err(msg) => {
                         // Propagate hyper/decompression errors to the JS stream
                         let v = rquickjs::String::from_str(ctx2.clone(), &msg)?.into_value();
                         readable_stream_default_controller_error_stream(ctrl_class, v)?;
-                    },
+                    }
                 }
                 resolveable.resolve_undefined()?;
                 Ok(())
@@ -1241,8 +1238,8 @@ fn create_body_stream<'js>(
                                 match d.decompress_chunk(slice) {
                                     Ok(decompressed) => chunk = Some(decompressed),
                                     Err(e) => {
-                                        return Err(Exception::throw_message(ctx, &e.to_string()))
-                                    },
+                                        return Err(Exception::throw_message(ctx, &e.to_string()));
+                                    }
                                 }
                             }
                         }
@@ -1251,15 +1248,15 @@ fn create_body_stream<'js>(
                             Some(buf) => TypedArray::<u8>::new(ctx.clone(), buf)?.into_value(),
                             None => {
                                 TypedArray::<u8>::new_copy(ctx.clone(), &first_data)?.into_value()
-                            },
+                            }
                         };
 
                         return Ok(NativePullResult::Ready(val));
-                    },
+                    }
                     Poll::Ready(Some(Err(e))) => {
                         *guard = None;
                         return Err(Exception::throw_message(ctx, &e.to_string()));
-                    },
+                    }
                     Poll::Ready(None) => {
                         *guard = None; // Release the body to free the HTTP connection
                         drop(guard);
@@ -1270,16 +1267,16 @@ fn create_body_stream<'js>(
                                         let val = TypedArray::<u8>::new(ctx.clone(), remaining)?
                                             .into_value();
                                         return Ok(NativePullResult::Ready(val));
-                                    },
+                                    }
                                     Err(e) => {
-                                        return Err(Exception::throw_message(ctx, &e.to_string()))
-                                    },
-                                    _ => {},
+                                        return Err(Exception::throw_message(ctx, &e.to_string()));
+                                    }
+                                    _ => {}
                                 }
                             }
                         }
                         return Ok(NativePullResult::Eof);
-                    },
+                    }
                     Poll::Pending => {
                         drop(guard);
 
@@ -1296,14 +1293,14 @@ fn create_body_stream<'js>(
                                 Ok(Some(chunk)) => {
                                     *incoming.write().unwrap() = Some(body);
                                     Ok(Some(TypedArray::<u8>::new(ctx, chunk)?.into_value()))
-                                },
+                                }
                                 Ok(None) => Ok(None),
                                 Err(msg) => Err(Exception::throw_message(&ctx, &msg)),
                             }
                         };
 
                         return Ok(NativePullResult::Pending(Box::pin(fut)));
-                    },
+                    }
                 }
             }
         });
@@ -1320,15 +1317,8 @@ fn create_body_stream<'js>(
 
 #[cfg(test)]
 mod tests {
-    use flate2::{write::GzEncoder, Compression};
-    use rquickjs::{
-        prelude::This,
-        AsyncContext, AsyncRuntime,
-        Class,
-        Function,
-        Object,
-        Promise,
-    };
+    use flate2::{Compression, write::GzEncoder};
+    use rquickjs::{AsyncContext, AsyncRuntime, Class, Function, Object, Promise, prelude::This};
     use std::io::Write;
 
     use wiremock::*;
@@ -1352,27 +1342,28 @@ mod tests {
             .await;
         let rt = AsyncRuntime::new().unwrap();
         let ctx = AsyncContext::full(&rt).await.unwrap();
-        let _ = ctx.async_with(async move |ctx| {
-            crate::init(&ctx).unwrap();
-            let globals = ctx.globals();
+        let _ = ctx
+            .async_with(async move |ctx| {
+                crate::init(&ctx).unwrap();
+                let globals = ctx.globals();
 
-            let fetch: Function = globals.get("fetch")?;
-            let options = Object::new(ctx.clone())?;
-            options.set("method", "GET")?;
-            let url = format!("http://{}/some-path/", mock_server.address().clone());
+                let fetch: Function = globals.get("fetch")?;
+                let options = Object::new(ctx.clone())?;
+                options.set("method", "GET")?;
+                let url = format!("http://{}/some-path/", mock_server.address().clone());
 
-            let response_promise: Promise = fetch.call((url, options.clone()))?;
-            let response: Class<Response> = response_promise.into_future().await?;
+                let response_promise: Promise = fetch.call((url, options.clone()))?;
+                let response: Class<Response> = response_promise.into_future().await?;
 
-            let response_text: String = Response::text(This(response.clone()), ctx.clone())?
-                .into_future()
-                .await?;
-            assert_eq!(response.borrow().status(), 200);
-            assert_eq!(response_text, welcome_message);
+                let response_text: String = Response::text(This(response.clone()), ctx.clone())?
+                    .into_future()
+                    .await?;
+                assert_eq!(response.borrow().status(), 200);
+                assert_eq!(response_text, welcome_message);
 
-            Ok::<(), rquickjs::Error>(())
-        })
-        .await;
+                Ok::<(), rquickjs::Error>(())
+            })
+            .await;
     }
 
     #[tokio::test]
@@ -1386,38 +1377,39 @@ mod tests {
 
         let rt = AsyncRuntime::new().unwrap();
         let ctx = AsyncContext::full(&rt).await.unwrap();
-        let _ = ctx.async_with(async move |ctx| {
-            vole_global_streams::init(&ctx).unwrap();
-            crate::init(&ctx).unwrap();
+        let _ = ctx
+            .async_with(async move |ctx| {
+                vole_global_streams::init(&ctx).unwrap();
+                crate::init(&ctx).unwrap();
 
-            let globals = ctx.globals();
-            let fetch: Function = globals.get("fetch")?;
-            let options = Object::new(ctx.clone())?;
-            options.set("method", "GET")?;
-            let url = format!("http://{}/some-path/", mock_server.address().clone());
+                let globals = ctx.globals();
+                let fetch: Function = globals.get("fetch")?;
+                let options = Object::new(ctx.clone())?;
+                options.set("method", "GET")?;
+                let url = format!("http://{}/some-path/", mock_server.address().clone());
 
-            let response_promise: Promise = fetch.call((url, options.clone()))?;
-            let response: Class<Response> = response_promise.into_future().await?;
+                let response_promise: Promise = fetch.call((url, options.clone()))?;
+                let response: Class<Response> = response_promise.into_future().await?;
 
-            // Cloning a response with unconsumed Incoming body should work via tee
-            let cloned = response.borrow().clone(ctx.clone())?;
-            let cloned = Class::instance(ctx.clone(), cloned)?;
-            let text1: String = Response::text(This(response.clone()), ctx.clone())?
-                .into_future()
-                .await?;
-            let text2: String = Response::text(This(cloned), ctx.clone())?
-                .into_future()
-                .await?;
-            assert_eq!(text1, "Hello");
-            assert_eq!(text2, "Hello");
+                // Cloning a response with unconsumed Incoming body should work via tee
+                let cloned = response.borrow().clone(ctx.clone())?;
+                let cloned = Class::instance(ctx.clone(), cloned)?;
+                let text1: String = Response::text(This(response.clone()), ctx.clone())?
+                    .into_future()
+                    .await?;
+                let text2: String = Response::text(This(cloned), ctx.clone())?
+                    .into_future()
+                    .await?;
+                assert_eq!(text1, "Hello");
+                assert_eq!(text2, "Hello");
 
-            // Cloning after body is consumed should fail
-            let clone_result = response.borrow().clone(ctx.clone());
-            assert!(clone_result.is_err());
+                // Cloning after body is consumed should fail
+                let clone_result = response.borrow().clone(ctx.clone());
+                assert!(clone_result.is_err());
 
-            Ok::<(), rquickjs::Error>(())
-        })
-        .await;
+                Ok::<(), rquickjs::Error>(())
+            })
+            .await;
     }
 
     #[tokio::test]
@@ -1438,47 +1430,50 @@ mod tests {
 
         let rt = AsyncRuntime::new().unwrap();
         let ctx = AsyncContext::full(&rt).await.unwrap();
-        let _ = ctx.async_with(async move |ctx| {
-            vole_global_streams::init(&ctx).unwrap();
-            crate::init(&ctx).unwrap();
+        let _ = ctx
+            .async_with(async move |ctx| {
+                vole_global_streams::init(&ctx).unwrap();
+                crate::init(&ctx).unwrap();
 
-            let globals = ctx.globals();
-            let fetch: Function = globals.get("fetch")?;
-            let options = Object::new(ctx.clone())?;
-            options.set("method", "GET")?;
-            let url = format!("http://{}/compressed/", mock_server.address().clone());
+                let globals = ctx.globals();
+                let fetch: Function = globals.get("fetch")?;
+                let options = Object::new(ctx.clone())?;
+                options.set("method", "GET")?;
+                let url = format!("http://{}/compressed/", mock_server.address().clone());
 
-            let response_promise: Promise = fetch.call((url, options))?;
-            let response: Class<Response> = response_promise.into_future().await?;
-            let response = response.borrow();
+                let response_promise: Promise = fetch.call((url, options))?;
+                let response: Class<Response> = response_promise.into_future().await?;
+                let response = response.borrow();
 
-            // Read via body ReadableStream (not text())
-            let body_stream = response.body(ctx.clone())?;
-            let body_obj = body_stream.as_object().unwrap();
-            let get_reader: Function = body_obj.get("getReader")?;
-            let reader: Object = get_reader.call((rquickjs::function::This(body_obj.clone()),))?;
-            let read_fn: Function = reader.get("read")?;
+                // Read via body ReadableStream (not text())
+                let body_stream = response.body(ctx.clone())?;
+                let body_obj = body_stream.as_object().unwrap();
+                let get_reader: Function = body_obj.get("getReader")?;
+                let reader: Object =
+                    get_reader.call((rquickjs::function::This(body_obj.clone()),))?;
+                let read_fn: Function = reader.get("read")?;
 
-            let mut result = Vec::new();
-            loop {
-                let promise: Promise = read_fn.call((rquickjs::function::This(reader.clone()),))?;
-                let chunk: Object = promise.into_future().await?;
-                let done: bool = chunk.get("done").unwrap_or(true);
-                if done {
-                    break;
-                }
-                let value: rquickjs::Value = chunk.get("value")?;
-                if let Ok(ta) = rquickjs::TypedArray::<u8>::from_value(value) {
-                    if let Some(bytes) = ta.as_bytes() {
-                        result.extend_from_slice(bytes);
+                let mut result = Vec::new();
+                loop {
+                    let promise: Promise =
+                        read_fn.call((rquickjs::function::This(reader.clone()),))?;
+                    let chunk: Object = promise.into_future().await?;
+                    let done: bool = chunk.get("done").unwrap_or(true);
+                    if done {
+                        break;
+                    }
+                    let value: rquickjs::Value = chunk.get("value")?;
+                    if let Ok(ta) = rquickjs::TypedArray::<u8>::from_value(value) {
+                        if let Some(bytes) = ta.as_bytes() {
+                            result.extend_from_slice(bytes);
+                        }
                     }
                 }
-            }
 
-            assert_eq!(String::from_utf8(result).unwrap(), message);
-            Ok::<(), rquickjs::Error>(())
-        })
-        .await;
+                assert_eq!(String::from_utf8(result).unwrap(), message);
+                Ok::<(), rquickjs::Error>(())
+            })
+            .await;
     }
 
     #[tokio::test]
@@ -1493,25 +1488,26 @@ mod tests {
 
         let rt = AsyncRuntime::new().unwrap();
         let ctx = AsyncContext::full(&rt).await.unwrap();
-        let _ = ctx.async_with(async move |ctx| {
-            crate::init(&ctx).unwrap();
+        let _ = ctx
+            .async_with(async move |ctx| {
+                crate::init(&ctx).unwrap();
 
-            let globals = ctx.globals();
-            let fetch: Function = globals.get("fetch")?;
-            let options = Object::new(ctx.clone())?;
-            options.set("method", "GET")?;
-            let url = format!("http://{}/some-path/", mock_server.address().clone());
+                let globals = ctx.globals();
+                let fetch: Function = globals.get("fetch")?;
+                let options = Object::new(ctx.clone())?;
+                options.set("method", "GET")?;
+                let url = format!("http://{}/some-path/", mock_server.address().clone());
 
-            let response_promise: Promise = fetch.call((url, options.clone()))?;
-            let response: Class<Response> = response_promise.into_future().await?;
+                let response_promise: Promise = fetch.call((url, options.clone()))?;
+                let response: Class<Response> = response_promise.into_future().await?;
 
-            let response_text: String = Response::text(This(response.clone()), ctx.clone())?
-                .into_future()
-                .await?;
-            assert_eq!(response.borrow().status(), 200);
-            assert_eq!(response_text.as_bytes(), large_body);
-            Ok::<(), rquickjs::Error>(())
-        })
-        .await;
+                let response_text: String = Response::text(This(response.clone()), ctx.clone())?
+                    .into_future()
+                    .await?;
+                assert_eq!(response.borrow().status(), 200);
+                assert_eq!(response_text.as_bytes(), large_body);
+                Ok::<(), rquickjs::Error>(())
+            })
+            .await;
     }
 }

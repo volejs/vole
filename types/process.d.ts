@@ -46,6 +46,11 @@ declare module "vole:process" {
   export function exit(code?: number): never;
   /** Abort the current process immediately. */
   export function abort(): never;
+  /**
+   * Send a signal-like request to the process with the specified PID.
+   * Returns `true` when the underlying platform call is accepted.
+   */
+  export function kill(pid: number, signal?: string): boolean;
   /** Return the current working directory. */
   export function cwd(): string;
   /** Change the current working directory. */
@@ -54,6 +59,10 @@ declare module "vole:process" {
   export function uptime(): number;
   /** Return memory usage counters. */
   export function memoryUsage(): MemoryUsage;
+  /** Read the pending process exit code (defaults to `0`). */
+  export function getExitCode(): number;
+  /** Set the process exit code used when no explicit exit value is provided. */
+  export function setExitCode(code: number): void;
 
   /** CLI arguments passed to the current process. */
   export const args: string[];

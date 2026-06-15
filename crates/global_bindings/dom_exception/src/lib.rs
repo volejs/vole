@@ -1,9 +1,9 @@
 use rquickjs::{
+    Class, Coerced, Constructor, Ctx, Exception, Function, IntoJs, Object, Result, Value,
     atom::PredefinedAtom,
     class::{JsClass, Trace, Tracer, Writable},
     function::{Opt, This},
     object::{Accessor, Property},
-    Class, Coerced, Constructor, Ctx, Exception, Function, IntoJs, Object, Result, Value,
 };
 use vole_core::option::Undefined;
 
@@ -98,20 +98,23 @@ impl<'js> JsClass<'js> for DomException {
 
         proto.prop(
             "message",
-            Accessor::from(dom_exception_message).enumerable().configurable(),
+            Accessor::from(dom_exception_message)
+                .enumerable()
+                .configurable(),
         )?;
         proto.prop(
             "name",
-            Accessor::from(dom_exception_name).enumerable().configurable(),
+            Accessor::from(dom_exception_name)
+                .enumerable()
+                .configurable(),
         )?;
         proto.prop(
             "code",
-            Accessor::from(dom_exception_code).enumerable().configurable(),
+            Accessor::from(dom_exception_code)
+                .enumerable()
+                .configurable(),
         )?;
-        proto.prop(
-            "stack",
-            Accessor::from(dom_exception_stack).configurable(),
-        )?;
+        proto.prop("stack", Accessor::from(dom_exception_stack).configurable())?;
         proto.prop(
             PredefinedAtom::SymbolToStringTag,
             Property::from("DOMException").configurable(),

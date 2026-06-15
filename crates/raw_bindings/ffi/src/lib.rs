@@ -1,11 +1,11 @@
 use libffi::middle::{Arg, Cif, CodePtr, Type as FfiType};
 use libloading::Library;
 use rquickjs::{
-    module::{Declarations, Exports, ModuleDef},
     ArrayBuffer, Ctx, Function, Result, TypedArray, Value,
+    module::{Declarations, Exports, ModuleDef},
 };
 use std::collections::HashMap;
-use std::ffi::{c_char, c_void, CString};
+use std::ffi::{CString, c_char, c_void};
 use std::sync::Mutex;
 
 static LIBRARIES: Mutex<Option<HashMap<u64, Library>>> = Mutex::new(None);

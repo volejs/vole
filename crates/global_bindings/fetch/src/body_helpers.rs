@@ -2,17 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 use std::{borrow::Cow, sync::RwLock};
 
-use vole_global_blob::Blob;
-use vole_global_streams::{
-    readable_byte_stream_controller_close_stream, readable_byte_stream_controller_enqueue_bytes,
-    readable_stream_default_controller_close_stream,
-    CancelAlgorithm, PullAlgorithm, ReadableStream, ReadableStreamControllerClass,
+use rquickjs::{
+    Class, Ctx, Exception, Function, Object, Promise, Result, TypedArray, Value, prelude::This,
 };
 use vole_core::bytes::ObjectBytes;
-use vole_core::promise::PromisePrimordials;
 use vole_core::primordials::Primordial;
-use rquickjs::{
-    prelude::This, Class, Ctx, Exception, Function, Object, Promise, Result, TypedArray, Value,
+use vole_core::promise::PromisePrimordials;
+use vole_global_blob::Blob;
+use vole_global_streams::{
+    CancelAlgorithm, PullAlgorithm, ReadableStream, ReadableStreamControllerClass,
+    readable_byte_stream_controller_close_stream, readable_byte_stream_controller_enqueue_bytes,
+    readable_stream_default_controller_close_stream,
 };
 
 /// Creates a ReadableStream from a body value (string, Blob, ArrayBuffer, etc.)
@@ -157,7 +157,7 @@ pub(crate) fn strip_bom<'a>(bytes: impl Into<Cow<'a, [u8]>>) -> Cow<'a, [u8]> {
             Cow::Owned(mut bytes) => {
                 bytes.drain(0..3);
                 Cow::Owned(bytes)
-            },
+            }
         }
     } else {
         cow

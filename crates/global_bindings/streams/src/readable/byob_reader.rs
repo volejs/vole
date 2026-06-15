@@ -1,18 +1,18 @@
 use std::collections::VecDeque;
 
-use vole_core::{
-    bytes::ObjectBytes,
-    primordials::Primordial,
-    promise::{promise_rejected_with_constructor, with_promise_result, ResolveablePromise},
-};
 use rquickjs::{
+    ArrayBuffer, Class, Ctx, Error, Exception, FromJs, Function, IntoJs, JsLifetime, Object,
+    Promise, Result, Value,
     atom::PredefinedAtom,
     class::{JsClass, OwnedBorrowMut, Trace, Tracer},
     function::Constructor,
     methods,
     prelude::{Opt, This},
-    ArrayBuffer, Class, Ctx, Error, Exception, FromJs, Function, IntoJs, JsLifetime, Object,
-    Promise, Result, Value,
+};
+use vole_core::{
+    bytes::ObjectBytes,
+    primordials::Primordial,
+    promise::{ResolveablePromise, promise_rejected_with_constructor, with_promise_result},
 };
 
 use crate::{
@@ -75,13 +75,13 @@ impl<'js> ReadableStreamBYOBReader<'js> {
 
         // If stream.[[controller]] does not implement ReadableByteStreamController, throw a TypeError exception.
         match stream.controller {
-            ReadableStreamControllerClass::ReadableStreamByteController(_) => {},
+            ReadableStreamControllerClass::ReadableStreamByteController(_) => {}
             _ => {
                 return Err(Exception::throw_type(
                     &ctx,
                     "Cannot construct a ReadableStreamBYOBReader for a stream not constructed with a byte source",
                 ));
-            },
+            }
         };
 
         // Perform ! ReadableStreamReaderGenericInitialize(reader, stream).
@@ -455,12 +455,10 @@ impl<'js> ViewBytes<'js> {
         value: Option<&Value<'js>>,
     ) -> Result<Self> {
         match value.and_then(Value::as_object) {
-            None => {
-                Err(Exception::throw_type(
-                    ctx,
-                    "view must be typed DataView, Buffer, ArrayBuffer, or Uint8Array, but is not an object",
-                ))
-            },
+            None => Err(Exception::throw_type(
+                ctx,
+                "view must be typed DataView, Buffer, ArrayBuffer, or Uint8Array, but is not an object",
+            )),
             Some(object) => Self::from_object(ctx, function_array_buffer_is_view, object),
         }
     }
@@ -487,7 +485,7 @@ impl<'js> ViewBytes<'js> {
             ObjectBytes::DataView(_, _, _) => 1,
             ObjectBytes::Vec(_) => {
                 panic!("invariant broken; ViewBytes may not contain ObjectBytes::Vec")
-            },
+            }
         }
     }
 }
@@ -561,7 +559,7 @@ impl<'js> ArrayConstructorPrimordials<'js> {
             ObjectBytes::DataView(_, _, _) => self.constructor_data_view.clone(),
             ObjectBytes::Vec(_) => {
                 panic!("invariant broken; ViewBytes may not contain ObjectBytes::Vec")
-            },
+            }
         }
     }
 }

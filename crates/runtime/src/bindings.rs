@@ -22,9 +22,8 @@ pub fn registry() -> ExtensionRegistry {
         .with(vole_global_streams::init)
         .with(vole_global_compression::init)
         // raw_bindings: low-level Rust backends exposed via vole:raw:*
-        .with(vole_raw_env::init)
         .with(vole_raw_ffi::init)
-        .with(vole_raw_process::init)
+        .with(vole_raw_os::init)
         .with(vole_raw_path::init)
         .with(vole_raw_net::http::init)
         .with(vole_raw_net::tcp::init)

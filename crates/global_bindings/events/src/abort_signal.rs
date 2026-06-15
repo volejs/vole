@@ -1,7 +1,7 @@
 use rquickjs::{
+    Class, Constructor, Ctx, Function, Object, Result, Value,
     class::{JsClass, Trace, Tracer, Writable},
     function::{Opt, This},
-    Class, Constructor, Ctx, Function, Object, Result, Value,
 };
 use vole_core::error::{dom_exception_name, dom_exception_value};
 

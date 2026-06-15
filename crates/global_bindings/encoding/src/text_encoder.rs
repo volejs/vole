@@ -1,5 +1,5 @@
 use rquickjs::{
-    atom::PredefinedAtom, function::Opt, Ctx, Exception, Object, Result, TypedArray, Value,
+    Ctx, Exception, Object, Result, TypedArray, Value, atom::PredefinedAtom, function::Opt,
 };
 use vole_core::{result::ResultExt, webidl::to_usv_string};
 

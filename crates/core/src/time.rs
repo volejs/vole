@@ -10,9 +10,9 @@
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use rquickjs::{
+    Ctx, JsLifetime, Result,
     class::{Trace, Tracer},
     runtime::UserDataGuard,
-    Ctx, JsLifetime, Result,
 };
 
 use crate::result::ResultExt;

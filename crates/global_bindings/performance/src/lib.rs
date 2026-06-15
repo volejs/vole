@@ -1,10 +1,8 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use rquickjs::{
-    atom::PredefinedAtom,
-    class::Trace,
-    function::Opt,
     Array, Class, Coerced, Ctx, Exception, FromJs, Function, Object, Result, Value,
+    atom::PredefinedAtom, class::Trace, function::Opt,
 };
 use vole_core::{
     json::{parse::json_parse, stringify::json_stringify},
@@ -122,7 +120,11 @@ impl<'js> Performance {
     }
 
     pub fn clear_marks(&self, name: Opt<Coerced<String>>) {
-        clear_entries(&mut self.state.borrow_mut(), PERFORMANCE_ENTRY_MARK, name.0.map(|name| name.0));
+        clear_entries(
+            &mut self.state.borrow_mut(),
+            PERFORMANCE_ENTRY_MARK,
+            name.0.map(|name| name.0),
+        );
     }
 
     pub fn clear_measures(&self, name: Opt<Coerced<String>>) {
@@ -151,7 +153,11 @@ impl<'js> Performance {
         // 当前实现仅维护 mark/measure，暂不持有 resource timing 条目。
     }
 
-    pub fn set_resource_timing_buffer_size(&self, ctx: Ctx<'js>, max_size: Coerced<f64>) -> Result<()> {
+    pub fn set_resource_timing_buffer_size(
+        &self,
+        ctx: Ctx<'js>,
+        max_size: Coerced<f64>,
+    ) -> Result<()> {
         let max_size = max_size.0;
         if !max_size.is_finite() || max_size <= 0.0 {
             return Err(Exception::throw_range(
@@ -250,7 +256,10 @@ impl Performance {
                     Exception::throw_type(ctx, "Performance.measure options must be an object")
                 })?;
                 let (start_time, end_time) = parse_measure_options(self, ctx, &object)?;
-                Ok((start_time.unwrap_or(default_start_time), end_time.unwrap_or(default_end_time)))
+                Ok((
+                    start_time.unwrap_or(default_start_time),
+                    end_time.unwrap_or(default_end_time),
+                ))
             }
             (Some(start_value), None) => {
                 let start_time = self.resolve_mark_or_time(ctx, start_value)?;
@@ -270,7 +279,10 @@ impl Performance {
                     Exception::throw_type(ctx, "Performance.measure options must be an object")
                 })?;
                 let (start_time, end_time) = parse_measure_options(self, ctx, &object)?;
-                Ok((start_time.unwrap_or(default_start_time), end_time.unwrap_or(default_end_time)))
+                Ok((
+                    start_time.unwrap_or(default_start_time),
+                    end_time.unwrap_or(default_end_time),
+                ))
             }
             (None, Some(end_value)) => {
                 let end_time = if end_value.is_undefined() {
@@ -415,9 +427,9 @@ fn parse_measure_options<'js>(
 }
 
 fn parse_measure_detail<'js>(ctx: &Ctx<'js>, value: Value<'js>) -> Result<Option<String>> {
-    let object = value
-        .as_object()
-        .ok_or_else(|| Exception::throw_type(ctx, "Performance.measure options must be an object"))?;
+    let object = value.as_object().ok_or_else(|| {
+        Exception::throw_type(ctx, "Performance.measure options must be an object")
+    })?;
     read_entry_detail(ctx, &object)
 }
 
@@ -434,8 +446,14 @@ fn read_entry_detail<'js>(ctx: &Ctx<'js>, object: &Object<'js>) -> Result<Option
     }
 }
 
-fn get_optional_property<'js>(ctx: &Ctx<'js>, object: &Object<'js>, key: &str) -> Result<Value<'js>> {
-    object.get::<_, Value>(key).or_else(|_| Ok(Value::new_undefined(ctx.clone())))
+fn get_optional_property<'js>(
+    ctx: &Ctx<'js>,
+    object: &Object<'js>,
+    key: &str,
+) -> Result<Value<'js>> {
+    object
+        .get::<_, Value>(key)
+        .or_else(|_| Ok(Value::new_undefined(ctx.clone())))
 }
 
 fn entries_to_array<'js, I>(ctx: &Ctx<'js>, entries: I) -> Result<Array<'js>>
@@ -445,15 +463,15 @@ where
 {
     let array = Array::new(ctx.clone())?;
     for (idx, entry) in entries.into_iter().enumerate() {
-        array.set(idx, entry_to_object(ctx, std::borrow::Borrow::borrow(&entry))?)?;
+        array.set(
+            idx,
+            entry_to_object(ctx, std::borrow::Borrow::borrow(&entry))?,
+        )?;
     }
     Ok(array)
 }
 
-fn entry_to_object<'js>(
-    ctx: &Ctx<'js>,
-    entry: &PerformanceEntryRecord,
-) -> Result<Object<'js>> {
+fn entry_to_object<'js>(ctx: &Ctx<'js>, entry: &PerformanceEntryRecord) -> Result<Object<'js>> {
     let object = Object::new(ctx.clone())?;
     object.set("name", entry.name.clone())?;
     object.set("entryType", entry.entry_type)?;
@@ -461,9 +479,8 @@ fn entry_to_object<'js>(
     object.set("duration", entry.duration)?;
 
     let detail_value = match &entry.detail {
-        Some(detail_json) => {
-            json_parse(ctx, detail_json.clone()).unwrap_or_else(|_| Value::new_undefined(ctx.clone()))
-        }
+        Some(detail_json) => json_parse(ctx, detail_json.clone())
+            .unwrap_or_else(|_| Value::new_undefined(ctx.clone())),
         None => Value::new_undefined(ctx.clone()),
     };
     object.set("detail", detail_value.clone())?;

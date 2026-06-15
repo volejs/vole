@@ -1,29 +1,29 @@
-use vole_core::{
-    option::{Null, Undefined},
-    primordials::Primordial,
-    promise::{promise_resolved_with, upon_promise, PromisePrimordials},
-    queue::QueueWithSizes,
-};
-use vole_global_events::AbortControllerRef as AbortController;
 use rquickjs::{
+    Class, Ctx, Error, Exception, Function, JsLifetime, Object, Promise, Result, Symbol, Value,
     class::{JsClass, OwnedBorrowMut, Trace},
     function::Constructor,
     methods,
     prelude::{Opt, This},
-    Class, Ctx, Error, Exception, Function, JsLifetime, Object, Promise, Result, Symbol, Value,
 };
+use vole_core::{
+    option::{Null, Undefined},
+    primordials::Primordial,
+    promise::{PromisePrimordials, promise_resolved_with, upon_promise},
+    queue::QueueWithSizes,
+};
+use vole_global_events::AbortControllerRef as AbortController;
 
 use crate::{
     queuing_strategy::{SizeAlgorithm, SizeValue},
     transform::controller::TransformStreamDefaultControllerClass,
     transform::stream::TransformStreamClass,
-    utils::{class_from_owned_borrow_mut, UnwrapOrUndefined},
+    utils::{UnwrapOrUndefined, class_from_owned_borrow_mut},
     writable::{
         default_writer::WritableStreamDefaultWriterOwned,
         objects::{WritableStreamClassObjects, WritableStreamObjects},
         stream::{
-            sink::UnderlyingSink, WritableStream, WritableStreamClass, WritableStreamOwned,
-            WritableStreamState,
+            WritableStream, WritableStreamClass, WritableStreamOwned, WritableStreamState,
+            sink::UnderlyingSink,
         },
         writer::{UndefinedWriter, WritableStreamWriter},
     },
@@ -192,7 +192,7 @@ impl<'js> WritableStreamDefaultController<'js> {
                         Self::writable_stream_default_controller_advance_queue_if_needed(
                             ctx, objects,
                         )?;
-                    },
+                    }
                     // Upon rejection of startPromise with reason r,
                     Err(r) => {
                         // Set controller.[[started]] to true.
@@ -200,7 +200,7 @@ impl<'js> WritableStreamDefaultController<'js> {
 
                         // Perform ! WritableStreamDealWithRejection(stream, r).
                         WritableStream::writable_stream_deal_with_rejection(ctx, objects, r)?;
-                    },
+                    }
                 }
                 Ok(())
             }
@@ -260,7 +260,7 @@ impl<'js> WritableStreamDefaultController<'js> {
             Ok(chunk_size) => {
                 objects = WritableStreamObjects::from_class(objects_class);
                 Ok((chunk_size, objects))
-            },
+            }
             // If returnValue is an abrupt completion,
             Err(Error::Exception) => {
                 let reason = ctx.catch();
@@ -276,7 +276,7 @@ impl<'js> WritableStreamDefaultController<'js> {
 
                 // Return 1.
                 Ok((SizeValue::Native(1.0), objects))
-            },
+            }
             Err(err) => Err(err),
         }
     }
@@ -347,9 +347,9 @@ impl<'js> WritableStreamDefaultController<'js> {
                     Self::writable_stream_default_controller_error_if_needed(ctx, objects, reason)?;
 
                 return Ok(objects);
-            },
+            }
             Err(err) => return Err(err),
-            Ok(()) => {},
+            Ok(()) => {}
         }
 
         // If ! WritableStreamCloseQueuedOrInFlight(stream) is false and stream.[[state]] is "writable",
@@ -401,7 +401,7 @@ impl<'js> WritableStreamDefaultController<'js> {
             // If controller.[[queue]] is empty, return.
             None => {
                 return Ok(objects);
-            },
+            }
             // Let value be ! PeekQueueValue(controller).
             Some(value) => value.clone(),
         };
@@ -447,14 +447,14 @@ impl<'js> WritableStreamDefaultController<'js> {
                 Ok(_) => {
                     // Perform ! WritableStreamFinishInFlightClose(stream).
                     WritableStream::writable_stream_finish_in_flight_close(objects)?;
-                },
+                }
                 // Upon rejection of sinkClosePromise with reason reason,
                 Err(reason) => {
                     // Perform ! WritableStreamFinishInFlightCloseWithError(stream, reason).
                     WritableStream::writable_stream_finish_in_flight_close_with_error(
                         ctx, objects, reason,
                     )?;
-                },
+                }
             }
 
             Ok(())
@@ -513,7 +513,7 @@ impl<'js> WritableStreamDefaultController<'js> {
 
                         // Perform ! WritableStreamDefaultControllerAdvanceQueueIfNeeded(controller).
                         WritableStreamDefaultController::writable_stream_default_controller_advance_queue_if_needed(ctx, objects)?;
-                    },
+                    }
                     Err(reason) => {
                         // Upon rejection of sinkWritePromise with reason,
                         if let WritableStreamState::Writable = objects.stream.state {
@@ -526,7 +526,7 @@ impl<'js> WritableStreamDefaultController<'js> {
                         WritableStream::writable_stream_finish_in_flight_write_with_error(
                             ctx, objects, reason,
                         )?;
-                    },
+                    }
                 }
 
                 Ok(())
@@ -723,7 +723,7 @@ impl<'js> WritableStartAlgorithm<'js> {
             WritableStartAlgorithm::ReturnUndefined => Ok(Value::new_undefined(ctx.clone())),
             WritableStartAlgorithm::Function { f, underlying_sink } => {
                 f.call::<_, Value>((This(underlying_sink.clone()), controller))
-            },
+            }
             WritableStartAlgorithm::Transform(promise) => Ok(promise.clone().into_value()),
         }
     }
@@ -753,7 +753,7 @@ impl<'js> WritableWriteAlgorithm<'js> {
         match self {
             WritableWriteAlgorithm::ReturnPromiseUndefined => {
                 Ok(promise_primordials.promise_resolved_with_undefined.clone())
-            },
+            }
             WritableWriteAlgorithm::Function { f, underlying_sink } => promise_resolved_with(
                 ctx,
                 promise_primordials,
@@ -794,7 +794,7 @@ impl<'js> WritableCloseAlgorithm<'js> {
         match self {
             WritableCloseAlgorithm::ReturnPromiseUndefined => {
                 Ok(promise_primordials.promise_resolved_with_undefined.clone())
-            },
+            }
             WritableCloseAlgorithm::Function { f, underlying_sink } => promise_resolved_with(
                 ctx,
                 promise_primordials,
@@ -802,7 +802,7 @@ impl<'js> WritableCloseAlgorithm<'js> {
             ),
             WritableCloseAlgorithm::Transform { stream, controller } => {
                 crate::transform::stream::sink_close_algorithm(ctx.clone(), stream, controller)
-            },
+            }
         }
     }
 }
@@ -829,7 +829,7 @@ impl<'js> WritableAbortAlgorithm<'js> {
         match self {
             WritableAbortAlgorithm::ReturnPromiseUndefined => {
                 Ok(promise_primordials.promise_resolved_with_undefined.clone())
-            },
+            }
             WritableAbortAlgorithm::Function { f, underlying_sink } => promise_resolved_with(
                 ctx,
                 promise_primordials,
@@ -837,7 +837,7 @@ impl<'js> WritableAbortAlgorithm<'js> {
             ),
             WritableAbortAlgorithm::Transform { controller } => {
                 crate::transform::stream::sink_abort_algorithm(ctx.clone(), controller, reason)
-            },
+            }
         }
     }
 }

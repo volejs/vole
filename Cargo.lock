@@ -2747,16 +2747,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
 
 [[package]]
-name = "signal-hook-registry"
-version = "1.4.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4db69cba1110affc0e9f7bcd48bbf87b3f4fc7c61fc9155afd4c469eb3d6c1b"
-dependencies = [
- "errno",
- "libc",
-]
-
-[[package]]
 name = "signature"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3030,7 +3020,6 @@ dependencies = [
  "libc",
  "mio 1.2.1",
  "pin-project-lite",
- "signal-hook-registry",
  "socket2",
  "tokio-macros",
  "windows-sys 0.61.2",
@@ -3588,28 +3577,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "vole-raw-env"
-version = "0.1.0"
-dependencies = [
- "dotenvy",
- "rquickjs",
-]
-
-[[package]]
 name = "vole-raw-ffi"
 version = "0.1.0"
 dependencies = [
  "libffi",
  "libloading",
  "rquickjs",
-]
-
-[[package]]
-name = "vole-raw-fs"
-version = "0.1.0"
-dependencies = [
- "rquickjs",
- "tokio",
 ]
 
 [[package]]
@@ -3622,18 +3595,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "vole-raw-os"
+version = "0.1.0"
+dependencies = [
+ "dotenvy",
+ "rquickjs",
+ "tokio",
+]
+
+[[package]]
 name = "vole-raw-path"
 version = "0.1.0"
 dependencies = [
  "rquickjs",
-]
-
-[[package]]
-name = "vole-raw-process"
-version = "0.1.0"
-dependencies = [
- "rquickjs",
- "tokio",
 ]
 
 [[package]]
@@ -3677,12 +3651,10 @@ dependencies = [
  "vole-global-timers",
  "vole-global-url",
  "vole-module",
- "vole-raw-env",
  "vole-raw-ffi",
- "vole-raw-fs",
  "vole-raw-net",
+ "vole-raw-os",
  "vole-raw-path",
- "vole-raw-process",
  "vole-raw-until",
  "vole-raw-wasm",
 ]

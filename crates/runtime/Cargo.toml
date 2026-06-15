@@ -24,11 +24,9 @@ vole-global-streams = { path = "../global_bindings/streams" }
 vole-global-structured_clone = { path = "../global_bindings/structured_clone" }
 vole-global-timers = { path = "../global_bindings/timers" }
 vole-global-url = { path = "../global_bindings/url" }
-vole-raw-env = { path = "../raw_bindings/env" }
 vole-raw-ffi = { path = "../raw_bindings/ffi" }
-vole-raw-fs = { path = "../raw_bindings/fs" }
 vole-raw-net = { path = "../raw_bindings/net" }
 vole-raw-path = { path = "../raw_bindings/path" }
-vole-raw-process = { path = "../raw_bindings/process" }
+vole-raw-os = { path = "../raw_bindings/os" }
 vole-raw-until = { path = "../raw_bindings/until" }
 vole-raw-wasm = { path = "../raw_bindings/wasm" }

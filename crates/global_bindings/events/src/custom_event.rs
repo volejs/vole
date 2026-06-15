@@ -1,7 +1,7 @@
 use rquickjs::{
+    Array, Class, Constructor, Ctx, Function, IntoJs, Null, Object, Result, Value,
     class::{JsClass, Trace, Tracer, Writable},
     function::This,
-    Array, Class, Constructor, Ctx, Function, IntoJs, Null, Object, Result, Value,
 };
 
 #[derive(Clone, Debug)]

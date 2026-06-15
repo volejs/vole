@@ -1,11 +1,11 @@
 use std::{cell::RefCell, rc::Rc};
 
+use rquickjs::{
+    Class, Ctx, Function, JsLifetime, Object, Promise, Result, Value, class::Trace, prelude::This,
+};
 use vole_core::option::{Null, Undefined};
 use vole_core::primordials::Primordial;
-use vole_core::promise::{promise_resolved_with, PromisePrimordials};
-use rquickjs::{
-    class::Trace, prelude::This, Class, Ctx, Function, JsLifetime, Object, Promise, Result, Value,
-};
+use vole_core::promise::{PromisePrimordials, promise_resolved_with};
 
 use crate::{
     readable::controller::ReadableStreamControllerClass,
@@ -61,15 +61,15 @@ pub enum PullAlgorithm<'js> {
 impl<'js> Trace<'js> for PullAlgorithm<'js> {
     fn trace<'a>(&self, tracer: rquickjs::class::Tracer<'a, 'js>) {
         match self {
-            Self::ReturnPromiseUndefined => {},
+            Self::ReturnPromiseUndefined => {}
             Self::Function {
                 f,
                 underlying_source,
             } => {
                 f.trace(tracer);
                 underlying_source.trace(tracer);
-            },
-            Self::RustFunction(_) => {},
+            }
+            Self::RustFunction(_) => {}
             Self::Tee(state) => state.trace(tracer),
             Self::Transform(stream) => stream.trace(tracer),
         }
@@ -131,7 +131,7 @@ impl<'js> PullAlgorithm<'js> {
         match self {
             PullAlgorithm::ReturnPromiseUndefined => {
                 Ok(promise_primordials.promise_resolved_with_undefined.clone())
-            },
+            }
             PullAlgorithm::Function {
                 f,
                 underlying_source,
@@ -143,10 +143,10 @@ impl<'js> PullAlgorithm<'js> {
             PullAlgorithm::RustFunction(f) => f(ctx, controller),
             PullAlgorithm::Tee(state) => {
                 crate::readable::stream::tee::tee_pull_algorithm(ctx, state.clone())
-            },
+            }
             PullAlgorithm::Transform(stream) => {
                 transform_stream::source_pull_algorithm(ctx, stream)
-            },
+            }
         }
     }
 }
@@ -194,20 +194,20 @@ impl<'js> Clone for CancelAlgorithm<'js> {
 impl<'js> Trace<'js> for CancelAlgorithm<'js> {
     fn trace<'a>(&self, tracer: rquickjs::class::Tracer<'a, 'js>) {
         match self {
-            Self::ReturnPromiseUndefined => {},
+            Self::ReturnPromiseUndefined => {}
             Self::Function {
                 f,
                 underlying_source,
             } => {
                 f.trace(tracer);
                 underlying_source.trace(tracer);
-            },
-            Self::RustFunction(_) => {},
+            }
+            Self::RustFunction(_) => {}
             Self::Tee1(state) | Self::Tee2(state) => state.trace(tracer),
             Self::Transform { stream, controller } => {
                 stream.trace(tracer);
                 controller.trace(tracer);
-            },
+            }
         }
     }
 }
@@ -238,30 +238,30 @@ impl<'js> CancelAlgorithm<'js> {
         match self {
             CancelAlgorithm::ReturnPromiseUndefined => {
                 Ok(promise_primordials.promise_resolved_with_undefined.clone())
-            },
+            }
             CancelAlgorithm::Function {
                 f,
                 underlying_source,
             } => {
                 let result: Result<Value> = f.call((This(underlying_source.clone()), reason));
                 promise_resolved_with(&ctx, promise_primordials, result)
-            },
+            }
             CancelAlgorithm::RustFunction(f) => {
                 let f = f
                     .borrow_mut()
                     .take()
                     .expect("cancel algorithm must only be called once");
                 f(reason)
-            },
+            }
             CancelAlgorithm::Tee1(state) => {
                 crate::readable::stream::tee::tee_cancel_algorithm(ctx, state.clone(), reason, 0)
-            },
+            }
             CancelAlgorithm::Tee2(state) => {
                 crate::readable::stream::tee::tee_cancel_algorithm(ctx, state.clone(), reason, 1)
-            },
+            }
             CancelAlgorithm::Transform { stream, controller } => {
                 transform_stream::source_cancel_algorithm(ctx, stream, controller, reason)
-            },
+            }
         }
     }
 }

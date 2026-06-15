@@ -24,8 +24,8 @@
 use std::any::type_name;
 
 use rquickjs::{
-    atom::PredefinedAtom, function::Constructor, runtime::UserDataGuard, Ctx, Exception, Function,
-    JsLifetime, Object, Result,
+    Ctx, Exception, Function, JsLifetime, Object, Result, atom::PredefinedAtom,
+    function::Constructor, runtime::UserDataGuard,
 };
 
 use crate::result::ResultExt;

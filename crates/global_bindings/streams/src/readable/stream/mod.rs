@@ -29,22 +29,23 @@ use pipe::StreamPipeOptions;
 use source::UnderlyingSource;
 
 pub use algorithms::{CancelAlgorithm, PullAlgorithm, StartAlgorithm};
-use vole_core::{
-    option::{Null, NullableOpt, Undefined},
-    primordials::{BasePrimordials, Primordial},
-    promise::{
-        promise_rejected_catch, promise_rejected_with, promise_rejected_with_constructor,
-        promise_resolved_with, upon_promise_fulfilment, with_promise_result, PromisePrimordials,
-    },
-    result::ResultExt,
-};
 use rquickjs::{
+    Class, Coerced, Ctx, Error, Exception, FromJs, Function, IntoJs, JsLifetime, Object, Promise,
+    Result, Value,
     atom::PredefinedAtom,
     class::{OwnedBorrowMut, Trace},
     function::Constructor,
     prelude::{List, Opt, This},
-    Class, Coerced, Ctx, Error, Exception, FromJs, Function, IntoJs, JsLifetime, Object, Promise,
-    Result, Value,
+};
+use vole_core::{
+    option::{Null, NullableOpt, Undefined},
+    primordials::{BasePrimordials, Primordial},
+    promise::{
+        PromisePrimordials, promise_rejected_catch, promise_rejected_with,
+        promise_rejected_with_constructor, promise_resolved_with, upon_promise_fulfilment,
+        with_promise_result,
+    },
+    result::ResultExt,
 };
 
 pub mod algorithms;
@@ -245,7 +246,7 @@ impl<'js> ReadableStream<'js> {
                     underlying_source_dict,
                     high_water_mark,
                 )?;
-            },
+            }
             // Otherwise (no type, or "owning" which we treat as a default
             // controller that also accepts the `transfer` enqueue option):
             None | Some(ReadableStreamType::Owning) => {
@@ -271,7 +272,7 @@ impl<'js> ReadableStream<'js> {
                     size_algorithm,
                     is_owning_type,
                 )?;
-            },
+            }
         }
 
         Ok(stream_class)
@@ -334,7 +335,7 @@ impl<'js> ReadableStream<'js> {
                         stream.0,
                     )?;
                 reader.into()
-            },
+            }
             // Return ? AcquireReadableStreamBYOBReader(this).
             Some(Some(ReadableStreamGetReaderOptions {
                 mode: Some(ReadableStreamReaderMode::Byob),
@@ -344,7 +345,7 @@ impl<'js> ReadableStream<'js> {
                     stream.0,
                 )?;
                 reader.into()
-            },
+            }
         };
 
         Ok(reader)
@@ -738,7 +739,7 @@ impl<'js> ReadableStream<'js> {
                 })?;
 
                 Ok((promise, objects))
-            },
+            }
         }
     }
 
@@ -930,7 +931,7 @@ impl<'js> ReadableStream<'js> {
                     // If nextResult is an abrupt completion, return a promise rejected with nextResult.[[Value]].
                     Err(Error::Exception) => {
                         return promise_rejected_catch(&ctx, &promise_primordials);
-                    },
+                    }
                     Err(err) => return Err(err),
                     // Let nextPromise be a promise resolved with nextResult.[[Value]].
                     Ok(next_result) => promise_resolved_with(
@@ -947,8 +948,11 @@ impl<'js> ReadableStream<'js> {
                         let iter_result = match iter_result.into_object() {
                             // If Type(iterResult) is not Object, throw a TypeError.
                             None => {
-                                return Err(Exception::throw_type(&ctx, "The promise returned by the iterator.next() method must fulfill with an object"));
-                            },
+                                return Err(Exception::throw_type(
+                                    &ctx,
+                                    "The promise returned by the iterator.next() method must fulfill with an object",
+                                ));
+                            }
                             Some(iter_result) => iter_result,
                         };
 
@@ -957,9 +961,13 @@ impl<'js> ReadableStream<'js> {
 
                         let stream = OwnedBorrowMut::from_class(stream.get().cloned().expect("ReadableStreamFromIterable pull steps called with uninitialised stream"));
                         let controller = match controller {
-                        ReadableStreamControllerClass::ReadableStreamDefaultController(c) => OwnedBorrowMut::from_class(c),
-                        _ => panic!("ReadableStreamFromIterable pull steps called without default controller")
-                    };
+                            ReadableStreamControllerClass::ReadableStreamDefaultController(c) => {
+                                OwnedBorrowMut::from_class(c)
+                            }
+                            _ => panic!(
+                                "ReadableStreamFromIterable pull steps called without default controller"
+                            ),
+                        };
 
                         let objects = ReadableStreamObjects::new_default(stream, controller);
 
@@ -992,7 +1000,7 @@ impl<'js> ReadableStream<'js> {
                 let return_method_val: Value<'js> = match iterator.get(PredefinedAtom::Return) {
                     Err(Error::Exception) => {
                         return promise_rejected_catch(&ctx, &promise_primordials);
-                    },
+                    }
                     Err(err) => return Err(err),
                     Ok(val) => val,
                 };
@@ -1017,7 +1025,7 @@ impl<'js> ReadableStream<'js> {
                     // If returnResult is an abrupt completion, return a promise rejected with returnResult.[[Value]].
                     Err(Error::Exception) => {
                         return promise_rejected_catch(&ctx, &promise_primordials);
-                    },
+                    }
                     Err(err) => return Err(err),
                     Ok(return_result) => return_result,
                 };
@@ -1033,7 +1041,10 @@ impl<'js> ReadableStream<'js> {
                     move |ctx: Ctx<'js>, iter_result: Value<'js>| {
                         // If Type(iterResult) is not Object, throw a TypeError.
                         if !iter_result.is_object() {
-                            return Err(Exception::throw_type(&ctx, "The promise returned by the iterator.next() method must fulfill with an object"));
+                            return Err(Exception::throw_type(
+                                &ctx,
+                                "The promise returned by the iterator.next() method must fulfill with an object",
+                            ));
                         }
                         // Return undefined.
                         Ok(rquickjs::Undefined)

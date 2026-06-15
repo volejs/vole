@@ -1,16 +1,16 @@
 use std::{
     cell::RefCell,
     collections::HashMap,
-    io::{stderr, stdout, IsTerminal, Write},
+    io::{IsTerminal, Write, stderr, stdout},
     time::Instant,
 };
 
 use rquickjs::{
+    Ctx, Function, Object, Result, Type, Value,
     atom::PredefinedAtom,
     function::Rest,
     object::Property,
     prelude::{Coerced, Opt},
-    Ctx, Function, Object, Result, Type, Value,
 };
 use vole_core::{
     json::stringify::json_stringify,
@@ -51,7 +51,10 @@ pub fn init(ctx: &Ctx) -> Result<()> {
     console.set("assert", Function::new(ctx.clone(), console_assert))?;
     console.set("clear", Function::new(ctx.clone(), console_clear))?;
     console.set("count", Function::new(ctx.clone(), console_count))?;
-    console.set("countReset", Function::new(ctx.clone(), console_count_reset))?;
+    console.set(
+        "countReset",
+        Function::new(ctx.clone(), console_count_reset),
+    )?;
     console.set("time", Function::new(ctx.clone(), console_time))?;
     console.set("timeLog", Function::new(ctx.clone(), console_time_log))?;
     console.set("timeEnd", Function::new(ctx.clone(), console_time_end))?;
@@ -137,10 +140,7 @@ fn console_count_reset(ctx: Ctx<'_>, label: Opt<Coerced<String>>) -> Result<()> 
     if !existed {
         writeln_ignore(
             stderr(),
-            &format!(
-                "Count for '{}' does not exist",
-                label.replace('\'', "\\'")
-            ),
+            &format!("Count for '{}' does not exist", label.replace('\'', "\\'")),
         );
     }
     Ok(())
@@ -242,7 +242,10 @@ fn console_dirxml<'js>(ctx: Ctx<'js>, args: Rest<Value<'js>>) -> Result<()> {
 }
 
 fn console_table<'js>(ctx: Ctx<'js>, data: Value<'js>, _columns: Rest<Value<'js>>) -> Result<()> {
-    let mut lines = vec!["(index) | Value".to_string(), "--------|--------".to_string()];
+    let mut lines = vec![
+        "(index) | Value".to_string(),
+        "--------|--------".to_string(),
+    ];
 
     if let Some(array) = data.as_array() {
         let len = array.len();
@@ -267,11 +270,7 @@ fn console_table<'js>(ctx: Ctx<'js>, data: Value<'js>, _columns: Rest<Value<'js>
                 break;
             }
             let value: Value = object.get(key.as_str())?;
-            lines.push(format!(
-                "{} | {}",
-                key,
-                inspect_value(&ctx, &value, false)?
-            ));
+            lines.push(format!("{} | {}", key, inspect_value(&ctx, &value, false)?));
             count += 1;
         }
     } else {
@@ -326,7 +325,12 @@ fn format_console_values<'js>(
         if let Some(first) = args[0].as_string() {
             let first = first.to_string()?;
             if first.contains('%') {
-                result.push_str(&format_with_substitutions(ctx, &first, &args, &mut next_index)?);
+                result.push_str(&format_with_substitutions(
+                    ctx,
+                    &first,
+                    &args,
+                    &mut next_index,
+                )?);
             }
         }
     }
@@ -344,11 +348,7 @@ fn format_console_values<'js>(
         next_index += 1;
     }
 
-    if color {
-        Ok(result)
-    } else {
-        Ok(result)
-    }
+    if color { Ok(result) } else { Ok(result) }
 }
 
 fn format_with_substitutions<'js>(
@@ -396,7 +396,7 @@ fn format_with_substitutions<'js>(
                     .as_str(),
             ),
             'o' | 'O' => result.push_str(&inspect_value(ctx, value, false)?),
-            'c' => {},
+            'c' => {}
             other => {
                 result.push('%');
                 result.push(other);
@@ -404,7 +404,7 @@ fn format_with_substitutions<'js>(
                     result.push(' ');
                 }
                 result.push_str(&inspect_value(ctx, value, true)?);
-            },
+            }
         }
     }
 
@@ -428,7 +428,7 @@ fn inspect_value<'js>(ctx: &Ctx<'js>, value: &Value<'js>, root: bool) -> Result<
             } else {
                 Ok(format!("{:?}", text))
             }
-        },
+        }
         Type::Symbol => format_symbol(value),
         Type::Function | Type::Constructor => format_function(value),
         Type::Array => format_array(ctx, value),

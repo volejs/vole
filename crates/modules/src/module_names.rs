@@ -1,4 +1,4 @@
-/// Produce a built-in module specifier string like `vole:env` or `vole:net/http`.
+/// Produce a built-in module specifier string like `vole:os` or `vole:net/http`.
 #[macro_export]
 macro_rules! vole_mod {
     ($name:ident) => {
@@ -9,7 +9,7 @@ macro_rules! vole_mod {
     };
 }
 
-/// Produce an internal raw module specifier string like `vole:raw:fs`
+/// Produce an internal raw module specifier string like `vole:raw:os/fs`
 /// or `vole:raw:net/http`.
 #[macro_export]
 macro_rules! vole_raw_mod {
@@ -37,13 +37,12 @@ macro_rules! vole_js_shim {
 /// Public `vole:*` modules that are allowed to import internal `vole:raw:*`
 /// native modules. This list is the source of truth for resolver access control.
 pub const PUBLIC_VOLE_MODULES: &[&str] = &[
-    vole_mod!(env),
     vole_mod!(ffi),
-    vole_mod!(fs),
     vole_mod!(path),
-    vole_mod!(process),
-    vole_mod!(shell),
-    vole_mod!(spawn),
+    vole_mod!("os"),
+    vole_mod!("os/env"),
+    vole_mod!("os/fs"),
+    vole_mod!("os/exec"),
     vole_mod!(test),
     vole_mod!(until),
     vole_mod!(wasm),

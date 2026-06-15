@@ -1,4 +1,4 @@
-use rquickjs::{loader::Resolver, Ctx, Error};
+use rquickjs::{Ctx, Error, loader::Resolver};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 

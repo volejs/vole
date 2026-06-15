@@ -11,8 +11,8 @@
 //! - 是否派发 `error` / `unhandledrejection` 应由 `vole-runtime` 决定。
 //! - `CaughtError::Error` 不是 JS exception，只能降级为字符串值。
 use rquickjs::{
-    function::Constructor, CatchResultExt, CaughtError, Ctx, Error, Exception, Function, IntoJs,
-    Result, Value,
+    CatchResultExt, CaughtError, Ctx, Error, Exception, Function, IntoJs, Result, Value,
+    function::Constructor,
 };
 
 /// Web API 常用 DOMException 名称。
@@ -63,11 +63,7 @@ impl<'js> ErrorExtensions<'js> for CaughtError<'js> {
 /// 以便获得正确的 prototype、legacy `code` 和 `name/message` 行为。
 /// 如果尚未注册 DOMException，则退化为普通 `Error` 对象，并补上 `name`
 /// 字段。这个退化路径用于 core helper 被早期初始化阶段调用的场景。
-pub fn dom_exception_value<'js>(
-    ctx: &Ctx<'js>,
-    name: &str,
-    message: &str,
-) -> Result<Value<'js>> {
+pub fn dom_exception_value<'js>(ctx: &Ctx<'js>, name: &str, message: &str) -> Result<Value<'js>> {
     if let Ok(ctor) = ctx.globals().get::<_, Constructor>("DOMException") {
         return ctor.construct((message, name));
     }
@@ -88,11 +84,7 @@ pub fn dom_exception_value<'js>(
 ///     "The string to be encoded contains invalid characters",
 /// );
 /// ```
-pub fn throw_dom_exception<'js, T>(
-    ctx: &Ctx<'js>,
-    name: &str,
-    message: &str,
-) -> Result<T> {
+pub fn throw_dom_exception<'js, T>(ctx: &Ctx<'js>, name: &str, message: &str) -> Result<T> {
     match dom_exception_value(ctx, name, message) {
         Ok(value) => Err(ctx.throw(value)),
         Err(_) => Err(Exception::throw_message(ctx, message)),
@@ -120,11 +112,7 @@ pub fn reject_value<'js>(reject: &Function<'js>, value: Value<'js>) -> Result<()
 }
 
 /// 把 `rquickjs::Error` 转成 JS 值后 reject Promise。
-pub fn reject_error<'js>(
-    ctx: &Ctx<'js>,
-    reject: &Function<'js>,
-    error: Error,
-) -> Result<()> {
+pub fn reject_error<'js>(ctx: &Ctx<'js>, reject: &Function<'js>, error: Error) -> Result<()> {
     let value = error.into_value(ctx)?;
     reject_value(reject, value)
 }

@@ -3,20 +3,24 @@ use std::{convert::Infallible, io::Cursor, sync::Arc};
 use bytes::Bytes;
 use http_body_util::combinators::BoxBody;
 use hyper_rustls::{HttpsConnector, HttpsConnectorBuilder};
-use hyper_util::{client::legacy::{connect::HttpConnector, Client}, rt::TokioExecutor};
+use hyper_util::{
+    client::legacy::{Client, connect::HttpConnector},
+    rt::TokioExecutor,
+};
 use once_cell::sync::Lazy;
-use rquickjs::{class::Trace, function::Opt, Class, Ctx, Exception, JsLifetime, Result, Value};
+use rquickjs::{Class, Ctx, Exception, JsLifetime, Result, Value, class::Trace, function::Opt};
 use rustls::{
+    ClientConfig, DigitallySignedStruct, RootCertStore, SignatureScheme,
     client::danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier},
     pki_types::{CertificateDer, ServerName, UnixTime},
-    ClientConfig, DigitallySignedStruct, RootCertStore, SignatureScheme,
 };
 use vole_core::{bytes::ObjectBytes, object::ObjectExt, result::ResultExt};
 
 pub type HyperClient = Client<HttpsConnector<HttpConnector>, BoxBody<Bytes, Infallible>>;
 
-pub static HTTP_CLIENT: Lazy<std::result::Result<HyperClient, Box<dyn std::error::Error + Send + Sync>>> =
-    Lazy::new(|| build_client(None));
+pub static HTTP_CLIENT: Lazy<
+    std::result::Result<HyperClient, Box<dyn std::error::Error + Send + Sync>>,
+> = Lazy::new(|| build_client(None));
 
 #[derive(Debug)]
 pub struct ClientTlsConfig {
@@ -122,7 +126,9 @@ fn build_tls_config(
             add_ca_certificates(&mut roots, &certs)?;
         }
     } else {
-        roots.roots.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+        roots
+            .roots
+            .extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
     }
 
     Ok(ClientConfig::builder()
@@ -135,8 +141,7 @@ fn add_ca_certificates(
     bytes: &[u8],
 ) -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut cursor = Cursor::new(bytes);
-    let certs = rustls_pemfile::certs(&mut cursor)
-        .collect::<std::result::Result<Vec<_>, _>>()?;
+    let certs = rustls_pemfile::certs(&mut cursor).collect::<std::result::Result<Vec<_>, _>>()?;
 
     if certs.is_empty() {
         roots.add(CertificateDer::from(bytes.to_vec()))?;
@@ -161,10 +166,9 @@ impl Agent {
     #[qjs(constructor)]
     pub fn new<'js>(ctx: Ctx<'js>, options: Opt<Value<'js>>) -> Result<Self> {
         let client = match parse_agent_tls_config(&ctx, options.0)? {
-            Some(tls_config) => build_client(Some(tls_config)).or_throw_msg(
-                &ctx,
-                "Failed to build HTTP client",
-            )?,
+            Some(tls_config) => {
+                build_client(Some(tls_config)).or_throw_msg(&ctx, "Failed to build HTTP client")?
+            }
             None => HTTP_CLIENT
                 .as_ref()
                 .map_err(|err| Exception::throw_type(&ctx, &err.to_string()))?

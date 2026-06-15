@@ -117,17 +117,12 @@ impl IntegerTypedArrayKind {
 }
 
 /// 判断 JS 值是否是 WebCrypto 认可的整数 TypedArray。
-pub fn integer_typed_array_kind<'js>(
-    value: &Value<'js>,
-) -> Result<Option<IntegerTypedArrayKind>> {
+pub fn integer_typed_array_kind<'js>(value: &Value<'js>) -> Result<Option<IntegerTypedArrayKind>> {
     let Some(object) = value.as_object() else {
         return Ok(None);
     };
 
-    if matches!(
-        get_class_name(value)?.as_deref(),
-        Some("Uint8ClampedArray")
-    ) {
+    if matches!(get_class_name(value)?.as_deref(), Some("Uint8ClampedArray")) {
         return Ok(Some(IntegerTypedArrayKind::Uint8Clamped));
     }
 
@@ -160,10 +155,7 @@ pub fn integer_typed_array_kind<'js>(
 }
 
 /// 读取整数 TypedArray 的 `byteLength`。
-pub fn integer_typed_array_byte_length<'js>(
-    ctx: &Ctx<'js>,
-    value: &Value<'js>,
-) -> Result<usize> {
+pub fn integer_typed_array_byte_length<'js>(ctx: &Ctx<'js>, value: &Value<'js>) -> Result<usize> {
     if integer_typed_array_kind(value)?.is_none() {
         return Err(Exception::throw_type(ctx, "Expected an integer TypedArray"));
     }

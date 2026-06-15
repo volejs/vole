@@ -1,8 +1,8 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use rquickjs::{
-    atom::PredefinedAtom, class::Trace, function::Opt, ArrayBuffer, Coerced, Ctx, Exception,
-    IntoJs, Object, Result, Value,
+    ArrayBuffer, Coerced, Ctx, Exception, IntoJs, Object, Result, Value, atom::PredefinedAtom,
+    class::Trace, function::Opt,
 };
 
 use super::blob::Blob;

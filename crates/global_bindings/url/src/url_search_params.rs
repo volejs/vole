@@ -1,15 +1,11 @@
-use std::{
-    cell::RefCell,
-    collections::HashMap,
-    rc::Rc,
-};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use rquickjs::{
+    Array, Class, Coerced, Ctx, Exception, FromJs, Function, IntoJs, Null, Object, Result, Symbol,
+    Value,
     atom::PredefinedAtom,
     class::Trace,
     function::{Opt, This},
-    Array, Class, Coerced, Ctx, Exception, FromJs, Function, IntoJs, Null, Object, Result, Symbol,
-    Value,
 };
 use url::Url;
 use vole_core::{
@@ -116,9 +112,7 @@ impl<'js> URLSearchParams {
             .borrow()
             .query_pairs()
             .into_owned()
-            .try_for_each(|(k, v)| {
-                callback.call((This(this_arg.clone()), v, k, self.clone()))
-            })?;
+            .try_for_each(|(k, v)| callback.call((This(this_arg.clone()), v, k, self.clone())))?;
         Ok(())
     }
 
@@ -284,7 +278,9 @@ impl<'js> URLSearchParams {
     }
 
     pub fn from_url(url: &Rc<RefCell<Url>>) -> Self {
-        Self { url: Rc::clone(url) }
+        Self {
+            url: Rc::clone(url),
+        }
     }
 
     pub fn from_array(ctx: &Ctx<'js>, array: Array<'js>) -> Result<Self> {

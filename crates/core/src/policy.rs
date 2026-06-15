@@ -24,7 +24,7 @@
 
 use std::{fmt, sync::Arc, time::SystemTime};
 
-use rquickjs::{runtime::UserDataGuard, Ctx, Exception, JsLifetime, Result};
+use rquickjs::{Ctx, Exception, JsLifetime, Result, runtime::UserDataGuard};
 
 /// 网络访问检查上下文。
 ///
@@ -323,10 +323,10 @@ pub fn net_policy<'a, 'js>(ctx: &'a Ctx<'js>) -> Option<UserDataGuard<'a, NetPol
 pub fn check_net_url(ctx: &Ctx<'_>, url: &str) -> Result<()> {
     if let Some(policy) = net_policy(ctx) {
         match policy.check(NetAccess { url }) {
-            PolicyDecision::Allow | PolicyDecision::AllowTemporary(_) => {},
+            PolicyDecision::Allow | PolicyDecision::AllowTemporary(_) => {}
             PolicyDecision::Deny(err) => {
                 return Err(Exception::throw_message(ctx, &err.display_message()));
-            },
+            }
         }
     }
     Ok(())

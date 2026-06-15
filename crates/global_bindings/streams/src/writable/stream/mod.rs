@@ -1,17 +1,17 @@
 use std::collections::VecDeque;
 
+use rquickjs::{
+    Class, Ctx, Exception, JsLifetime, Object, Promise, Result, Value,
+    class::{OwnedBorrowMut, Trace, Tracer},
+    function::Constructor,
+    prelude::{Opt, This},
+};
 use vole_core::{
     option::{Null, Undefined},
     primordials::{BasePrimordials, Primordial},
     promise::{
-        promise_rejected_with_constructor, upon_promise, PromisePrimordials, ResolveablePromise,
+        PromisePrimordials, ResolveablePromise, promise_rejected_with_constructor, upon_promise,
     },
-};
-use rquickjs::{
-    class::{OwnedBorrowMut, Trace, Tracer},
-    function::Constructor,
-    prelude::{Opt, This},
-    Class, Ctx, Exception, JsLifetime, Object, Promise, Result, Value,
 };
 
 use crate::{
@@ -303,10 +303,10 @@ impl<'js> WritableStream<'js> {
 
         // If stream.[[pendingAbortRequest]] is not undefined, return stream.[[pendingAbortRequest]]'s promise.
         match objects.stream.pending_abort_request {
-            None => {},
+            None => {}
             Some(ref pending_abort_request) => {
-                return Ok((pending_abort_request.promise.promise.clone(), objects))
-            },
+                return Ok((pending_abort_request.promise.promise.clone(), objects));
+            }
         }
 
         let was_already_erroring = match objects.stream.state {
@@ -316,7 +316,7 @@ impl<'js> WritableStream<'js> {
             WritableStreamState::Erroring(_) => {
                 reason = None;
                 true
-            },
+            }
             // Let wasAlreadyErroring be false.
             _ => false,
         };
@@ -496,7 +496,7 @@ impl<'js> WritableStream<'js> {
                             objects,
                         )?;
                         Ok(())
-                    },
+                    }
                     // Upon rejection of promise with reason reason,
                     Err(reason) => {
                         // Reject abortRequest’s promise with reason.
@@ -506,7 +506,7 @@ impl<'js> WritableStream<'js> {
                             objects,
                         )?;
                         Ok(())
-                    },
+                    }
                 }
             }
         })?;
@@ -646,13 +646,15 @@ impl<'js> WritableStream<'js> {
             WritableStreamState::Writable => {
                 // Perform ! WritableStreamStartErroring(stream, error).
                 Self::writable_stream_start_erroring(ctx, objects, error)
-            },
+            }
             WritableStreamState::Erroring(stored_error) => {
                 let stored_error = stored_error.clone();
                 // Perform ! WritableStreamFinishErroring(stream).
                 Self::writable_stream_finish_erroring(ctx, objects, stored_error)
-            },
-            other => panic!("WritableStreamDealWithRejection must be called in state 'writable' or 'erroring', found {other:?}"),
+            }
+            other => panic!(
+                "WritableStreamDealWithRejection must be called in state 'writable' or 'erroring', found {other:?}"
+            ),
         }
     }
 

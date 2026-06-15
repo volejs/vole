@@ -1,8 +1,8 @@
 use rquickjs::{Array, ArrayBuffer, Class, Ctx, IntoJs, Promise, Result, Value};
 
 use crate::classes::CryptoKey;
-use crate::key_material::{has_usage, KeyInfo, KeyMaterial};
-use crate::provider::{default_provider, CryptoProvider, HashAlgorithm};
+use crate::key_material::{KeyInfo, KeyMaterial, has_usage};
+use crate::provider::{CryptoProvider, HashAlgorithm, default_provider};
 use crate::utils::js_value_to_json;
 use vole_core::error::{dom_exception_name, reject_dom_exception};
 
@@ -43,14 +43,14 @@ pub(crate) fn crypto_subtle_derive_bits<'js>(
             Ok(bytes) => match ArrayBuffer::new_copy(ctx_clone, bytes) {
                 Ok(buffer) => {
                     let _ = resolve.call::<_, ()>((buffer,));
-                },
+                }
                 Err(_) => {
                     let _ = reject.call::<_, ()>(("deriveBits output failed",));
-                },
+                }
             },
             Err(err) => {
                 let _ = reject.call::<_, ()>((err,));
-            },
+            }
         }
     });
 
@@ -111,10 +111,10 @@ pub(crate) fn crypto_subtle_derive_key<'js>(
         match result {
             Ok(value) => {
                 let _ = resolve.call::<_, ()>((value,));
-            },
+            }
             Err(_) => {
                 let _ = reject.call::<_, ()>(("deriveKey failed",));
-            },
+            }
         }
     });
 
@@ -142,17 +142,18 @@ fn derive_bytes(
             default_provider()
                 .hkdf_derive(hash, base_key, &salt, &info, length)
                 .map_err(|_| "HKDF derivation failed")
-        },
+        }
         "PBKDF2" => {
             let salt = bytes_field(algorithm, "salt")?;
             let iterations = algorithm["iterations"]
                 .as_u64()
                 .ok_or("PBKDF2 iterations is required")?;
-            let iterations = u32::try_from(iterations).map_err(|_| "PBKDF2 iterations too large")?;
+            let iterations =
+                u32::try_from(iterations).map_err(|_| "PBKDF2 iterations too large")?;
             default_provider()
                 .pbkdf2_derive(hash, base_key, &salt, iterations, length)
                 .map_err(|_| "PBKDF2 derivation failed")
-        },
+        }
         _ => Err("Unsupported derivation algorithm"),
     }
 }
@@ -171,7 +172,7 @@ fn derived_crypto_key<'js>(
                 return Err(rquickjs::Error::Exception);
             }
             (KeyMaterial::Aes(bytes), name.clone())
-        },
+        }
         "HMAC" => {
             let hash = hash_algorithm(algorithm).map_err(|_| rquickjs::Error::Exception)?;
             let stored = match hash {
@@ -181,7 +182,7 @@ fn derived_crypto_key<'js>(
                 HashAlgorithm::Sha512 => "HMAC-SHA-512",
             };
             (KeyMaterial::Hmac(bytes), stored.to_string())
-        },
+        }
         _ => return Err(rquickjs::Error::Exception),
     };
 
@@ -218,12 +219,14 @@ fn derived_key_length(algorithm: &serde_json::Value) -> std::result::Result<u32,
                 HashAlgorithm::Sha1 | HashAlgorithm::Sha256 => 256,
                 HashAlgorithm::Sha384 | HashAlgorithm::Sha512 => 512,
             })
-        },
+        }
         _ => Err("Unsupported derived key algorithm"),
     }
 }
 
-fn hash_algorithm(algorithm: &serde_json::Value) -> std::result::Result<HashAlgorithm, &'static str> {
+fn hash_algorithm(
+    algorithm: &serde_json::Value,
+) -> std::result::Result<HashAlgorithm, &'static str> {
     let name = algorithm["hash"]
         .as_str()
         .or_else(|| algorithm["hash"]["name"].as_str())
@@ -239,6 +242,10 @@ fn bytes_field(
         .as_array()
         .ok_or("Missing required BufferSource field")?
         .iter()
-        .map(|v| v.as_u64().map(|n| n as u8).ok_or("Invalid BufferSource field"))
+        .map(|v| {
+            v.as_u64()
+                .map(|n| n as u8)
+                .ok_or("Invalid BufferSource field")
+        })
         .collect()
 }

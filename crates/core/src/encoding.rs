@@ -128,7 +128,7 @@ impl Encoder {
             Self::Base64 => bytes_from_b64(bytes),
             Self::Utf8 | Self::Windows1252 | Self::Utf16le | Self::Utf16be => {
                 Ok(bytes.into().into())
-            },
+            }
         }
     }
 

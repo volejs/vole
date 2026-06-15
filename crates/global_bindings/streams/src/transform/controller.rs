@@ -1,19 +1,17 @@
 use rquickjs::{
+    Class, Ctx, Exception, Function, JsLifetime, Object, Promise, Result, Value,
     class::{OwnedBorrowMut, Trace},
     prelude::{Opt, This},
-    Class, Ctx, Exception, Function, JsLifetime, Object, Promise, Result, Value,
 };
 use vole_core::{
     primordials::Primordial,
-    promise::{promise_resolved_with, ResolveablePromise},
+    promise::{ResolveablePromise, promise_resolved_with},
 };
 
-use crate::{
-    readable::{
-        readable_stream_default_controller_close_stream,
-        readable_stream_default_controller_enqueue_value,
-        readable_stream_default_controller_error_stream, ReadableStreamDefaultControllerClass,
-    },
+use crate::readable::{
+    ReadableStreamDefaultControllerClass, readable_stream_default_controller_close_stream,
+    readable_stream_default_controller_enqueue_value,
+    readable_stream_default_controller_error_stream,
 };
 
 use super::stream::TransformStreamClass;
@@ -40,7 +38,7 @@ fn get_readable_default_controller<'js>(
     match &readable.controller {
         crate::readable::ReadableStreamControllerClass::ReadableStreamDefaultController(c) => {
             Some(c.clone())
-        },
+        }
         _ => None,
     }
 }
@@ -62,7 +60,7 @@ impl<'js> TransformStreamDefaultController<'js> {
                 let c = c.borrow();
                 c.readable_stream_default_controller_get_desired_size(&readable)
                     .0
-            },
+            }
             _ => None,
         }
     }
@@ -243,12 +241,12 @@ pub(super) fn transform_stream_default_controller_perform_transform<'js>(
                 &promise_primordials,
                 result.map(|_| Value::new_undefined(ctx.clone())),
             )?
-        },
+        }
         TransformAlgorithm::Function { f, transformer } => {
             let result: Result<Value> =
                 f.call((This(transformer), chunk, controller_class.clone()));
             promise_resolved_with(&ctx, &promise_primordials, result)?
-        },
+        }
     };
 
     Ok(transform_promise)
@@ -273,7 +271,7 @@ pub(super) fn perform_flush<'js>(
         FlushAlgorithm::Function { f, transformer } => {
             let result: Result<Value> = f.call((This(transformer), controller_class.clone()));
             promise_resolved_with(&ctx, &promise_primordials, result)
-        },
+        }
     }
 }
 
@@ -296,6 +294,6 @@ pub(super) fn perform_cancel<'js>(
         CancelAlgorithm::Function { f, transformer } => {
             let result: Result<Value> = f.call((This(transformer), reason));
             promise_resolved_with(&ctx, &promise_primordials, result)
-        },
+        }
     }
 }

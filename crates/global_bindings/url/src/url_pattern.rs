@@ -1,8 +1,6 @@
 use rquickjs::{
-    atom::PredefinedAtom,
-    class::Trace,
-    function::Opt,
-    Array, Coerced, Ctx, FromJs, IntoJs, Null, Object, Result, Value,
+    Array, Coerced, Ctx, FromJs, IntoJs, Null, Object, Result, Value, atom::PredefinedAtom,
+    class::Trace, function::Opt,
 };
 use url::Url;
 use urlpattern::{
@@ -27,12 +25,8 @@ impl<'js> URLPattern {
         base_url_or_options: Opt<Value<'js>>,
         options: Opt<Value<'js>>,
     ) -> Result<Self> {
-        let (init, options) = constructor_args_to_init_and_options(
-            &ctx,
-            input,
-            base_url_or_options.0,
-            options.0,
-        )?;
+        let (init, options) =
+            constructor_args_to_init_and_options(&ctx, input, base_url_or_options.0, options.0)?;
         let inner = NativeUrlPattern::parse(init, options)
             .map_err(|err| rquickjs::Exception::throw_type(&ctx, &err.to_string()))?;
         Ok(Self { inner })
@@ -162,13 +156,18 @@ fn constructor_args_to_init_and_options<'js>(
     if input.is_string() {
         let pattern = to_dom_string(&input)?;
         let base_url = match base_url_or_options.as_ref() {
-            Some(value) if !value.is_undefined() && !value.is_null() && !value.as_object().map(is_options_object).unwrap_or(false) => {
+            Some(value)
+                if !value.is_undefined()
+                    && !value.is_null()
+                    && !value.as_object().map(is_options_object).unwrap_or(false) =>
+            {
                 Some(parse_url(ctx, &to_dom_string(value)?)?)
-            },
+            }
             _ => None,
         };
         let options_value = options.or_else(|| {
-            base_url_or_options.filter(|value| value.as_object().map(is_options_object).unwrap_or(false))
+            base_url_or_options
+                .filter(|value| value.as_object().map(is_options_object).unwrap_or(false))
         });
         let init = UrlPatternInit::parse_constructor_string::<regex::Regex>(&pattern, base_url)
             .map_err(|err| rquickjs::Exception::throw_type(ctx, &err.to_string()))?;
@@ -199,7 +198,7 @@ fn match_args_to_input<'js>(
                 let base = parse_url(ctx, &to_dom_string(&base_url)?)?;
                 base.join(&input_string)
                     .map_err(|err| rquickjs::Exception::throw_type(ctx, &err.to_string()))?
-            },
+            }
             _ => parse_url(ctx, &input_string)?,
         };
         let mut inputs = vec![ValueInput::String(input_string)];
@@ -281,10 +280,7 @@ fn parse_url<'js>(ctx: &Ctx<'js>, input: &str) -> Result<Url> {
     Url::parse(input).map_err(|err| rquickjs::Exception::throw_type(ctx, &err.to_string()))
 }
 
-fn component_result<'js>(
-    ctx: &Ctx<'js>,
-    result: UrlPatternComponentResult,
-) -> Result<Object<'js>> {
+fn component_result<'js>(ctx: &Ctx<'js>, result: UrlPatternComponentResult) -> Result<Object<'js>> {
     let object = Object::new(ctx.clone())?;
     object.set("input", result.input)?;
     let groups = Object::new(ctx.clone())?;

@@ -1,4 +1,4 @@
-use rquickjs::{function::This, Ctx, Function, Object, Result, Value};
+use rquickjs::{Ctx, Function, Object, Result, Value, function::This};
 
 pub fn init(ctx: &Ctx) -> Result<()> {
     ctx.globals()

@@ -1,9 +1,7 @@
 use std::cell::{Cell, RefCell};
 
-use rquickjs::{atom::PredefinedAtom, function::Opt, Coerced, Ctx, Object, Result, Value};
-use vole_core::{
-    bytes::ObjectBytes, encoding::Encoder, object::ObjectExt, result::ResultExt,
-};
+use rquickjs::{Coerced, Ctx, Object, Result, Value, atom::PredefinedAtom, function::Opt};
+use vole_core::{bytes::ObjectBytes, encoding::Encoder, object::ObjectExt, result::ResultExt};
 
 #[rquickjs::class]
 #[derive(rquickjs::class::Trace, rquickjs::JsLifetime)]
@@ -61,7 +59,11 @@ fn utf8_incomplete_tail(bytes: &[u8]) -> usize {
 #[rquickjs::methods]
 impl<'js> TextDecoder {
     #[qjs(constructor)]
-    pub fn new(ctx: Ctx<'js>, label: Opt<Coerced<String>>, options: Opt<Object<'js>>) -> Result<Self> {
+    pub fn new(
+        ctx: Ctx<'js>,
+        label: Opt<Coerced<String>>,
+        options: Opt<Object<'js>>,
+    ) -> Result<Self> {
         let mut fatal = false;
         let mut ignore_bom = false;
 
@@ -173,7 +175,7 @@ impl<'js> TextDecoder {
             match self.encoder {
                 Encoder::Utf8 => {
                     decode_end -= utf8_incomplete_tail(data);
-                },
+                }
                 Encoder::Utf16le | Encoder::Utf16be => {
                     let odd = data.len() % 2;
                     decode_end -= odd;
@@ -187,8 +189,8 @@ impl<'js> TextDecoder {
                             decode_end -= 2;
                         }
                     }
-                },
-                _ => {},
+                }
+                _ => {}
             }
 
             if decode_end < data.len() {

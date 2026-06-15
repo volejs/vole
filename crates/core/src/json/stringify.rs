@@ -3,8 +3,8 @@
 use std::{collections::HashSet, rc::Rc};
 
 use rquickjs::{
-    atom::PredefinedAtom, function::This, qjs, Ctx, Exception, Function, Object, Result, Type,
-    Value,
+    Ctx, Exception, Function, Object, Result, Type, Value, atom::PredefinedAtom, function::This,
+    qjs,
 };
 
 use super::escape::escape_json_string;
@@ -100,11 +100,11 @@ pub fn json_stringify_replacer_space<'js>(
     match write_primitive(&mut context, false)? {
         PrimitiveStatus::Written => {
             return Ok(Some(result));
-        },
+        }
         PrimitiveStatus::Ignored => {
             return Ok(None);
-        },
-        _ => {},
+        }
+        _ => {}
     }
 
     context.depth += 1;
@@ -261,7 +261,7 @@ fn write_primitive2<'js>(
                 "false"
             };
             context.result.push_str(bool_str);
-        },
+        }
         Type::Int => context.result.push_str(
             context
                 .itoa_buffer
@@ -286,11 +286,11 @@ fn write_primitive2<'js>(
                     unsafe { context.result.as_mut_vec().set_len(len - 2) }
                 }
             }
-        },
+        }
         Type::String => {
             let js_string = unsafe { value.as_string().unwrap_unchecked() }.clone();
             write_string(context.result, js_string.to_cstring()?.as_str());
-        },
+        }
         _ => return Ok(PrimitiveStatus::Iterate(new_value)),
     }
     Ok(PrimitiveStatus::Written)
@@ -380,7 +380,7 @@ fn append_value(context: &mut StringifyContext<'_, '_>, add_comma: bool) -> Resu
             context.depth += 1;
             iterate(context, new_value)?;
             Ok(true)
-        },
+        }
     }
 }
 
@@ -500,7 +500,7 @@ fn iterate<'js>(
                 write_indentation(context.result, indentation, depth);
             }
             context.result.push('}');
-        },
+        }
         Type::Array => {
             context.result.push('[');
             add_comma = false;
@@ -544,8 +544,8 @@ fn iterate<'js>(
                 write_indentation(context.result, indentation, depth);
             }
             context.result.push(']');
-        },
-        _ => {},
+        }
+        _ => {}
     }
     Ok(())
 }

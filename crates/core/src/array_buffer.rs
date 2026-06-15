@@ -20,7 +20,7 @@
 
 use std::ffi::c_void;
 
-use rquickjs::{qjs, ArrayBuffer, Ctx, Exception, Result, Value};
+use rquickjs::{ArrayBuffer, Ctx, Exception, Result, Value, qjs};
 
 /// 将 `ArrayBuffer` 标记为 immutable。
 ///

@@ -3,24 +3,24 @@ use std::{
     sync::atomic::{AtomicBool, Ordering},
 };
 
-use vole_core::{
-    primordials::{BasePrimordials, Primordial},
-    promise::{
-        promise_resolved_with, upon_promise, upon_promise_fulfilment, PromisePrimordials,
-        ResolveablePromise,
-    },
-};
 use rquickjs::{
+    Class, Coerced, Ctx, Error, Exception, FromJs, Function, IntoAtom, IntoJs, JsLifetime, Object,
+    Promise, Result, Symbol, Type, Value,
     atom::PredefinedAtom,
     class::{
-        impl_::{CloneTrait, CloneWrapper},
         JsClass, OwnedBorrow, OwnedBorrowMut, Trace, Tracer,
+        impl_::{CloneTrait, CloneWrapper},
     },
     function::Constructor,
     methods,
     prelude::{Opt, This},
-    Class, Coerced, Ctx, Error, Exception, FromJs, Function, IntoAtom, IntoJs, JsLifetime, Object,
-    Promise, Result, Symbol, Type, Value,
+};
+use vole_core::{
+    primordials::{BasePrimordials, Primordial},
+    promise::{
+        PromisePrimordials, ResolveablePromise, promise_resolved_with, upon_promise,
+        upon_promise_fulfilment,
+    },
 };
 
 use crate::{
@@ -35,7 +35,7 @@ use crate::{
         },
         reader::ReadableStreamGenericReader,
     },
-    utils::{class_from_owned_borrow_mut, UnwrapOrUndefined},
+    utils::{UnwrapOrUndefined, class_from_owned_borrow_mut},
 };
 
 pub(super) enum IteratorKind {
@@ -71,7 +71,7 @@ impl<'js> IteratorRecord<'js> {
                     let sync_method = match sync_method {
                         None => {
                             return Err(Exception::throw_type(ctx, "Object is not an iterator"));
-                        },
+                        }
                         Some(sync_method) => sync_method,
                     };
 
@@ -84,7 +84,7 @@ impl<'js> IteratorRecord<'js> {
                 }
 
                 method
-            },
+            }
         };
 
         // If method is undefined, throw a TypeError exception.
@@ -93,7 +93,7 @@ impl<'js> IteratorRecord<'js> {
             Some(method) => {
                 // Return ? GetIteratorFromMethod(obj, method).
                 Self::get_iterator_from_method(ctx, &obj, method)
-            },
+            }
         }
     }
 
@@ -111,7 +111,7 @@ impl<'js> IteratorRecord<'js> {
                     ctx,
                     "The iterator method must return an object",
                 ));
-            },
+            }
         };
         // Let nextMethod be ? Get(iterator, "next").
         let next_method = iterator.get(PredefinedAtom::Next)?;
@@ -160,12 +160,12 @@ impl<'js> IteratorRecord<'js> {
                 // Let result be Completion(Call(iteratorRecord.[[NextMethod]], iteratorRecord.[[Iterator]])).
 
                 self.next_method.call((This(self.iterator.clone()),))
-            },
+            }
             // Else,
             Some(value) => {
                 // Let result be Completion(Call(iteratorRecord.[[NextMethod]], iteratorRecord.[[Iterator]], « value »)).
                 self.next_method.call((This(self.iterator.clone()), value))
-            },
+            }
         };
 
         let result = match result {
@@ -175,7 +175,7 @@ impl<'js> IteratorRecord<'js> {
                 self.done.store(true, Ordering::Release);
                 // Return ? result.
                 return Err(Error::Exception);
-            },
+            }
             Err(err) => return Err(err),
             // Set result to ! result.
             Ok(result) => result,
@@ -190,7 +190,7 @@ impl<'js> IteratorRecord<'js> {
                     ctx,
                     "The iterator.next() method must return an object",
                 ));
-            },
+            }
             Some(result) => result,
         };
         // Return result.
@@ -361,12 +361,12 @@ impl<'js> ReadableStreamAsyncIterator<'js> {
                                     done: false,
                                 })
                             }
-                        },
+                        }
                         Err(reason) => {
                             iterator.ongoing_promise = None;
                             iterator.is_finished.store(true, Ordering::Release);
                             Err(ctx.throw(reason))
-                        },
+                        }
                     }
                 },
             )

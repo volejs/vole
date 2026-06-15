@@ -18,13 +18,13 @@
 //! - 该模块只负责同步原语，不负责 Promise resolve/reject 或 runtime 错误分发。
 
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
     Arc, RwLock,
+    atomic::{AtomicBool, Ordering},
 };
 
 use rquickjs::{
-    class::{Trace, Tracer},
     Value,
+    class::{Trace, Tracer},
 };
 use std::ops::Deref;
 use tokio::sync::Notify;

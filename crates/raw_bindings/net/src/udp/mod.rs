@@ -1,7 +1,7 @@
 use rquickjs::{
+    Ctx, Function, Object, Promise, Result, TypedArray,
     function::Opt,
     module::{Declarations, Exports, ModuleDef},
-    Ctx, Function, Object, Promise, Result, TypedArray,
 };
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};

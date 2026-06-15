@@ -1,6 +1,6 @@
 use rquickjs::{
-    module::{Declarations, Exports, ModuleDef},
     Ctx, Object, Result,
+    module::{Declarations, Exports, ModuleDef},
 };
 
 fn join(parts: Vec<String>) -> String {

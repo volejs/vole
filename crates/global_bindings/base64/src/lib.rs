@@ -1,4 +1,4 @@
-use base64::{engine::general_purpose, Engine as _};
+use base64::{Engine as _, engine::general_purpose};
 use rquickjs::{Ctx, Function, Result, Value};
 use vole_core::{
     error::{dom_exception_name, throw_dom_exception},

@@ -1,18 +1,18 @@
 use axum::{
+    Router,
     body::Bytes,
     http::{HeaderMap, Method, StatusCode, Uri},
     response::{IntoResponse, Response as AxumResponse},
     routing::any,
-    Router,
 };
 use rquickjs::{
-    module::{Declarations, Exports, ModuleDef},
     Array, Ctx, Function, Object, Promise, Result, TypedArray, Value,
+    module::{Declarations, Exports, ModuleDef},
 };
 use std::collections::HashMap;
 use std::sync::{
-    atomic::{AtomicU64, Ordering},
     Mutex, OnceLock,
+    atomic::{AtomicU64, Ordering},
 };
 use tokio::sync::{mpsc, oneshot};
 
@@ -141,15 +141,19 @@ async fn run_axum_server(listener: tokio::net::TcpListener, req_tx: mpsc::Sender
     let app = Router::new()
         .route(
             "/",
-            any(move |method: Method, uri: Uri, headers: HeaderMap, body: Bytes| {
-                forward_axum_request(root_req_tx.clone(), method, uri, headers, body)
-            }),
+            any(
+                move |method: Method, uri: Uri, headers: HeaderMap, body: Bytes| {
+                    forward_axum_request(root_req_tx.clone(), method, uri, headers, body)
+                },
+            ),
         )
         .route(
             "/{*path}",
-            any(move |method: Method, uri: Uri, headers: HeaderMap, body: Bytes| {
-                forward_axum_request(req_tx.clone(), method, uri, headers, body)
-            }),
+            any(
+                move |method: Method, uri: Uri, headers: HeaderMap, body: Bytes| {
+                    forward_axum_request(req_tx.clone(), method, uri, headers, body)
+                },
+            ),
         );
 
     let _ = axum::serve(listener, app).await;

@@ -1,23 +1,23 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 use super::{
-    headers::{Headers, HeadersGuard},
     Blob, FormData, MIME_TYPE_FORM_DATA, MIME_TYPE_FORM_URLENCODED, MIME_TYPE_OCTET_STREAM,
     MIME_TYPE_TEXT,
+    headers::{Headers, HeadersGuard},
 };
-use crate::body_helpers::strip_bom;
-use hyper::{header::CONTENT_TYPE, Method};
 use crate::abort::AbortSignal;
+use crate::body_helpers::strip_bom;
 use crate::http::Agent;
-use vole_core::json::parse::json_parse;
-use vole_global_streams::ReadableStream;
-use vole_global_url::{url_class::URL, url_search_params::URLSearchParams};
-use vole_core::{bytes::ObjectBytes, object::ObjectExt, result::ResultExt};
+use hyper::{Method, header::CONTENT_TYPE};
 use rquickjs::{
-    atom::PredefinedAtom, class::Trace, function::Opt, prelude::This, ArrayBuffer, Class, Coerced,
-    Ctx, Exception, FromJs, IntoJs, Null, Object, Promise, Result, TypedArray, Value,
+    ArrayBuffer, Class, Coerced, Ctx, Exception, FromJs, IntoJs, Null, Object, Promise, Result,
+    TypedArray, Value, atom::PredefinedAtom, class::Trace, function::Opt, prelude::This,
 };
 use std::sync::RwLock;
+use vole_core::json::parse::json_parse;
+use vole_core::{bytes::ObjectBytes, object::ObjectExt, result::ResultExt};
+use vole_global_streams::ReadableStream;
+use vole_global_url::{url_class::URL, url_search_params::URLSearchParams};
 
 #[derive(Clone, Default, PartialEq)]
 pub enum RequestMode {
@@ -298,7 +298,7 @@ impl<'js> Request<'js> {
                 let stream = crate::body_helpers::create_body_value_stream(&ctx, body_value)?;
                 *self.body_stream.write().unwrap() = Some(stream.clone());
                 Ok(stream)
-            },
+            }
         }
     }
 
@@ -535,7 +535,7 @@ impl<'js> Request<'js> {
                     });
                 }
                 BodyVariant::Provided(Some(provided.clone()))
-            },
+            }
             BodyVariant::Empty => BodyVariant::Empty,
         };
         drop(body_guard);
@@ -590,7 +590,7 @@ impl<'js> Request<'js> {
                         bytes.as_bytes(ctx)?.to_vec()
                     };
                 Ok(Some(BodyTaken::Bytes(bytes)))
-            },
+            }
             BodyVariant::Empty => Ok(None),
         }
     }
@@ -619,8 +619,8 @@ fn reject_with_error<'js>(ctx: &Ctx<'js>, err: rquickjs::Error) -> Result<Promis
     // JS exception value from the Ctx's pending-exception slot so that the
     // caller sees a real TypeError (or whatever) object — not an uninitialized
     // value (which `promise_rejects_js` checks for in WPT).
-    use vole_core::promise::{promise_rejected_with, PromisePrimordials};
     use vole_core::primordials::Primordial;
+    use vole_core::promise::{PromisePrimordials, promise_rejected_with};
     let _ = err; // err is `Error::Exception`; the real value is in ctx.catch().
     let exception_value = ctx.catch();
     let primordials = PromisePrimordials::get(ctx)?;

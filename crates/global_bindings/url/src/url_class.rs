@@ -1,10 +1,10 @@
 use std::{cell::RefCell, rc::Rc};
 
 use rquickjs::{
-    atom::PredefinedAtom, class::Trace, function::Opt, Class, Coerced, Ctx, Exception, FromJs,
-    IntoJs, Null, Object, Result, Value,
+    Class, Coerced, Ctx, Exception, FromJs, IntoJs, Null, Object, Result, Value,
+    atom::PredefinedAtom, class::Trace, function::Opt,
 };
-use url::{quirks, Url};
+use url::{Url, quirks};
 use vole_core::string::get_lossy_string;
 
 use super::url_search_params::URLSearchParams;

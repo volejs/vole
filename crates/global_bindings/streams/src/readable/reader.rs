@@ -1,22 +1,20 @@
 use rquickjs::{
+    Ctx, Error, FromJs, Function, IntoJs, JsLifetime, Promise, Result, Value,
     class::{OwnedBorrowMut, Trace, Tracer},
     function::Constructor,
-    Ctx, Error, FromJs, Function, IntoJs, JsLifetime, Promise, Result, Value,
 };
 use vole_core::promise::{PromisePrimordials, ResolveablePromise};
 
-use crate::{
-    readable::{
-        byob_reader::ReadableStreamBYOBReader,
-        byob_reader::{ReadableStreamBYOBReaderClass, ReadableStreamBYOBReaderOwned},
-        controller::ReadableStreamController,
-        default_reader::{
-            ReadableStreamDefaultReader, ReadableStreamDefaultReaderClass,
-            ReadableStreamDefaultReaderOwned,
-        },
-        objects::ReadableStreamObjects,
-        stream::{ReadableStream, ReadableStreamClass, ReadableStreamOwned, ReadableStreamState},
+use crate::readable::{
+    byob_reader::ReadableStreamBYOBReader,
+    byob_reader::{ReadableStreamBYOBReaderClass, ReadableStreamBYOBReaderOwned},
+    controller::ReadableStreamController,
+    default_reader::{
+        ReadableStreamDefaultReader, ReadableStreamDefaultReaderClass,
+        ReadableStreamDefaultReaderOwned,
     },
+    objects::ReadableStreamObjects,
+    stream::{ReadableStream, ReadableStreamClass, ReadableStreamOwned, ReadableStreamState},
 };
 
 pub(crate) trait ReadableStreamReader<'js>: Sized + 'js {
@@ -55,7 +53,7 @@ impl<'js> ReadableStreamReaderClass<'js> {
         match self {
             Self::ReadableStreamDefaultReader(r) => {
                 r.borrow().generic.closed_promise.promise.clone()
-            },
+            }
             Self::ReadableStreamBYOBReader(r) => r.borrow().generic.closed_promise.promise.clone(),
         }
     }
@@ -98,11 +96,11 @@ impl<'js> ReadableStreamReader<'js> for ReadableStreamReaderOwned<'js> {
             Self::ReadableStreamDefaultReader(r) => {
                 let (ctx, r) = default(ctx, r)?;
                 Ok((ctx, Self::ReadableStreamDefaultReader(r)))
-            },
+            }
             Self::ReadableStreamBYOBReader(r) => {
                 let (ctx, r) = byob(ctx, r)?;
                 Ok((ctx, Self::ReadableStreamBYOBReader(r)))
-            },
+            }
         }
     }
 
@@ -110,10 +108,10 @@ impl<'js> ReadableStreamReader<'js> for ReadableStreamReaderOwned<'js> {
         match self {
             ReadableStreamReaderOwned::ReadableStreamDefaultReader(r) => {
                 ReadableStreamReaderClass::ReadableStreamDefaultReader(r.into_inner())
-            },
+            }
             ReadableStreamReaderOwned::ReadableStreamBYOBReader(r) => {
                 ReadableStreamReaderClass::ReadableStreamBYOBReader(r.into_inner())
-            },
+            }
         }
     }
 
@@ -121,10 +119,10 @@ impl<'js> ReadableStreamReader<'js> for ReadableStreamReaderOwned<'js> {
         match class {
             ReadableStreamReaderClass::ReadableStreamDefaultReader(r) => {
                 Self::ReadableStreamDefaultReader(OwnedBorrowMut::from_class(r))
-            },
+            }
             ReadableStreamReaderClass::ReadableStreamBYOBReader(r) => {
                 Self::ReadableStreamBYOBReader(OwnedBorrowMut::from_class(r))
-            },
+            }
         }
     }
 
@@ -153,7 +151,7 @@ impl<'js, T: ReadableStreamReader<'js>> ReadableStreamReader<'js> for Option<T> 
             Some(mut reader) => {
                 (ctx, reader) = reader.with_reader(ctx, default, byob, none)?;
                 Ok((ctx, Some(reader)))
-            },
+            }
             None => Ok((none(ctx)?, None)),
         }
     }
@@ -256,12 +254,12 @@ impl<'js> ReadableStreamGenericReader<'js> {
             ReadableStreamState::Readable => {
                 // Set reader.[[closedPromise]] to a new promise.
                 ResolveablePromise::new(ctx)?
-            },
+            }
             // Otherwise, if stream.[[state]] is "closed",
             ReadableStreamState::Closed => {
                 // Set reader.[[closedPromise]] to a promise resolved with undefined.
                 ResolveablePromise::resolved_with_undefined(&stream.promise_primordials)
-            },
+            }
             // Otherwise,
             ReadableStreamState::Errored(ref stored_error) => {
                 // Set reader.[[closedPromise]] to a promise rejected with stream.[[storedError]].
@@ -274,7 +272,7 @@ impl<'js> ReadableStreamGenericReader<'js> {
                 promise.set_is_handled()?;
 
                 promise
-            },
+            }
         };
 
         let promise_primordials = stream.promise_primordials.clone();

@@ -3,15 +3,15 @@
 use std::{cell::RefCell, io::Write, rc::Rc};
 
 use hyper::header::{CONTENT_DISPOSITION, CONTENT_TYPE};
-use vole_global_blob::{Blob, File};
-use vole_core::{class::IteratorDef, object::map_to_entries, result::ResultExt};
 use rand::RngExt;
 use rquickjs::{
+    Array, Class, Coerced, Ctx, Exception, FromJs, Function, IntoJs, JsLifetime, Result, Value,
     atom::PredefinedAtom,
     class::{Trace, Tracer},
     prelude::{Opt, This},
-    Array, Class, Coerced, Ctx, Exception, FromJs, Function, IntoJs, JsLifetime, Result, Value,
 };
+use vole_core::{class::IteratorDef, object::map_to_entries, result::ResultExt};
+use vole_global_blob::{Blob, File};
 
 #[derive(Clone, Trace, JsLifetime)]
 enum FormValue<'js> {
@@ -301,7 +301,7 @@ impl<'js> FormData<'js> {
                         body,
                         "--{boundary}\r\nContent-Disposition: form-data; name=\"{name}\"\r\n\r\n{text}\r\n"
                     )?;
-                },
+                }
                 FormValue::File(file) => {
                     let filename = file.name().clone();
                     let content_type = file.mime_type().clone();
@@ -313,7 +313,7 @@ impl<'js> FormData<'js> {
                     )?;
                     body.extend_from_slice(bytes);
                     body.extend_from_slice(b"\r\n");
-                },
+                }
             }
         }
 

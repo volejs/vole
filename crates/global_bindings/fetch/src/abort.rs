@@ -1,6 +1,6 @@
 use rquickjs::{
-    class::{Trace, Tracer},
     Ctx, Exception, FromJs, Function, IntoJs, JsLifetime, Object, Result, Value,
+    class::{Trace, Tracer},
 };
 use vole_core::mc_oneshot;
 use vole_global_events::AbortSignalRef;

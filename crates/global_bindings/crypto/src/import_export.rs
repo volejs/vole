@@ -35,7 +35,7 @@ pub(crate) fn crypto_subtle_import_key<'js>(
                 "AES-CBC" | "AES-CTR" | "AES-GCM" | "AES-KW" => {
                     validate_aes_key_length(&ctx, bytes.len())?;
                     KeyMaterial::Aes(bytes)
-                },
+                }
                 "HMAC" => KeyMaterial::Hmac(bytes),
                 "HKDF" | "PBKDF2" => KeyMaterial::Derive(bytes),
                 _ => return Err(rquickjs::Error::Exception),
@@ -239,7 +239,7 @@ pub(crate) fn export_jwk(key_info: &KeyInfo) -> Result<serde_json::Value> {
         KeyMaterial::Aes(b) => b,
         KeyMaterial::Hmac(b) => b,
         KeyMaterial::RsaPrivate(_) | KeyMaterial::RsaPublic(_) | KeyMaterial::Derive(_) => {
-            return Err(rquickjs::Error::Exception)
+            return Err(rquickjs::Error::Exception);
         }
     };
     let k = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bytes);

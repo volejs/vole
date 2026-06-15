@@ -12,7 +12,7 @@
 
 use std::collections::VecDeque;
 
-use rquickjs::{class::Trace, Ctx, Exception, FromJs, JsLifetime, Result, Value};
+use rquickjs::{Ctx, Exception, FromJs, JsLifetime, Result, Value, class::Trace};
 
 /// size algorithm 的返回值。
 ///
@@ -76,7 +76,7 @@ impl<'js> QueueWithSizes<'js> {
                     ctx,
                     "Size must be a finite, non-NaN, non-negative number.",
                 ));
-            },
+            }
             Some(size) => size,
         };
 

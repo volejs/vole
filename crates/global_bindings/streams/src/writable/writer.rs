@@ -1,4 +1,4 @@
-use rquickjs::{class::Trace, Result};
+use rquickjs::{Result, class::Trace};
 
 use crate::writable::default_writer::WritableStreamDefaultWriterOwned;
 
@@ -63,7 +63,7 @@ impl<'js, T: WritableStreamWriter<'js>> WritableStreamWriter<'js> for Option<T> 
             Some(mut writer) => {
                 (ctx, writer) = writer.with_writer(ctx, default, none)?;
                 Ok((ctx, Some(writer)))
-            },
+            }
             None => Ok((none(ctx)?, None)),
         }
     }

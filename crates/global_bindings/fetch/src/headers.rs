@@ -5,23 +5,23 @@
 use std::{collections::HashSet, rc::Rc};
 
 use hyper::{
+    HeaderMap,
     header::{
         ACCEPT, ACCEPT_CHARSET, ACCEPT_ENCODING, ACCEPT_LANGUAGE, ACCESS_CONTROL_REQUEST_HEADERS,
         ACCESS_CONTROL_REQUEST_METHOD, CONNECTION, CONTENT_LANGUAGE, CONTENT_LENGTH, CONTENT_TYPE,
         COOKIE, DATE, EXPECT, HOST, ORIGIN, REFERER, SET_COOKIE, TE, TRAILER, TRANSFER_ENCODING,
         UPGRADE, VIA,
     },
-    HeaderMap,
+};
+use rquickjs::{
+    Array, Class, Ctx, Exception, FromJs, Function, IntoJs, JsLifetime, Null, Object, Result,
+    Symbol, Value, atom::PredefinedAtom, class::Trace, convert::Coerced, methods, prelude::Opt,
+    prelude::This,
 };
 use vole_core::{
     class::CustomInspect,
     primordials::{BasePrimordials, Primordial},
     result::ResultExt,
-};
-use rquickjs::{
-    atom::PredefinedAtom, class::Trace, convert::Coerced, methods, prelude::Opt, prelude::This,
-    Array, Class, Ctx, Exception, FromJs, Function, IntoJs, JsLifetime, Null, Object, Result,
-    Symbol, Value,
 };
 
 type ImmutableString = Rc<str>;
@@ -250,7 +250,7 @@ impl Headers {
                 Some((_, existing_value)) => *existing_value = value.into(),
                 None => {
                     self.headers.push((key, value.into()));
-                },
+                }
             }
         }
         Ok(())
@@ -573,7 +573,7 @@ impl<'js> HeadersIter<'js> {
                     entry.set(0, k.as_ref())?;
                     entry.set(1, v.as_ref())?;
                     obj.set("value", entry)?;
-                },
+                }
             }
         } else {
             obj.set("done", true)?;
@@ -726,16 +726,16 @@ fn normalize_header_value_inplace(ctx: &Ctx<'_>, text: &mut String) -> Result<()
             {
                 pending_whitespace = Some(input[read_idx + 2]);
                 read_idx += 3;
-            },
+            }
             b'\r' | b'\n' => {
                 // skip bare CR or LF
                 read_idx += 1;
-            },
+            }
             b' ' | b'\t' => {
                 // keep the last whitespace char to write later (collapse multiple)
                 pending_whitespace = Some(input[read_idx]);
                 read_idx += 1;
-            },
+            }
             byte => {
                 // write pending whitespace if any
                 if let Some(ws) = pending_whitespace.take() {
@@ -747,7 +747,7 @@ fn normalize_header_value_inplace(ctx: &Ctx<'_>, text: &mut String) -> Result<()
                 input[write_idx] = byte;
                 write_idx += 1;
                 read_idx += 1;
-            },
+            }
         }
     }
 
@@ -803,7 +803,7 @@ pub fn contains_cors_unsafe_request_header_byte(value: &str) -> bool {
             0x22 | 0x28 | 0x29 | 0x3A | 0x3C | 0x3E | 0x3F | 0x40 | 0x5B | 0x5C | 0x5D | 0x7B
             | 0x7F | 0x7D => return true,
 
-            _ => {}, // Allowed byte
+            _ => {} // Allowed byte
         }
     }
     false

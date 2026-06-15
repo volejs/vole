@@ -1,15 +1,15 @@
+use rquickjs::{
+    Class, Ctx, Error, Exception, JsLifetime, Object, Promise, Result, Value,
+    class::{OwnedBorrow, OwnedBorrowMut, Trace},
+    methods,
+    prelude::{Opt, This},
+};
+use std::{future, pin::Pin, rc::Rc};
 use vole_core::{
     option::{Null, Undefined},
     promise::{promise_resolved_with, upon_promise},
     queue::QueueWithSizes,
 };
-use rquickjs::{
-    class::{OwnedBorrow, OwnedBorrowMut, Trace},
-    methods,
-    prelude::{Opt, This},
-    Class, Ctx, Error, Exception, JsLifetime, Object, Promise, Result, Value,
-};
-use std::{future, pin::Pin, rc::Rc};
 
 /// Native async pull: returns Ok(Some(chunk)) or Ok(None) for EOF.
 /// Result of a native pull: data ready, EOF, or need async.
@@ -52,12 +52,12 @@ use crate::{
         },
         reader::ReadableStreamReader,
         stream::{
+            ReadableStream, ReadableStreamClass, ReadableStreamOwned, ReadableStreamState,
             algorithms::{CancelAlgorithm, PullAlgorithm, StartAlgorithm},
             source::UnderlyingSource,
-            ReadableStream, ReadableStreamClass, ReadableStreamOwned, ReadableStreamState,
         },
     },
-    utils::{class_from_owned_borrow_mut, UnwrapOrUndefined},
+    utils::{UnwrapOrUndefined, class_from_owned_borrow_mut},
 };
 
 #[derive(JsLifetime, Trace)]
@@ -220,12 +220,12 @@ impl<'js> ReadableStreamDefaultController<'js> {
                         objects.controller.started = true;
                         // Perform ! ReadableByteStreamControllerCallPullIfNeeded(controller).
                         Self::readable_stream_default_controller_call_pull_if_needed(ctx, objects)?;
-                    },
+                    }
                     // Upon rejection of startPromise with reason r,
                     Err(r) => {
                         // Perform ! ReadableByteStreamControllerError(controller, r).
                         Self::readable_stream_default_controller_error(objects, r)?;
-                    },
+                    }
                 }
                 Ok(())
             }
@@ -287,13 +287,13 @@ impl<'js> ReadableStreamDefaultController<'js> {
                             )?;
                         };
                         Ok(())
-                    },
+                    }
                     // Upon rejection of pullPromise with reason e,
                     Err(e) => {
                         // Perform ! ReadableStreamDefaultControllerError(controller, e).
                         Self::readable_stream_default_controller_error(objects, e)?;
                         Ok(())
-                    },
+                    }
                 }
             }
         })?;
@@ -412,7 +412,7 @@ impl<'js> ReadableStreamDefaultController<'js> {
             // Return controller.[[strategyHWM]] − controller.[[queueTotalSize]].
             ReadableStreamState::Readable => {
                 Null(Some(self.strategy_hwm - self.container.queue_total_size))
-            },
+            }
         }
     }
 
@@ -495,7 +495,7 @@ impl<'js> ReadableStreamDefaultController<'js> {
                     Self::readable_stream_default_controller_error(objects, err.clone())?;
 
                     return Err(ctx.throw(err));
-                },
+                }
                 // Let chunkSize be result.[[Value]].
                 Ok(chunk_size) => {
                     // Let enqueueResult be EnqueueValueWithSize(controller, chunk, chunkSize).
@@ -511,11 +511,11 @@ impl<'js> ReadableStreamDefaultController<'js> {
                             // Perform ! ReadableStreamDefaultControllerError(controller, enqueueResult.[[Value]]).
                             Self::readable_stream_default_controller_error(objects, err.clone())?;
                             return Err(ctx.throw(err));
-                        },
+                        }
                         Err(err) => return Err(err),
-                        Ok(()) => {},
+                        Ok(()) => {}
                     }
-                },
+                }
                 Err(err) => return Err(err),
             }
         }

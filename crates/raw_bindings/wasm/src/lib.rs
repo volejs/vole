@@ -1,5 +1,5 @@
 use rquickjs::module::{Declarations, Exports, ModuleDef};
-use rquickjs::{qjs, Array, Ctx, Function, Object, Result, TypedArray, Value};
+use rquickjs::{Array, Ctx, Function, Object, Result, TypedArray, Value, qjs};
 use std::collections::HashMap;
 use std::sync::Mutex;
 use wasmi::{Engine, Func, FuncType, Instance, Linker, Module, Store, Val, ValType};

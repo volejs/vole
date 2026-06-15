@@ -19,12 +19,12 @@ use std::{cell::Cell, rc::Rc};
 
 use crate::primordials::Primordial;
 use rquickjs::{
+    Ctx, Error, FromJs, Function, IntoJs, JsLifetime, Object, Promise, Result, Value,
     atom::PredefinedAtom,
     class::{Trace, Tracer},
     function::Constructor,
     prelude::{IntoArg, OnceFn, This},
     promise::PromiseState,
-    Ctx, Error, FromJs, Function, IntoJs, JsLifetime, Object, Promise, Result, Value,
 };
 
 /// 用指定 JS 值创建 rejected promise。

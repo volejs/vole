@@ -2,8 +2,8 @@ use rquickjs::{Class, Ctx, IntoJs, Object, Promise, Result, Value};
 use rsa::pkcs8::{EncodePrivateKey, EncodePublicKey};
 
 use crate::classes::CryptoKey;
-use crate::key_material::{filter_public_usages, KeyInfo, KeyMaterial};
-use crate::provider::{default_provider, CryptoProvider};
+use crate::key_material::{KeyInfo, KeyMaterial, filter_public_usages};
+use crate::provider::{CryptoProvider, default_provider};
 use crate::utils::js_value_to_json;
 use vole_core::error::{dom_exception_name, reject_dom_exception};
 

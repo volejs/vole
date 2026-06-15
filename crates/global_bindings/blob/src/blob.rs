@@ -1,8 +1,8 @@
 use std::ops::RangeInclusive;
 
 use rquickjs::{
-    atom::PredefinedAtom, class::Trace, function::Opt, Array, ArrayBuffer, Class, Coerced, Ctx,
-    Exception, FromJs, Result, Symbol, TypedArray, Value,
+    Array, ArrayBuffer, Class, Coerced, Ctx, Exception, FromJs, Result, Symbol, TypedArray, Value,
+    atom::PredefinedAtom, class::Trace, function::Opt,
 };
 use vole_core::{
     array_buffer::shared_array_buffer_view,
@@ -13,9 +13,9 @@ use vole_core::{
     string::get_lossy_string,
 };
 use vole_global_streams::{
+    CancelAlgorithm, PullAlgorithm, ReadableStream, ReadableStreamControllerClass,
     readable_byte_stream_controller_close_stream,
-    readable_byte_stream_controller_enqueue_bytes_borrowed, CancelAlgorithm, PullAlgorithm,
-    ReadableStream, ReadableStreamControllerClass,
+    readable_byte_stream_controller_enqueue_bytes_borrowed,
 };
 
 use super::file::File;

@@ -5,7 +5,7 @@ import {
   __std_env_remove,
   __std_env_entries,
   __std_env_load,
-} from "vole:raw:env";
+} from "vole:raw:os/env";
 
 function assertEnvName(name) {
   if (typeof name !== "string") {
@@ -29,7 +29,7 @@ function assertEnvValue(value) {
 
 function assertEnvFilePath(path) {
   if (typeof path !== "string" || path.length === 0) {
-    throw new TypeError("load requires a file path string");
+    throw new TypeError("env.load requires a file path");
   }
 }
 
@@ -70,4 +70,14 @@ export const env = {
   remove,
   entries,
   load,
+};
+
+export default {
+  get,
+  set,
+  has,
+  remove,
+  entries,
+  load,
+  env,
 };

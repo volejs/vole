@@ -25,8 +25,8 @@
 
 use std::{
     sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc, Mutex, Weak,
+        atomic::{AtomicBool, AtomicUsize, Ordering},
     },
     time::Duration,
 };
@@ -277,11 +277,12 @@ impl WaitUntilGuard {
         }
 
         self.active = false;
-        self.inner.pending.fetch_update(
-            Ordering::SeqCst,
-            Ordering::SeqCst,
-            |count| Some(count.saturating_sub(1)),
-        ).ok();
+        self.inner
+            .pending
+            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |count| {
+                Some(count.saturating_sub(1))
+            })
+            .ok();
         self.inner.notify.notify_waiters();
     }
 }

@@ -1,8 +1,4 @@
 use crate::readable::default_controller::{NativePull, NativePullResult};
-use vole_core::promise::{
-    promise_rejected_with_constructor, promise_resolved_with, PromisePrimordials,
-    ResolveablePromise,
-};
 use crate::{
     readable::{
         byob_reader::ReadableStreamBYOBReaderOwned,
@@ -17,13 +13,17 @@ use crate::{
     utils::UnwrapOrUndefined,
 };
 use rquickjs::{
+    Class, Ctx, Exception, IntoJs, JsLifetime, Object, Promise, Result, Value,
     atom::PredefinedAtom,
     class::{OwnedBorrowMut, Trace, Tracer},
     methods,
     prelude::{Opt, This},
-    Class, Ctx, Exception, IntoJs, JsLifetime, Object, Promise, Result, Value,
 };
 use std::collections::VecDeque;
+use vole_core::promise::{
+    PromisePrimordials, ResolveablePromise, promise_rejected_with_constructor,
+    promise_resolved_with,
+};
 
 #[derive(Trace)]
 #[rquickjs::class]
@@ -81,12 +81,12 @@ impl<'js> ReadableStreamDefaultReader<'js> {
             ReadableStreamState::Errored(ref stored_error) => {
                 let stored_error = stored_error.clone();
                 read_request.error_steps_typed(objects, stored_error)
-            },
+            }
             // Otherwise,
             _ => {
                 // Perform ! stream.[[controller]].[[PullSteps]](readRequest).
                 C::pull_steps(ctx, objects, read_request)
-            },
+            }
         }
     }
 
@@ -295,7 +295,7 @@ fn read_native<'js>(
             }
             .into_js(ctx)?;
             promise_resolved_with(ctx, primordials, Ok(result)).map(|p| p.into_value())
-        },
+        }
         NativePullResult::Eof => {
             let result = ReadableStreamReadResult {
                 value: None,
@@ -303,7 +303,7 @@ fn read_native<'js>(
             }
             .into_js(ctx)?;
             promise_resolved_with(ctx, primordials, Ok(result)).map(|p| p.into_value())
-        },
+        }
         // Async data — must return a promise
         NativePullResult::Pending(fut) => {
             let promise = Promise::wrap_future(ctx, async move {
@@ -313,7 +313,7 @@ fn read_native<'js>(
                 })
             })?;
             Ok(promise.into_value())
-        },
+        }
     }
 }
 

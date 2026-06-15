@@ -14,8 +14,8 @@
 //! - `CUSTOM_INSPECT_SYMBOL_DESCRIPTION` 目前沿用 LLRT 兼容语义，后续如果
 //!   vole 定义自己的 inspect 协议，可以在这里统一调整。
 use rquickjs::{
-    atom::PredefinedAtom, class::JsClass, object::Accessor, object::Property, prelude::This, Array,
-    Class, Ctx, Function, Object, Result, Symbol, Value,
+    Array, Class, Ctx, Function, Object, Result, Symbol, Value, atom::PredefinedAtom,
+    class::JsClass, object::Accessor, object::Property, prelude::This,
 };
 
 use crate::{

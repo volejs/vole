@@ -1,19 +1,19 @@
 use std::collections::VecDeque;
 
+use rquickjs::{
+    ArrayBuffer, Class, Ctx, Error, Exception, Function, IntoJs, JsLifetime, Object, Promise,
+    Result, TypedArray, Value,
+    class::{OwnedBorrow, OwnedBorrowMut, Trace, Tracer},
+    function::Constructor,
+    methods,
+    prelude::{Opt, This},
+};
 use vole_core::{
     error_messages::ERROR_MSG_ARRAY_BUFFER_DETACHED,
     option::{Null, Undefined},
     primordials::{BasePrimordials, Primordial},
     promise::{promise_resolved_with, upon_promise},
     result::ResultExt,
-};
-use rquickjs::{
-    class::{OwnedBorrow, OwnedBorrowMut, Trace, Tracer},
-    function::Constructor,
-    methods,
-    prelude::{Opt, This},
-    ArrayBuffer, Class, Ctx, Error, Exception, Function, IntoJs, JsLifetime, Object, Promise,
-    Result, TypedArray, Value,
 };
 
 use crate::{
@@ -30,12 +30,12 @@ use crate::{
         },
         reader::ReadableStreamReader,
         stream::{
+            ReadableStream, ReadableStreamClass, ReadableStreamOwned, ReadableStreamState,
             algorithms::{CancelAlgorithm, PullAlgorithm, StartAlgorithm},
             source::UnderlyingSource,
-            ReadableStream, ReadableStreamClass, ReadableStreamOwned, ReadableStreamState,
         },
     },
-    utils::{class_from_owned_borrow_mut, UnwrapOrUndefined},
+    utils::{UnwrapOrUndefined, class_from_owned_borrow_mut},
 };
 
 #[derive(JsLifetime)]
@@ -230,13 +230,13 @@ impl<'js> ReadableByteStreamController<'js> {
                         // Perform ! ReadableByteStreamControllerCallPullIfNeeded(controller).
                         Self::readable_byte_stream_controller_call_pull_if_needed(ctx, objects)?;
                         Ok(())
-                    },
+                    }
                     // Upon rejection of startPromise with reason r,
                     Err(r) => {
                         // Perform ! ReadableByteStreamControllerError(controller, r).
                         Self::readable_byte_stream_controller_error(objects, r)?;
                         Ok(())
-                    },
+                    }
                 }
             }
         })?;
@@ -292,13 +292,13 @@ impl<'js> ReadableByteStreamController<'js> {
                             )?;
                         };
                         Ok(())
-                    },
+                    }
                     // Upon rejection of pullPromise with reason e,
                     Err(e) => {
                         // Perform ! ReadableByteStreamControllerError(controller, e).
                         Self::readable_byte_stream_controller_error(objects, e)?;
                         Ok(())
-                    },
+                    }
                 }
             }
         })?;
@@ -311,7 +311,7 @@ impl<'js> ReadableByteStreamController<'js> {
     ) -> (bool, ReadableByteStreamObjects<'js, R>) {
         // Let stream be controller.[[stream]].
         match objects.stream.state {
-            ReadableStreamState::Readable => {},
+            ReadableStreamState::Readable => {}
             // If stream.[[state]] is not "readable", return false.
             _ => return (false, objects),
         }
@@ -875,7 +875,7 @@ impl<'js> ReadableByteStreamController<'js> {
                 let err = ctx.catch();
                 Self::readable_byte_stream_controller_error(objects, err.clone())?;
                 return Err(ctx.throw(err));
-            },
+            }
             Err(err) => return Err(err),
         };
 
@@ -1148,7 +1148,7 @@ impl<'js> ReadableByteStreamController<'js> {
                 objects = read_into_request.error_steps(objects, ctx.catch())?;
                 // Return.
                 return Ok(objects);
-            },
+            }
             Err(err) => return Err(err),
             // Let buffer be bufferResult.[[Value]].
             Ok(buffer) => buffer,
@@ -1301,7 +1301,7 @@ impl<'js> ReadableByteStreamController<'js> {
                         "bytesWritten must be 0 when calling respond() on a closed stream",
                     ));
                 }
-            },
+            }
             // Otherwise,
             _ => {
                 // If bytesWritten is 0, throw a TypeError exception.
@@ -1316,7 +1316,7 @@ impl<'js> ReadableByteStreamController<'js> {
                 if first_descriptor.bytes_filled + bytes_written > first_descriptor.byte_length {
                     return Err(Exception::throw_range(&ctx, "bytesWritten out of range'"));
                 }
-            },
+            }
         };
 
         // Set firstDescriptor’s buffer to ! TransferArrayBuffer(firstDescriptor’s buffer).
@@ -1349,7 +1349,7 @@ impl<'js> ReadableByteStreamController<'js> {
                     objects,
                     first_descriptor_index,
                 )?;
-            },
+            }
             // Otherwise
             _ => {
                 // Perform ? ReadableByteStreamControllerRespondInReadableState(controller, bytesWritten, firstDescriptor).
@@ -1359,7 +1359,7 @@ impl<'js> ReadableByteStreamController<'js> {
                     bytes_written,
                     first_descriptor_index,
                 )?
-            },
+            }
         };
 
         _ = Self::readable_byte_stream_controller_call_pull_if_needed(ctx, objects)?;
@@ -1506,16 +1506,22 @@ impl<'js> ReadableByteStreamController<'js> {
             ReadableStreamState::Closed => {
                 // If view.[[ByteLength]] is not 0, throw a TypeError exception.
                 if byte_length != 0 {
-                    return Err(Exception::throw_type(&ctx, "The view's length must be 0 when calling respondWithNewView() on a closed stream"));
+                    return Err(Exception::throw_type(
+                        &ctx,
+                        "The view's length must be 0 when calling respondWithNewView() on a closed stream",
+                    ));
                 }
-            },
+            }
             // Otherwise
             _ => {
                 // If view.[[ByteLength]] is 0, throw a TypeError exception.
                 if byte_length == 0 {
-                    return Err(Exception::throw_type(&ctx, "The view's length must be greater than 0 when calling respondWithNewView() on a readable stream"));
+                    return Err(Exception::throw_type(
+                        &ctx,
+                        "The view's length must be greater than 0 when calling respondWithNewView() on a readable stream",
+                    ));
                 }
-            },
+            }
         };
 
         {
@@ -1827,7 +1833,7 @@ impl<'js> ReadableStreamController<'js> for ReadableByteStreamControllerOwned<'j
                 Err(Error::Exception) => {
                     // Perform readRequest’s error steps, given buffer.[[Value]].
                     return read_request.error_steps_typed(objects, ctx.catch());
-                },
+                }
                 Err(err) => return Err(err),
                 Ok(buffer) => buffer,
             };
@@ -1943,7 +1949,7 @@ impl<'js> ReadableStreamBYOBRequest<'js> {
                     &ctx,
                     "This BYOB request has been invalidated",
                 ));
-            },
+            }
         };
         let (buffer, _, _) = view.get_array_buffer()?;
         drop(byob_request);
@@ -1981,7 +1987,7 @@ impl<'js> ReadableStreamBYOBRequest<'js> {
                     &ctx,
                     "This BYOB request has been invalidated",
                 ));
-            },
+            }
         };
         drop(byob_request);
 

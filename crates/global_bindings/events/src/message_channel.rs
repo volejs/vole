@@ -1,7 +1,7 @@
 use rquickjs::{
+    Class, Constructor, Ctx, Function, Object, Result, Value,
     class::{JsClass, Trace, Tracer, Writable},
     function::This,
-    Class, Constructor, Ctx, Function, Object, Result, Value,
 };
 
 #[derive(Clone, Debug)]

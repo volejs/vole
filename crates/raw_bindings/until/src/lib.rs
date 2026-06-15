@@ -1,10 +1,10 @@
 use std::time::Duration;
 
 use rquickjs::{
+    Class, Ctx, Exception, Function, Object, Promise, Result,
     class::{JsClass, Trace, Tracer, Writable},
     function::{Constructor, Opt},
     module::{Declarations, Exports, ModuleDef},
-    Class, Ctx, Exception, Function, Object, Promise, Result,
 };
 use vole_core::until::{UntilRegistry, WaitUntil, WaitUntilError, WaitUntilGuard};
 
@@ -78,10 +78,7 @@ fn registry_for_ctx<'js>(ctx: &Ctx<'js>) -> UntilRegistry {
     registry
 }
 
-fn until_create<'js>(
-    ctx: Ctx<'js>,
-    managed: Opt<bool>,
-) -> Result<Class<'js, WaitUntilHandle>> {
+fn until_create<'js>(ctx: Ctx<'js>, managed: Opt<bool>) -> Result<Class<'js, WaitUntilHandle>> {
     let managed = managed.0.unwrap_or(true);
     let until = if managed {
         registry_for_ctx(&ctx).create_scope()
@@ -238,9 +235,18 @@ impl ModuleDef for UntilRawModule {
             "__until_pending_count",
             Function::new(ctx.clone(), until_pending_count)?,
         )?;
-        exports.export("__until_is_idle", Function::new(ctx.clone(), until_is_idle)?)?;
-        exports.export("__until_is_closed", Function::new(ctx.clone(), until_is_closed)?)?;
-        exports.export("__until_is_managed", Function::new(ctx.clone(), until_is_managed)?)?;
+        exports.export(
+            "__until_is_idle",
+            Function::new(ctx.clone(), until_is_idle)?,
+        )?;
+        exports.export(
+            "__until_is_closed",
+            Function::new(ctx.clone(), until_is_closed)?,
+        )?;
+        exports.export(
+            "__until_is_managed",
+            Function::new(ctx.clone(), until_is_managed)?,
+        )?;
         exports.export("__until_close", Function::new(ctx.clone(), until_close)?)?;
         exports.export("__until_drain", Function::new(ctx.clone(), until_drain)?)?;
         exports.export(

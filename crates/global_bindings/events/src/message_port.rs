@@ -1,7 +1,7 @@
 use rquickjs::{
+    Array, Class, Constructor, Ctx, Function, Object, Result, Value,
     class::{JsClass, Trace, Tracer, Writable},
     function::{Opt, This},
-    Array, Class, Constructor, Ctx, Function, Object, Result, Value,
 };
 
 #[derive(Clone, Debug)]
@@ -53,7 +53,7 @@ fn message_port_post_message<'js>(
             } else {
                 structured_clone.call((data,))?
             }
-        },
+        }
         Err(_) => data,
     };
 

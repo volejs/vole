@@ -1,9 +1,9 @@
 use rquickjs::{
+    Class, Constructor, Ctx, Function, IntoJs, Object, Promise, Result, TypedArray, Value,
     class::{JsClass, Trace, Tracer, Writable},
     function::{Opt, This},
     module::{Declarations, Exports, ModuleDef},
     prelude::{Async, Func},
-    Class, Constructor, Ctx, Function, IntoJs, Object, Promise, Result, TypedArray, Value,
 };
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -337,11 +337,17 @@ async fn fs_real_path(_ctx: Ctx<'_>, path: String) -> Result<String> {
 // File-handle helpers (merged from the old vole:file module)
 // =============================================================================
 
-static FILES: std::sync::OnceLock<Mutex<HashMap<u64, Arc<TokioMutex<tokio::fs::File>>>>> =
+#[derive(Clone)]
+enum HandleEntry {
+    File(Arc<TokioMutex<tokio::fs::File>>),
+    Dir(Arc<TokioMutex<tokio::fs::ReadDir>>),
+}
+
+static FILES: std::sync::OnceLock<Mutex<HashMap<u64, HandleEntry>>> =
     std::sync::OnceLock::new();
 static NEXT_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
 
-fn files() -> &'static Mutex<HashMap<u64, Arc<TokioMutex<tokio::fs::File>>>> {
+fn files() -> &'static Mutex<HashMap<u64, HandleEntry>> {
     FILES.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
@@ -350,12 +356,29 @@ fn next_id() -> u64 {
 }
 
 fn get_file(id: u64) -> Result<Arc<TokioMutex<tokio::fs::File>>> {
-    files()
+    match files()
         .lock()
         .unwrap()
         .get(&id)
         .cloned()
-        .ok_or(rquickjs::Error::Exception)
+    {
+        Some(HandleEntry::File(handle)) => Ok(handle),
+        Some(HandleEntry::Dir(_)) => Err(rquickjs::Error::Exception),
+        None => Err(rquickjs::Error::Exception),
+    }
+}
+
+fn get_dir(id: u64) -> Result<Arc<TokioMutex<tokio::fs::ReadDir>>> {
+    match files()
+        .lock()
+        .unwrap()
+        .get(&id)
+        .cloned()
+    {
+        Some(HandleEntry::Dir(handle)) => Ok(handle),
+        Some(HandleEntry::File(_)) => Err(rquickjs::Error::Exception),
+        None => Err(rquickjs::Error::Exception),
+    }
 }
 
 // ---- native FileHandle class ------------------------------------------------
@@ -386,6 +409,7 @@ impl<'js> JsClass<'js> for FileHandle {
     fn prototype(ctx: &Ctx<'js>) -> Result<Option<Object<'js>>> {
         let proto = Object::new(ctx.clone())?;
         proto.set("read", Function::new(ctx.clone(), file_handle_read)?)?;
+        proto.set("readEntries", Function::new(ctx.clone(), file_handle_read_entries)?)?;
         proto.set("write", Function::new(ctx.clone(), file_handle_write)?)?;
         proto.set("seek", Function::new(ctx.clone(), file_handle_seek)?)?;
         proto.set("close", Function::new(ctx.clone(), file_handle_close)?)?;
@@ -426,6 +450,30 @@ fn file_handle_read<'js>(
             }
             Err(e) => {
                 let _ = reject.call::<_, ()>((e.to_string(),));
+            }
+        }
+    });
+    Ok(promise)
+}
+
+fn file_handle_read_entries<'js>(ctx: Ctx<'js>, this: This<Class<'js, FileHandle>>) -> Result<Promise<'js>> {
+    let id = this.try_borrow()?.id;
+    let dir = get_dir(id)?;
+    let (promise, resolve, reject) = ctx.promise()?;
+    ctx.spawn(async move {
+        let mut entries = Vec::new();
+        let mut dir = dir.lock().await;
+        loop {
+            match dir.next_entry().await {
+                Ok(Some(entry)) => entries.push(entry.file_name().to_string_lossy().to_string()),
+                Ok(None) => {
+                    let _ = resolve.call::<_, ()>((entries,));
+                    break;
+                }
+                Err(e) => {
+                    let _ = reject.call::<_, ()>((e.to_string(),));
+                    break;
+                }
             }
         }
     });
@@ -503,30 +551,62 @@ async fn fs_open<'js>(
     path: String,
     options: Opt<Object<'js>>,
 ) -> Result<FileHandle> {
+    let mut read = true;
+    let mut write = false;
+    let mut append = false;
+    let mut create = false;
+    let mut truncate = false;
+
     let mut opts = tokio::fs::OpenOptions::new();
     opts.read(true);
 
     if let Some(obj) = options.0 {
         if let Ok(v) = obj.get::<&str, bool>("write") {
             if v {
+                write = true;
                 opts.write(true);
             }
         }
         if let Ok(v) = obj.get::<&str, bool>("append") {
             if v {
+                append = true;
                 opts.append(true);
             }
         }
         if let Ok(v) = obj.get::<&str, bool>("create") {
             if v {
+                create = true;
                 opts.create(true);
             }
         }
         if let Ok(v) = obj.get::<&str, bool>("truncate") {
             if v {
+                truncate = true;
                 opts.truncate(true);
             }
         }
+    }
+
+    if let Ok(meta) = tokio::fs::metadata(&path).await {
+        if meta.is_dir() {
+            if write || append || create || truncate {
+                return Err(rquickjs::Error::Exception);
+            }
+            let dir = tokio::fs::read_dir(&path)
+                .await
+                .map_err(|_| rquickjs::Error::Exception)?;
+            let id = next_id();
+            files()
+                .lock()
+                .unwrap()
+                .insert(id, HandleEntry::Dir(Arc::new(TokioMutex::new(dir))));
+            return Ok(FileHandle { id });
+        }
+        read = true;
+    }
+
+    if !read && !create {
+        opts.read(true);
     }
 
     let file = opts
@@ -537,7 +617,7 @@ async fn fs_open<'js>(
     files()
         .lock()
         .unwrap()
-        .insert(id, Arc::new(TokioMutex::new(file)));
+        .insert(id, HandleEntry::File(Arc::new(TokioMutex::new(file))));
     Ok(FileHandle { id })
 }
 
@@ -545,7 +625,7 @@ async fn fs_open<'js>(
 // Native module definition
 // =============================================================================
 
-/// Native module exposing all low-level fs operations used by the `vole:fs` JS shim.
+/// Native module exposing all low-level fs operations used by `vole:os/fs`.
 pub struct FsRawModule;
 
 impl ModuleDef for FsRawModule {
@@ -689,10 +769,4 @@ impl ModuleDef for FsRawModule {
 
         Ok(())
     }
-}
-
-/// Legacy global init: the native `FileHandle` class is registered when the
-/// `vole:raw:fs` module is loaded, so this hook is a no-op.
-pub fn init(_ctx: &Ctx) -> Result<()> {
-    Ok(())
 }

@@ -29,7 +29,9 @@ impl StreamingEncoder {
             CompressionFormat::DeflateRaw => Ok(Self::DeflateRaw(
                 flate2::write::DeflateEncoder::new(Vec::new(), flate2::Compression::default()),
             )),
-            CompressionFormat::Brotli => Ok(Self::Brotli(brotlic::CompressorWriter::new(Vec::new()))),
+            CompressionFormat::Brotli => {
+                Ok(Self::Brotli(brotlic::CompressorWriter::new(Vec::new())))
+            }
         }
     }
 
@@ -39,22 +41,22 @@ impl StreamingEncoder {
                 encoder.write_all(input)?;
                 encoder.flush()?;
                 Ok(std::mem::take(encoder.get_mut()))
-            },
+            }
             Self::Deflate(encoder) => {
                 encoder.write_all(input)?;
                 encoder.flush()?;
                 Ok(std::mem::take(encoder.get_mut()))
-            },
+            }
             Self::DeflateRaw(encoder) => {
                 encoder.write_all(input)?;
                 encoder.flush()?;
                 Ok(std::mem::take(encoder.get_mut()))
-            },
+            }
             Self::Brotli(encoder) => {
                 encoder.write_all(input)?;
                 encoder.flush()?;
                 Ok(std::mem::take(encoder.get_mut()))
-            },
+            }
         }
     }
 

@@ -1,36 +1,27 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
+use crate::VERSION;
+use crate::abort::AbortSignal;
+use crate::ctx::CtxExtension;
+use crate::http::Agent;
+use crate::http::HyperClient;
 use bytes::Bytes;
-use http_body_util::{combinators::BoxBody, Full};
+use http_body_util::{Full, combinators::BoxBody};
 use hyper::{
+    Method, Request, Uri,
     header::{
         ACCEPT, ACCEPT_ENCODING, ACCEPT_LANGUAGE, AUTHORIZATION, CONTENT_ENCODING,
         CONTENT_LANGUAGE, CONTENT_LENGTH, CONTENT_LOCATION, CONTENT_TYPE, LOCATION, ORIGIN,
         USER_AGENT,
     },
-    Method, Request, Uri,
-};
-use crate::abort::AbortSignal;
-use crate::ctx::CtxExtension;
-use crate::VERSION;
-use vole_core::encoding::bytes_from_b64;
-use crate::http::Agent;
-use crate::http::HyperClient;
-use vole_global_streams::ReadableStream;
-use vole_core::{
-    bytes::ObjectBytes,
-    mc_oneshot,
-    policy::check_net_url,
-    primordials::{BasePrimordials, Primordial},
-    result::ResultExt,
 };
 use percent_encoding::percent_decode_str;
 use rquickjs::{
+    CatchResultExt, CaughtError, Class, Coerced, Ctx, Exception, FromJs, Function, IntoJs, Object,
+    Result, Value,
     atom::PredefinedAtom,
     function::{Opt, This},
     prelude::{Async, Func},
-    CatchResultExt, CaughtError, Class, Coerced, Ctx, Exception, FromJs, Function, IntoJs, Object,
-    Result, Value,
 };
 use std::{
     collections::HashSet,
@@ -41,12 +32,21 @@ use std::{
     time::Instant,
 };
 use tokio::{select, sync::Semaphore};
+use vole_core::encoding::bytes_from_b64;
+use vole_core::{
+    bytes::ObjectBytes,
+    mc_oneshot,
+    policy::check_net_url,
+    primordials::{BasePrimordials, Primordial},
+    result::ResultExt,
+};
+use vole_global_streams::ReadableStream;
 
 use super::{
+    Blob, MIME_TYPE_FORM_DATA, MIME_TYPE_FORM_URLENCODED, MIME_TYPE_TEXT,
     form_data::FormData,
     headers::{Headers, HeadersGuard},
     response::Response,
-    Blob, MIME_TYPE_FORM_DATA, MIME_TYPE_FORM_URLENCODED, MIME_TYPE_TEXT,
 };
 use vole_global_url::url_search_params::URLSearchParams;
 
@@ -84,11 +84,11 @@ pub fn init(global_client: HyperClient, globals: &Object) -> Result<()> {
                 // https://fetch.spec.whatwg.org/#scheme-fetch
                 if let Some((scheme, fragment)) = options.url.split_once(':') {
                     match scheme {
-                        "http" | "https" => {},
+                        "http" | "https" => {}
                         "data" => return parse_data_url(&ctx, fragment, &options.method),
                         "about" | "blob" | "file" => {
                             return Err(Exception::throw_type(&ctx, "Unsupported scheme"));
-                        },
+                        }
                         _ => return Err(Exception::throw_type(&ctx, "Invalid scheme")),
                     }
                 }
@@ -224,7 +224,7 @@ async fn send_stream<'js>(
                         };
                         let _ = err_tx.send(msg);
                         break;
-                    },
+                    }
                 };
                 let done: bool = read_result.get("done").unwrap_or(true);
                 if done {
@@ -239,7 +239,7 @@ async fn send_stream<'js>(
                             let _ = err_tx
                                 .send("Failed to read body: chunk is not a Uint8Array".into());
                             break;
-                        },
+                        }
                     };
                     if let Some(bytes) = bytes {
                         if tx.send(bytes).await.is_err() {
@@ -393,7 +393,7 @@ async fn send<'js>(
                         *uri = resolve_redirect_uri(ctx, uri, location_str)?;
                         check_net_url(ctx, &uri.to_string())?;
                     }
-                },
+                }
                 None => break (res, guard),
             };
         } else {
@@ -559,7 +559,7 @@ fn build_request<'js>(
         Some(RequestBody::Static { body, .. }) => BoxBody::new(body.clone()),
         Some(RequestBody::Stream(_)) => {
             unreachable!("Streaming bodies are handled by send_stream")
-        },
+        }
         None => BoxBody::new(Full::default()),
     };
 
@@ -757,7 +757,7 @@ fn get_fetch_options<'js>(
                             BodyTaken::Stream(stream) => RequestBody::Stream(stream),
                             BodyTaken::Bytes(bytes) => {
                                 RequestBody::from_bytes(ctx.clone(), ObjectBytes::Vec(bytes))?
-                            },
+                            }
                         });
                     }
                 }
@@ -923,16 +923,12 @@ mod tests {
     use std::io::Write;
 
     use flate2::{
-        write::{GzEncoder, ZlibEncoder},
         Compression,
+        write::{GzEncoder, ZlibEncoder},
     };
-    use rquickjs::{
-        AsyncContext, AsyncRuntime,
-        CatchResultExt,
-        prelude::Promise,
-    };
+    use rquickjs::{AsyncContext, AsyncRuntime, CatchResultExt, prelude::Promise};
 
-    use wiremock::{matchers, Mock, MockServer, ResponseTemplate};
+    use wiremock::{Mock, MockServer, ResponseTemplate, matchers};
 
     use super::*;
 
@@ -1269,7 +1265,9 @@ fn resolve_redirect_uri(ctx: &Ctx<'_>, current: &Uri, location: &str) -> Result<
     }
 
     let base = url::Url::parse(&current.to_string()).or_throw_type(ctx, "Invalid redirect URL")?;
-    let next = base.join(location).or_throw_type(ctx, "Invalid redirect URL")?;
+    let next = base
+        .join(location)
+        .or_throw_type(ctx, "Invalid redirect URL")?;
     next.as_str()
         .parse::<Uri>()
         .or_throw_type(ctx, "Invalid redirect URL")

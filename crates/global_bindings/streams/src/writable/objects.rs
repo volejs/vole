@@ -1,4 +1,4 @@
-use rquickjs::{class::OwnedBorrowMut, Class, Result};
+use rquickjs::{Class, Result, class::OwnedBorrowMut};
 
 use crate::writable::{
     default_controller::{

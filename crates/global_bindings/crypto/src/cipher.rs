@@ -1,8 +1,8 @@
 use rquickjs::{ArrayBuffer, Class, Ctx, Promise, Result, Value};
 
 use crate::classes::CryptoKey;
-use crate::key_material::{has_usage, KeyInfo, KeyMaterial};
-use crate::provider::{default_provider, AesMode, CryptoError, CryptoProvider};
+use crate::key_material::{KeyInfo, KeyMaterial, has_usage};
+use crate::provider::{AesMode, CryptoError, CryptoProvider, default_provider};
 use crate::utils::{js_value_to_json, value_to_bytes};
 use vole_core::error::{dom_exception_name, reject_dom_exception};
 
@@ -108,7 +108,7 @@ pub(crate) fn do_encrypt(
                     default_provider()
                         .aes_encrypt(AesMode::Cbc, key_bytes, &iv, plaintext, None)
                         .map_err(provider_error_message)
-                },
+                }
                 "AES-CTR" => {
                     let counter = required_bytes_field(algorithm, "counter")?;
                     let counter_length = aes_ctr_counter_length(algorithm)?;
@@ -121,7 +121,7 @@ pub(crate) fn do_encrypt(
                             None,
                         )
                         .map_err(provider_error_message)
-                },
+                }
                 "AES-GCM" => {
                     ensure_gcm_tag_length(algorithm)?;
                     let additional_data = optional_bytes_field(algorithm, "additionalData")?;
@@ -135,14 +135,13 @@ pub(crate) fn do_encrypt(
                             Some(additional_data.as_slice()),
                         )
                         .map_err(provider_error_message)
-                },
+                }
                 _ => Err("Unsupported AES mode"),
             }
-        },
+        }
         _ => Err("Invalid key type for encryption"),
     }
 }
-
 
 pub(crate) fn do_decrypt(
     key_info: &KeyInfo,
@@ -158,7 +157,7 @@ pub(crate) fn do_decrypt(
                     default_provider()
                         .aes_decrypt(AesMode::Cbc, key_bytes, &iv, ciphertext, None)
                         .map_err(provider_error_message)
-                },
+                }
                 "AES-CTR" => {
                     let counter = required_bytes_field(algorithm, "counter")?;
                     let counter_length = aes_ctr_counter_length(algorithm)?;
@@ -171,7 +170,7 @@ pub(crate) fn do_decrypt(
                             None,
                         )
                         .map_err(provider_error_message)
-                },
+                }
                 "AES-GCM" => {
                     ensure_gcm_tag_length(algorithm)?;
                     let additional_data = optional_bytes_field(algorithm, "additionalData")?;
@@ -185,10 +184,10 @@ pub(crate) fn do_decrypt(
                             Some(additional_data.as_slice()),
                         )
                         .map_err(provider_error_message)
-                },
+                }
                 _ => Err("Unsupported AES mode"),
             }
-        },
+        }
         _ => Err("Invalid key type for decryption"),
     }
 }
@@ -201,7 +200,11 @@ fn required_bytes_field(
         .as_array()
         .ok_or("Missing required BufferSource field")?
         .iter()
-        .map(|v| v.as_u64().map(|n| n as u8).ok_or("Invalid BufferSource field"))
+        .map(|v| {
+            v.as_u64()
+                .map(|n| n as u8)
+                .ok_or("Invalid BufferSource field")
+        })
         .collect()
 }
 
@@ -221,7 +224,6 @@ fn aes_ctr_counter_length(algorithm: &serde_json::Value) -> std::result::Result<
     }
     Ok(length as u32)
 }
-
 
 fn ensure_gcm_tag_length(algorithm: &serde_json::Value) -> std::result::Result<(), &'static str> {
     let tag_length = algorithm["tagLength"].as_u64().unwrap_or(128);

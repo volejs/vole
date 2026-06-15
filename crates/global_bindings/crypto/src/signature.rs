@@ -3,8 +3,8 @@ use rsa::pkcs8::{DecodePrivateKey, DecodePublicKey};
 use sha2::{Sha256, Sha384, Sha512};
 
 use crate::classes::CryptoKey;
-use crate::key_material::{has_usage, KeyInfo, KeyMaterial};
-use crate::provider::{default_provider, CryptoProvider, HashAlgorithm};
+use crate::key_material::{KeyInfo, KeyMaterial, has_usage};
+use crate::provider::{CryptoProvider, HashAlgorithm, default_provider};
 use crate::utils::{js_value_to_json, value_to_bytes};
 use vole_core::error::{dom_exception_name, reject_dom_exception};
 
