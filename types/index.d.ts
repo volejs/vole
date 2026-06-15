@@ -7,6 +7,7 @@
 /// <reference path="./ffi.d.ts" />
 /// <reference path="./fs.d.ts" />
 /// <reference path="./path.d.ts" />
+/// <reference path="./performance.d.ts" />
 /// <reference path="./process.d.ts" />
 /// <reference path="./shell.d.ts" />
 /// <reference path="./spawn.d.ts" />

@@ -3,8 +3,8 @@ use std::{cell::RefCell, rc::Rc};
 use rquickjs::{
     atom::PredefinedAtom,
     class::Trace,
-    function::Opt,
-    Array, Class, Coerced, Ctx, Exception, FromJs, Object, Result, Value,
+    function::{Opt, This},
+    Array, Class, Coerced, Ctx, Exception, FromJs, Function, Object, Result, Value,
 };
 use vole_core::time::TimeOrigin;
 
@@ -22,6 +22,9 @@ struct PerformanceState {
     measures: Vec<PerformanceEntryRecord>,
     entries: Vec<PerformanceEntryRecord>,
 }
+
+const PERFORMANCE_ENTRY_MARK: &str = "mark";
+const PERFORMANCE_ENTRY_MEASURE: &str = "measure";
 
 /// Native `Performance` implementation.
 ///
@@ -64,17 +67,10 @@ impl<'js> Performance {
         name: Coerced<String>,
         options: Opt<Value<'js>>,
     ) -> Result<Object<'js>> {
-        let start_time = match options.0 {
-            Some(value) if !value.is_undefined() && !value.is_null() => {
-                let object = value.as_object().ok_or_else(|| {
-                    Exception::throw_type(&ctx, "PerformanceMarkOptions must be an object")
-                })?;
-                object
-                    .get::<_, Coerced<f64>>("startTime")
-                    .map(|value| value.0)
-                    .unwrap_or(TimeOrigin::get_or_init(&ctx)?.now())
-            },
-            _ => TimeOrigin::get_or_init(&ctx)?.now(),
+        let now = TimeOrigin::get_or_init(&ctx)?.now();
+        let start_time = match options.0.as_ref() {
+            Some(value) if !value.is_undefined() => parse_mark_start_time(&ctx, value, now)?,
+            _ => now,
         };
 
         if start_time < 0.0 {
@@ -86,7 +82,7 @@ impl<'js> Performance {
 
         let entry = PerformanceEntryRecord {
             name: name.0,
-            entry_type: "mark",
+            entry_type: PERFORMANCE_ENTRY_MARK,
             start_time,
             duration: 0.0,
         };
@@ -101,19 +97,14 @@ impl<'js> Performance {
         start: Opt<Value<'js>>,
         end: Opt<Value<'js>>,
     ) -> Result<Object<'js>> {
-        let end_time = match end.0 {
-            Some(value) if !value.is_undefined() => self.resolve_mark_or_time(&ctx, value)?,
-            _ => TimeOrigin::get_or_init(&ctx)?.now(),
-        };
-        let start_time = match start.0 {
-            Some(value) if !value.is_undefined() => self.resolve_mark_or_time(&ctx, value)?,
-            _ => 0.0,
-        };
+        let now = TimeOrigin::get_or_init(&ctx)?.now();
+        let (start_time, end_time) =
+            self.resolve_measure_inputs(&ctx, start.0, end.0, now)?;
 
         let duration = end_time - start_time;
         let entry = PerformanceEntryRecord {
             name: name.0,
-            entry_type: "measure",
+            entry_type: PERFORMANCE_ENTRY_MEASURE,
             start_time,
             duration,
         };
@@ -122,13 +113,13 @@ impl<'js> Performance {
     }
 
     pub fn clear_marks(&self, name: Opt<Coerced<String>>) {
-        clear_entries(&mut self.state.borrow_mut(), "mark", name.0.map(|name| name.0));
+        clear_entries(&mut self.state.borrow_mut(), PERFORMANCE_ENTRY_MARK, name.0.map(|name| name.0));
     }
 
     pub fn clear_measures(&self, name: Opt<Coerced<String>>) {
         clear_entries(
             &mut self.state.borrow_mut(),
-            "measure",
+            PERFORMANCE_ENTRY_MEASURE,
             name.0.map(|name| name.0),
         );
     }
@@ -182,9 +173,9 @@ impl Performance {
     fn push_entry(&self, entry: PerformanceEntryRecord) {
         let mut state = self.state.borrow_mut();
         match entry.entry_type {
-            "mark" => state.marks.push(entry.clone()),
-            "measure" => state.measures.push(entry.clone()),
-            _ => {},
+            PERFORMANCE_ENTRY_MARK => state.marks.push(entry.clone()),
+            PERFORMANCE_ENTRY_MEASURE => state.measures.push(entry.clone()),
+            _ => {}
         }
         state.entries.push(entry);
     }
@@ -204,6 +195,55 @@ impl Performance {
             .map(|entry| entry.start_time)
             .ok_or_else(|| Exception::throw_syntax(ctx, "Performance mark does not exist"))
     }
+
+    fn resolve_measure_inputs<'js>(
+        &self,
+        ctx: &Ctx<'js>,
+        start: Option<Value<'js>>,
+        end: Option<Value<'js>>,
+        now: f64,
+    ) -> Result<(f64, f64)> {
+        let (default_start_time, default_end_time) = (0.0, now);
+
+        match (start, end) {
+            (None, None) => Ok((default_start_time, default_end_time)),
+            (Some(start_value), None) if is_measure_options(ctx, &start_value)? => {
+                let object = start_value.as_object().ok_or_else(|| {
+                    Exception::throw_type(ctx, "Performance.measure options must be an object")
+                })?;
+                let (start_time, end_time) = parse_measure_options(self, ctx, object)?;
+                Ok((start_time.unwrap_or(default_start_time), end_time.unwrap_or(default_end_time)))
+            }
+            (Some(start_value), None) => {
+                let start_time = self.resolve_mark_or_time(ctx, start_value)?;
+                Ok((start_time, default_end_time))
+            }
+            (Some(start_value), Some(end_value)) => {
+                let start_time = self.resolve_mark_or_time(ctx, start_value)?;
+                let end_time = if end_value.is_undefined() {
+                    default_end_time
+                } else {
+                    self.resolve_mark_or_time(ctx, end_value)?
+                };
+                Ok((start_time, end_time))
+            }
+            (None, Some(end_value)) if is_measure_options(ctx, &end_value)? => {
+                let object = end_value.as_object().ok_or_else(|| {
+                    Exception::throw_type(ctx, "Performance.measure options must be an object")
+                })?;
+                let (start_time, end_time) = parse_measure_options(self, ctx, object)?;
+                Ok((start_time.unwrap_or(default_start_time), end_time.unwrap_or(default_end_time)))
+            }
+            (None, Some(end_value)) => {
+                let end_time = if end_value.is_undefined() {
+                    default_end_time
+                } else {
+                    self.resolve_mark_or_time(ctx, end_value)?
+                };
+                Ok((default_start_time, end_time))
+            }
+        }
+    }
 }
 
 fn clear_entries(state: &mut PerformanceState, entry_type: &'static str, name: Option<String>) {
@@ -211,13 +251,13 @@ fn clear_entries(state: &mut PerformanceState, entry_type: &'static str, name: O
         .entries
         .retain(|entry| should_keep_entry(entry, entry_type, name.as_deref()));
     match entry_type {
-        "mark" => state
+        PERFORMANCE_ENTRY_MARK => state
             .marks
             .retain(|entry| should_keep_entry(entry, entry_type, name.as_deref())),
-        "measure" => state
+        PERFORMANCE_ENTRY_MEASURE => state
             .measures
             .retain(|entry| should_keep_entry(entry, entry_type, name.as_deref())),
-        _ => {},
+        _ => {}
     }
 }
 
@@ -230,6 +270,93 @@ fn should_keep_entry(
         return true;
     }
     name.map(|name| entry.name != name).unwrap_or(false)
+}
+
+fn is_measure_options<'js>(ctx: &Ctx<'js>, value: &Value<'js>) -> Result<bool> {
+    let object = match value.as_object() {
+        Some(object) => object,
+        None => return Ok(false),
+    };
+
+    let start = get_optional_property(ctx, &object, "start")?;
+    let end = get_optional_property(ctx, &object, "end")?;
+    let start_time = get_optional_property(ctx, &object, "startTime")?;
+    let end_time = get_optional_property(ctx, &object, "endTime")?;
+
+    !start.is_undefined()
+        || !end.is_undefined()
+        || !start_time.is_undefined()
+        || !end_time.is_undefined()
+}
+
+fn parse_mark_start_time<'js>(
+    ctx: &Ctx<'js>,
+    value: &Value<'js>,
+    fallback: f64,
+) -> Result<f64> {
+    let object = value
+        .as_object()
+        .ok_or_else(|| Exception::throw_type(ctx, "PerformanceMarkOptions must be an object"))?;
+
+    let raw = get_optional_property(ctx, &object, "startTime")?;
+    if raw.is_undefined() {
+        return Ok(fallback);
+    }
+
+    let start_time = Coerced::<f64>::from_js(ctx, raw)?.0;
+    if start_time < 0.0 {
+        return Err(Exception::throw_range(
+            ctx,
+            "Performance mark startTime must not be negative",
+        ));
+    }
+    Ok(start_time)
+}
+
+fn parse_measure_options<'js>(
+    performance: &Performance,
+    ctx: &Ctx<'js>,
+    object: Object<'js>,
+) -> Result<(Option<f64>, Option<f64>)> {
+    let parse_time = |value: Value<'js>| -> Result<f64> {
+        if value.is_undefined() {
+            return Ok(0.0);
+        }
+        performance.resolve_mark_or_time(ctx, value)
+    };
+
+    let mut start = None;
+    let mut end = None;
+
+    let start_value = get_optional_property(ctx, &object, "start")?;
+    if !start_value.is_undefined() {
+        start = Some(parse_time(start_value)?);
+    }
+
+    let end_value = get_optional_property(ctx, &object, "end")?;
+    if !end_value.is_undefined() {
+        end = Some(parse_time(end_value)?);
+    }
+
+    if start.is_none() {
+        let start_time = get_optional_property(ctx, &object, "startTime")?;
+        if !start_time.is_undefined() {
+            start = Some(parse_time(start_time)?);
+        }
+    }
+
+    if end.is_none() {
+        let end_time = get_optional_property(ctx, &object, "endTime")?;
+        if !end_time.is_undefined() {
+            end = Some(parse_time(end_time)?);
+        }
+    }
+
+    Ok((start, end))
+}
+
+fn get_optional_property<'js>(ctx: &Ctx<'js>, object: &Object<'js>, key: &str) -> Result<Value<'js>> {
+    object.get::<_, Value>(key).or_else(|_| Ok(Value::new_undefined(ctx.clone())))
 }
 
 fn entries_to_array<'js, I>(ctx: &Ctx<'js>, entries: I) -> Result<Array<'js>>
@@ -253,6 +380,22 @@ fn entry_to_object<'js>(
     object.set("entryType", entry.entry_type)?;
     object.set("startTime", entry.start_time)?;
     object.set("duration", entry.duration)?;
+    object.set("detail", Value::new_undefined(ctx.clone()))?;
+
+    let to_json = Function::new(ctx.clone(), |This(this): This<Object>| -> Result<Object> {
+        let clone = Object::new(this.ctx())?;
+        clone.set("name", this.get::<_, String>("name")?)?;
+        clone.set("entryType", this.get::<_, String>("entryType")?)?;
+        clone.set("startTime", this.get::<_, f64>("startTime")?)?;
+        clone.set("duration", this.get::<_, f64>("duration")?)?;
+        let detail: Value = this
+            .get::<_, Value>("detail")
+            .or_else(|_| Ok(Value::new_undefined(this.ctx())))?;
+        clone.set("detail", detail)?;
+        Ok(clone)
+    })?;
+    object.set("toJSON", to_json)?;
+
     Ok(object)
 }
 
