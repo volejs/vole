@@ -7,7 +7,7 @@ use crate::CompressionFormat;
 /// 这保留了 LLRT `StreamingDecoder` 的核心能力：压缩数据可以按任意边界进入，解压器
 /// 维护内部状态并在后续 chunk 或 `finish()` 时继续输出剩余数据。这个能力后续也能被
 /// fetch/http 的 `Content-Encoding` 解码复用。
-pub(crate) enum StreamingDecoder {
+pub enum StreamingDecoder {
     Gzip(flate2::write::GzDecoder<Vec<u8>>),
     Deflate(flate2::write::ZlibDecoder<Vec<u8>>),
     DeflateRaw(flate2::write::DeflateDecoder<Vec<u8>>),
@@ -28,7 +28,20 @@ impl StreamingDecoder {
         }
     }
 
-    pub(crate) fn write_chunk(&mut self, input: &[u8]) -> io::Result<Vec<u8>> {
+    pub fn from_encoding(encoding: &str) -> io::Result<Self> {
+        match encoding {
+            "gzip" => Self::new(CompressionFormat::Gzip),
+            "deflate" => Self::new(CompressionFormat::Deflate),
+            "deflate-raw" => Self::new(CompressionFormat::DeflateRaw),
+            "br" | "brotli" => Self::new(CompressionFormat::Brotli),
+            _ => Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                format!("unsupported encoding: {encoding}"),
+            )),
+        }
+    }
+
+    pub fn write_chunk(&mut self, input: &[u8]) -> io::Result<Vec<u8>> {
         match self {
             Self::Gzip(decoder) => {
                 decoder.write_all(input)?;
@@ -53,7 +66,11 @@ impl StreamingDecoder {
         }
     }
 
-    pub(crate) fn finish(self) -> io::Result<Vec<u8>> {
+    pub fn decompress_chunk(&mut self, input: &[u8]) -> io::Result<Vec<u8>> {
+        self.write_chunk(input)
+    }
+
+    pub fn finish(self) -> io::Result<Vec<u8>> {
         match self {
             Self::Gzip(decoder) => decoder.finish(),
             Self::Deflate(decoder) => decoder.finish(),

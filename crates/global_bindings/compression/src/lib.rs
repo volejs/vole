@@ -12,7 +12,7 @@ use vole_core::bytes::ObjectBytes;
 mod decode;
 mod encode;
 
-use decode::StreamingDecoder;
+pub use decode::StreamingDecoder;
 use encode::StreamingEncoder;
 
 #[derive(Clone, Copy)]
