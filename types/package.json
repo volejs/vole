@@ -1,0 +1,31 @@
+{
+  "name": "vole-types",
+  "version": "0.1.0",
+  "description": "TypeScript declarations for the vole JavaScript runtime.",
+  "license": "MIT",
+  "homepage": "https://github.com/volejs/vole",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/volejs/vole.git",
+    "directory": "types"
+  },
+  "bugs": {
+    "url": "https://github.com/volejs/vole/issues"
+  },
+  "keywords": [
+    "vole",
+    "javascript",
+    "typescript",
+    "runtime",
+    "quickjs",
+    "webapi"
+  ],
+  "types": "index.d.ts",
+  "files": [
+    "*.d.ts",
+    "net/**/*.d.ts",
+    "README.md",
+    "package.json"
+  ],
+  "sideEffects": false
+}
