@@ -295,8 +295,10 @@ impl Performance {
             }
         }
 
-        if let Some(end) = end && is_measure_options(ctx, &end)? {
-            return parse_measure_detail(ctx, end);
+        if let Some(end) = end {
+            if is_measure_options(ctx, &end)? {
+                return parse_measure_detail(ctx, end);
+            }
         }
 
         Ok(None)
