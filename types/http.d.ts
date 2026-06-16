@@ -1,41 +1,19 @@
 /**
- * HTTP client/server helpers exposed by `vole:net/http`.
+ * HTTP client/server helpers exposed by `vole:http`.
  *
- * The client helpers delegate to global Web `fetch`. The server helper accepts
- * a Web API shaped handler: `Request -> Response | Promise<Response>`.
- *
- * @example
- * ```ts
- * import { serve } from "vole:net/http";
- *
- * const server = serve(async (request) => {
- *   return new Response(`hello from ${new URL(request.url).pathname}`);
- * }, { port: 8080, hostname: "127.0.0.1" });
- *
- * await server.listen();
- * // await server.shutdown();
- * ```
- *
- * @remarks
- * This module is currently a thin shim over the existing backend. It is not a
- * Node `http` compatibility layer. Future versions are expected to lean further
- * into Web API request/response semantics and request-scoped `WaitUntil`.
+ * The client helpers delegate to Web `fetch`.
+ * The server helper accepts Web API shaped handlers: `Request -> Response | Promise<Response>`.
  */
-declare module "vole:net/http" {
+declare module "vole:http" {
   /** Server binding options. */
   export interface ServerOptions {
     /** TCP port to bind. Defaults to `8080`. */
     port?: number;
-    /** Hostname or IP address to bind. Defaults to `"0.0.0.0"`. */
+    /** Hostname or IP address to bind. Defaults to `0.0.0.0`. */
     hostname?: string;
   }
 
-  /**
-   * Request handler shape used by the current HTTP server shim.
-   *
-   * @param request Web API `Request` object for the incoming request.
-   * @returns Web API `Response`, synchronously or asynchronously.
-   */
+  /** Request handler shape used by the current HTTP server shim. */
   export type ServerHandler = (request: Request) => Response | Promise<Response>;
 
   /** Convenience client request helper backed by global `fetch`. */
@@ -45,7 +23,7 @@ declare module "vole:net/http" {
 
   /** HTTP server handle returned by `serve`. */
   export class Server {
-    /** Create a server handle. Call `listen()` to bind the socket. */
+    /** Create a server handle. Call `listen()` to bind socket. */
     constructor(handler: ServerHandler, options?: ServerOptions);
     /** Handler invoked for each incoming request. */
     readonly handler: ServerHandler;
@@ -62,16 +40,13 @@ declare module "vole:net/http" {
   /** Create a server instance. Call `listen()` to start it. */
   export function serve(handler: ServerHandler, options?: ServerOptions): Server;
 
-  /** Default object export containing all HTTP helpers. */
+  /** Default export object. */
   const http: {
-    /** See `request`. */
     request: typeof request;
-    /** See `fetch`. */
     fetch: typeof fetch;
-    /** HTTP server constructor. */
     Server: typeof Server;
-    /** See `serve`. */
     serve: typeof serve;
   };
+
   export default http;
 }

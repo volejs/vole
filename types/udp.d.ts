@@ -1,26 +1,10 @@
 /**
- * UDP socket helpers exposed by `vole:net/udp`.
+ * UDP socket helpers exposed by `vole:udp`.
  *
- * UDP is message-oriented and connectionless. `send` writes one datagram;
- * `recv` resolves with one received datagram plus its remote address.
- *
- * @example
- * ```ts
- * import { createSocket } from "vole:net/udp";
- *
- * const socket = await createSocket(0, "127.0.0.1");
- * const address = await socket.localAddress();
- * await socket.send(new TextEncoder().encode("ping"), address.host, address.port);
- * const message = await socket.recv();
- * console.log(new TextDecoder().decode(message.data));
- * await socket.close();
- * ```
- *
- * @remarks
- * UDP delivery is not guaranteed and message ordering is not guaranteed. Large
- * datagrams may be dropped or fragmented by the network stack.
+ * `send` writes one datagram; `recv` resolves with one received datagram plus
+ * remote address metadata.
  */
-declare module "vole:net/udp" {
+declare module "vole:udp" {
   /** UDP address metadata. */
   export interface UdpAddress {
     /** IP address string. */
@@ -41,7 +25,7 @@ declare module "vole:net/udp" {
 
   /** Bound UDP socket handle. */
   export interface UdpSocket {
-    /** Internal native socket id. Treat as opaque diagnostics only. */
+    /** Internal native socket id (opaque). */
     readonly _id: number;
     /** Address selected at bind time. */
     readonly address: UdpAddress;
@@ -58,10 +42,10 @@ declare module "vole:net/udp" {
   /** Create and bind a UDP socket. */
   export function createSocket(port?: number, host?: string): Promise<UdpSocket>;
 
-  /** Default object export containing all UDP helpers. */
+  /** Default object export. */
   const udp: {
-    /** See `createSocket`. */
     createSocket: typeof createSocket;
   };
+
   export default udp;
 }

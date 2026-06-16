@@ -1,23 +1,21 @@
 /**
- * Process information and stdio helpers exposed by `vole:process`.
+ * OS / process metadata and stdio helpers exposed by `vole:os`.
  *
- * This module provides process-level metadata and minimal stdout/stderr writers.
- * It is intentionally smaller than Node's `process` object.
+ * This module is intentionally small and focuses on process/runtime metadata,
+ * exit control, and stdout/stderr writers.
  *
  * @example
  * ```ts
- * import { cwd, chdir, platform, stdout } from "vole:process";
+ * import { cwd, chdir, pid, platform, exit } from "vole:os";
  *
- * stdout.write(`running on ${platform} in ${cwd()}\n`);
- * chdir("..");
+ * console.log(`pid=${pid}, cwd=${cwd()}`);
+ * chdir("/tmp");
+ * if (pid % 2 === 0) {
+ *   exit(1);
+ * }
  * ```
- *
- * @remarks
- * `exit` and `abort` terminate the current process and do not give pending
- * managed `WaitUntil` scopes a chance to drain. Prefer returning from the entry
- * point normally when graceful shutdown matters.
  */
-declare module "vole:process" {
+declare module "vole:os" {
   /** Snapshot of process memory counters. */
   export interface MemoryUsage {
     /** Resident set size in bytes. */
@@ -36,9 +34,9 @@ declare module "vole:process" {
   export interface WritableStreamLike {
     /** Write text synchronously. */
     write(data: string): void;
-    /** Write text asynchronously. */
+    /** Write text asynchronously (implemented with compatible sync semantics currently). */
     writeAsync(data: string): void;
-    /** Flush buffered output if the backend supports flushing. */
+    /** Flush buffered output if backend supports flushing. */
     flush(): void;
   }
 
@@ -46,11 +44,6 @@ declare module "vole:process" {
   export function exit(code?: number): never;
   /** Abort the current process immediately. */
   export function abort(): never;
-  /**
-   * Send a signal-like request to the process with the specified PID.
-   * Returns `true` when the underlying platform call is accepted.
-   */
-  export function kill(pid: number, signal?: string): boolean;
   /** Return the current working directory. */
   export function cwd(): string;
   /** Change the current working directory. */
@@ -64,7 +57,7 @@ declare module "vole:process" {
   /** Set the process exit code used when no explicit exit value is provided. */
   export function setExitCode(code: number): void;
 
-  /** CLI arguments passed to the current process. */
+  /** CLI arguments passed to current process (excluding executable). */
   export const args: string[];
   /** Original executable argument, when available. */
   export const argv0: string;

@@ -6,7 +6,7 @@
   "homepage": "https://github.com/volejs/vole",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/volejs/vole.git",
+    "url": "https://github.com/volejs/vole.git",
     "directory": "types"
   },
   "bugs": {
@@ -23,7 +23,6 @@
   "types": "index.d.ts",
   "files": [
     "*.d.ts",
-    "net/**/*.d.ts",
     "README.md",
     "package.json"
   ],
