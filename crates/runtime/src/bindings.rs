@@ -25,10 +25,10 @@ pub fn registry() -> ExtensionRegistry {
         .with(vole_raw_ffi::init)
         .with(vole_raw_os::init)
         .with(vole_raw_path::init)
-        .with(vole_raw_net::http::init)
-        .with(vole_raw_net::tcp::init)
-        .with(vole_raw_net::udp::init)
-        .with(vole_raw_net::socket::init)
+        .with(vole_raw_http::init)
+        .with(vole_raw_tcp::init)
+        .with(vole_raw_udp::init)
+        .with(vole_raw_socket::init)
         .with(vole_raw_wasm::init)
 }
 

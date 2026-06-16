@@ -1,0 +1,12 @@
+[package]
+name = "vole-raw-tcp"
+version = "0.1.0"
+edition = "2024"
+
+authors = ["vole-runtime"]
+
+description = "Raw TCP bindings for vole runtime"
+
+[dependencies]
+rquickjs = { workspace = true, features = ["futures", "loader"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time", "net", "io-util", "sync"] }

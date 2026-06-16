@@ -8,20 +8,14 @@ use rquickjs::{
     module::{Declarations, Exports, ModuleDef},
 };
 use std::collections::HashMap;
-use std::process::Command;
+use std::process::{Command, Child};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 
+use vole_raw_signal::{is_terminating_signal, parse_signal, send_signal, SignalSpec};
+
 type SharedHandleTable = Arc<Mutex<HashMap<u64, SpawnedProcessHandle>>>;
 type ProcessHandleMap = HashMap<u64, SpawnedProcessHandle>;
-
-#[derive(Clone)]
-enum ParsedSignal {
-    Default,
-    Check,
-    Signal(String),
-    Invalid,
-}
 
 #[derive(Clone)]
 struct SpawnedProcessHandle {
@@ -41,120 +35,9 @@ fn next_handle_id() -> u64 {
     PROCESS_HANDLE_COUNTER.fetch_add(1, Ordering::Relaxed)
 }
 
-fn parse_signal(signal: Option<&str>) -> ParsedSignal {
-    fn is_numeric_signal(raw: &str) -> bool {
-        raw.chars().all(|c| c.is_ascii_digit())
-    }
-
-    let Some(raw) = signal else {
-        return ParsedSignal::Default;
-    };
-
-    let raw = raw.trim();
-    if raw.is_empty() {
-        return ParsedSignal::Default;
-    }
-
-    let raw = raw
-        .trim_start_matches("SIG")
-        .trim_start_matches('-')
-        .to_ascii_uppercase();
-    if raw == "0" {
-        return ParsedSignal::Check;
-    }
-    if raw.is_empty() {
-        return ParsedSignal::Invalid;
-    }
-
-    let allowed = is_numeric_signal(&raw)
-        || matches!(
-            raw.as_str(),
-            "ABRT"
-                | "ALRM"
-                | "FPE"
-                | "HUP"
-                | "ILL"
-                | "INT"
-                | "KILL"
-                | "PIPE"
-                | "QUIT"
-                | "SEGV"
-                | "TERM"
-                | "USR1"
-                | "USR2"
-                | "CONT"
-                | "STOP"
-                | "TSTP"
-                | "TTIN"
-                | "TTOU"
-        );
-    if allowed {
-        ParsedSignal::Signal(raw)
-    } else {
-        ParsedSignal::Invalid
-    }
-}
-
-fn is_kill_signal(signal: &ParsedSignal) -> bool {
-    !matches!(signal, ParsedSignal::Check)
-}
-
-fn kill_process(pid: u32, signal: ParsedSignal) -> bool {
-    match signal {
-        ParsedSignal::Invalid => return false,
-        _ => {}
-    }
-
-    #[cfg(unix)]
-    {
-        let mut cmd = Command::new("kill");
-        match signal {
-            ParsedSignal::Default => {}
-            ParsedSignal::Check => {
-                cmd.arg("-0");
-            }
-            ParsedSignal::Signal(sig) => {
-                cmd.arg(format!("-{sig}"));
-            }
-            ParsedSignal::Invalid => unreachable!(),
-        }
-        return cmd
-            .arg(pid.to_string())
-            .status()
-            .map(|status| status.success())
-            .unwrap_or(false);
-    }
-
-    #[cfg(windows)]
-    {
-        match signal {
-            ParsedSignal::Check => {
-                let output = Command::new("tasklist")
-                    .args(["/FI", &format!("PID eq {pid}"), "/NH", "/FO", "CSV"])
-                    .output();
-                if let Ok(output) = output {
-                    if !output.status.success() {
-                        return false;
-                    }
-                    let text = String::from_utf8_lossy(&output.stdout);
-                    text.lines()
-                        .any(|line| line.contains(&format!("\"{pid}\"")))
-                } else {
-                    false
-                }
-            }
-            ParsedSignal::Default | ParsedSignal::Signal(_) | ParsedSignal::Invalid => {
-                let mut cmd = Command::new("taskkill");
-                let _ = cmd.arg("/PID").arg(pid.to_string()).arg("/T").arg("/F");
-                cmd.status().map(|status| status.success()).unwrap_or(false)
-            }
-        }
-    }
-}
-
-fn kill_by_handle(handle_id: u64, signal: Option<String>) -> bool {
+fn signal_by_handle(handle_id: u64, signal: Option<String>) -> bool {
     let parsed_signal = parse_signal(signal.as_deref());
-    if matches!(parsed_signal, ParsedSignal::Invalid) {
+    if matches!(parsed_signal, SignalSpec::Invalid) {
         return false;
     }
 
@@ -167,18 +50,14 @@ fn kill_by_handle(handle_id: u64, signal: Option<String>) -> bool {
         }
     };
 
-    let ok = kill_process(pid, parsed_signal.clone());
-    if ok && is_kill_signal(&parsed_signal) {
+    let ok = send_signal(pid, parsed_signal.clone());
+    if ok && is_terminating_signal(&parsed_signal) {
         let table = process_handle_table();
         let mut table = table.lock().unwrap_or_else(|err| err.into_inner());
         let _ = table.remove(&handle_id);
     }
 
     ok
-}
-
-fn kill_pid(pid: u32, signal: Opt<String>) -> bool {
-    kill_process(pid, parse_signal(signal.0.as_deref()))
 }
 
 fn exec_sync_impl<'js>(
@@ -238,7 +117,7 @@ fn spawn_impl<'js>(
         }
     }
 
-    let mut child = cmd
+    let mut child: Child = cmd
         .spawn()
         .map_err(|err| Exception::throw_type(&ctx, &format!("spawn failed: {err}")))?;
     let pid = child.id();
@@ -259,14 +138,14 @@ fn spawn_impl<'js>(
 
     let obj = Object::new(ctx.clone())?;
     obj.set("pid", pid as f64)?;
-    let kill_fn = Function::new(ctx.clone(), move |_signal: Option<String>| -> bool {
-        kill_by_handle(handle_id, _signal)
+    let kill_fn = Function::new(ctx.clone(), move |signal: Option<String>| -> bool {
+        signal_by_handle(handle_id, signal)
     })?;
     obj.set("kill", kill_fn)?;
     Ok(obj)
 }
 
-/// Native module for process execution, shell helpers and child-control.
+/// Native module for process execution and shell helpers.
 pub struct OsExecRawModule;
 
 impl ModuleDef for OsExecRawModule {
@@ -274,7 +153,6 @@ impl ModuleDef for OsExecRawModule {
         decl.declare("__std_os_exec")?;
         decl.declare("__std_os_execSync")?;
         decl.declare("__std_os_spawn")?;
-        decl.declare("__std_os_kill")?;
         Ok(())
     }
 
@@ -285,7 +163,6 @@ impl ModuleDef for OsExecRawModule {
             Function::new(ctx.clone(), exec_sync_impl),
         )?;
         exports.export("__std_os_spawn", Function::new(ctx.clone(), spawn_impl))?;
-        exports.export("__std_os_kill", Function::new(ctx.clone(), kill_pid))?;
         Ok(())
     }
 }

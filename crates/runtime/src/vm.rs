@@ -27,7 +27,7 @@ pub enum VmError {
 
 impl Vm {
     pub async fn new() -> Result<Self, VmError> {
-        vole_raw_os::load_dotenv();
+        vole_raw_env::load_dotenv();
 
         let runtime = AsyncRuntime::new().map_err(|e| VmError::CreationFailed(e.to_string()))?;
 

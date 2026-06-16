@@ -1,0 +1,13 @@
+[package]
+name = "vole-raw-signal"
+version = "0.1.0"
+edition = "2024"
+
+authors = ["vole-runtime"]
+
+description = "Raw signal helpers for vole runtime"
+
+[dependencies]
+tokio = { workspace = true, features = ["rt", "sync", "signal"] }
+libc = "0.2"
+rquickjs = { workspace = true, features = ["futures", "loader"] }
