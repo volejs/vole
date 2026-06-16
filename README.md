@@ -108,15 +108,17 @@ vole install some-package
 常用模块：
 
 - `vole:path`
-- `vole:os`（统一系统能力入口，含 env/exec/fs 子能力）
-- `vole:os/env`
-- `vole:os/exec`
-- `vole:os/fs`
+- `vole:os`（进程元信息与标准流）
+- `vole:env`
+- `vole:exec`
+- `vole:fs`
 - `vole:ffi`
-- `vole:net/http`
-- `vole:net/tcp`
-- `vole:net/udp`
-- `vole:net/socket`
+- `vole:http`
+- `vole:tcp`
+- `vole:udp`
+- `vole:socket`
+- `vole:signal`
+- `vole:tls`
 - `vole:test`
 - `vole:wasm`
 - `vole:until`
@@ -125,15 +127,15 @@ vole install some-package
 
 ```js
 import { join } from "vole:path";
-import { readFileSync } from "vole:os/fs";
-import { get } from "vole:os/env";
-import { exec } from "vole:os/exec";
+import { readFileSync } from "vole:fs";
+import { get } from "vole:env";
+import { exec } from "vole:exec";
 import { exit, pid } from "vole:os";
 
 const file = join("data", "hello.txt");
 console.log(readFileSync(file, "utf8"));
 console.log(`current pid=${pid}`);
-await exec("echo os/exec is unified into vole:os/exec");
+await exec("echo exec helpers are now from vole:exec");
 get("PATH");
 
 // 统一入口示例

@@ -86,7 +86,7 @@ known runtime differences.
 
 - `Vm` wraps `rquickjs::AsyncRuntime` + `rquickjs::AsyncContext`. All `Vm` methods are async and require a tokio runtime.
 - `Runtime` is the legacy synchronous wrapper (stateless, one context per `eval`). Prefer `Vm` for new code.
-- Built-in modules use `"vole:"` prefix (e.g. `vole:os`, `vole:os/fs`, `vole:net/http`).
+- Built-in modules use `"vole:"` prefix (e.g. `vole:os`, `vole:fs`, `vole:exec`, `vole:http`).
 - JS shim files in `crates/modules/src/js_shims/` provide the JS API for built-in modules, delegating to `globalThis.__*` Rust functions.
 - rquickjs `IntoJs<'js>` lifetime bounds prevent generic `set_global`; type-specific setters (`set_global_string`, `set_global_number`, `set_global_bool`) are used instead.
 - `with_context` callback must return `Result<R, rquickjs::Error>` (not `VmError`).
@@ -95,7 +95,7 @@ known runtime differences.
 
 ## Conventions
 
-- Edition 2021.
+- Edition 2024.
 - Error types use `thiserror`.
 - Module system rejects bare specifiers (e.g. `"lodash"`) to prevent ghost dependencies.
 - Web API implementations live in `crates/global_bindings/<name>/src/lib.rs` as `vole-global-<name>` crates.
@@ -107,17 +107,19 @@ known runtime differences.
 
 | Module  | Prefix       | Status      | Notes                                                    |
 | ------- | ------------ | ----------- | -------------------------------------------------------- |
-| os      | vole:os      | Implemented | 统一系统能力入口；导出 `env` / `exec` / `fs` 等子能力      |
-| os/env  | vole:os/env  | Implemented | 环境变量读写与 `.env` 文件加载                               |
-| os/fs   | vole:os/fs   | Implemented | 同步/异步文件与目录操作；统一 `FileHandle`                    |
-| os/exec | vole:os/exec | Implemented | 进程执行与子进程 `spawn`                                   |
+| os      | vole:os      | Implemented | 统一系统能力入口；标准流、进程信息、进程控制与退出码。          |
+| env     | vole:env     | Implemented | 环境变量读写与 `.env` 加载                                  |
+| fs      | vole:fs      | Implemented | 同步/异步文件与目录操作；统一 `FileHandle`                    |
+| exec    | vole:exec    | Implemented | 命令执行与子进程 `spawn`                                   |
 | ffi     | vole:ffi     | Implemented | Dynamic library calls via libffi/libloading              |
-| http    | vole:net/http    | Implemented | Client request + axum server with JS handler callbacks   |
+| signal  | vole:signal  | Implemented | 进程信号发送与基础信号能力查询                            |
+| tls     | vole:tls     | Implemented | TLS 能力探测（占位实现）                                  |
+| http    | vole:http    | Implemented | Client request + axum server with JS handler callbacks   |
 | path    | vole:path    | Implemented | Cross-platform path helpers                              |
-| socket  | vole:net/socket  | Implemented | Unix domain socket (Unix only)                           |
-| tcp     | vole:net/tcp     | Implemented | `connect()` / `listen()` / `Server`                      |
+| socket  | vole:socket  | Implemented | Unix domain socket（Unix only）                           |
+| tcp     | vole:tcp     | Implemented | `connect()` / `listen()` / `Server`                      |
 | test    | vole:test    | Implemented | Built-in test framework used by `vole test`              |
-| udp     | vole:net/udp     | Implemented | `createSocket()`                                         |
+| udp     | vole:udp     | Implemented | `createSocket()`                                         |
 | wasm    | vole:wasm    | Implemented | WebAssembly loader helpers                               |
 
 ---

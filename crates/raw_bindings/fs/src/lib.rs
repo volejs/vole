@@ -625,7 +625,7 @@ async fn fs_open<'js>(
 // Native module definition
 // =============================================================================
 
-/// Native module exposing all low-level fs operations used by `vole:os/fs`.
+/// Native module exposing all low-level fs operations used by `vole:fs`.
 pub struct FsRawModule;
 
 impl ModuleDef for FsRawModule {

@@ -190,24 +190,24 @@
 | ------------- | :--: | ------------------------------------------------------------------------------ |
 | `vole:os`      |  ✅  | 系统能力聚合入口，提供 `env` / `exec` / `fs` 的默认导出与子能力访问 |
 | `vole:path`    |  ✅  | join/resolve/dirname/basename/extname/isAbsolute/relative/parse/format         |
-| `vole:os/env`  |  ✅  | 环境变量读写、查询、批量导出与 `.env` 文件加载 |
-| `vole:os/fs`   |  ✅  | 同步/异步路径操作 + `open()` 统一句柄（文件/目录读写）                        |
-| `vole:os/exec` |  ✅  | 进程执行与子进程 `spawn`                                                      |
+| `vole:env`  |  ✅  | 环境变量读写、查询、批量导出与 `.env` 文件加载 |
+| `vole:fs`   |  ✅  | 同步/异步路径操作 + `open()` 统一句柄（文件/目录读写）                        |
+| `vole:exec` |  ✅  | 进程执行与子进程 `spawn`                                                      |
 | `vole:test`    |  ✅  | test/describe/it/beforeAll/afterAll/beforeEach/afterEach/run + CLI `vole test` |
-| `vole:net/http`    |  ✅  | client: request/fetch；server: serve/Server（axum + JS handler 回调）          |
+| `vole:http`    |  ✅  | client: request/fetch；server: serve/Server（axum + JS handler 回调）          |
 
 ### 2.2 其他模块
 
 | 模块                | 状态 | 计划 | 说明                                                                       |
 | ------------------- | :--: | :--: | -------------------------------------------------------------------------- |
-| `vole:net/tcp`           |  ✅  |  —   | `connect()` / `listen()` / `Server` — 用 tokio::net::TcpStream/TcpListener |
-| `vole:net/udp`           |  ✅  |  —   | `createSocket()` — 用 tokio::net::UdpSocket                                |
-| `vole:net/socket` (Unix) |  ✅  |  —   | Unix domain socket — 用 tokio::net::UnixStream（Unix only）                |
+| `vole:tcp`           |  ✅  |  —   | `connect()` / `listen()` / `Server` — 用 tokio::net::TcpStream/TcpListener |
+| `vole:udp`           |  ✅  |  —   | `createSocket()` — 用 tokio::net::UdpSocket                                |
+| `vole:socket` (Unix) |  ✅  |  —   | Unix domain socket — 用 tokio::net::UnixStream（Unix only）                |
 | `vole:ffi`           |  ✅  |  —   | 动态库加载、C ABI 调用，支持整数/浮点/指针/字符串类型                      |
 
 ### 2.3 已注册但未绑定底层函数的模块
 
-> `vole:net/udp` / `vole:net/socket` 已实现底层绑定。
+> `vole:udp` / `vole:socket` 已实现底层绑定。
 > `vole:ffi` 已实现底层绑定。
 
 ---
@@ -257,7 +257,7 @@
 | `vole bundle`                 |  ➖  |  —   | 打包，远期                                |
 | `--inspect` / `--inspect-brk` |  ➖  |  —   | 调试协议，远期                            |
 | TypeScript 直接执行           |  ✅  |  —   | `vole run index.ts` — 集成 oxc 转译       |
-| `.env` 自动加载               |  ✅  |  —   | 启动时自动加载 `.env` 到 `vole:os/env`    |
+| `.env` 自动加载               |  ✅  |  —   | 启动时自动加载 `.env` 到 `vole:env`    |
 | `--allow-*` 权限标记          |  ➖  |  —   | Deno 风格的权限系统，远期                 |
 
 ---
@@ -278,18 +278,18 @@ P3 (已完成 ✅)
   ├─ ReadableStreamDefaultReader + Controller
   ├─ WritableStream + WritableStreamDefaultWriter + Controller
   ├─ TransformStream
-  ├─ vole:net/tcp (connect/listen/Server)
+  ├─ vole:tcp (connect/listen/Server)
   ├─ CryptoKey + importKey/exportKey (raw/jwk/pkcs8/spki)
   ├─ SubtleCrypto 对象暴露
   ├─ JSON modules / 通用配置导入 (`import ... with { type: "..." }`)
   ├─ TypeScript 直接执行（oxc 转译）
   ├─ CLI `.env` 自动加载
   ├─ `vole run` 显式子命令
-  └─ `vole:os/exec` 合并能力
+  └─ `vole:exec` 合并能力
 
 P4 (已完成 ✅)
   ├─ CompressionStream / DecompressionStream
-  ├─ vole:net/udp + vole:net/socket (Unix)
+  ├─ vole:udp + vole:socket (Unix)
   ├─ TextEncoderStream / TextDecoderStream
   ├─ ByteLengthQueuingStrategy / CountQueuingStrategy
   ├─ Crypto RSA (`RSASSA-PKCS1-v1.5` / `RSA-PSS`) pkcs8/spki sign/verify

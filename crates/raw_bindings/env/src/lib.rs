@@ -135,7 +135,7 @@ fn env_entries() -> HashMap<String, String> {
     std::env::vars().collect()
 }
 
-/// Native module exposing the low-level env operations used by `vole:os/env`.
+/// Native module exposing the low-level env operations used by `vole:env`.
 pub struct EnvRawModule;
 
 impl ModuleDef for EnvRawModule {
