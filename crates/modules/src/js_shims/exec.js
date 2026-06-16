@@ -1,4 +1,4 @@
-import { __std_os_exec, __std_os_execSync, __std_os_spawn } from "vole:raw:os/exec";
+import { __std_os_exec, __std_os_execSync, __std_os_spawn } from "vole:raw:exec";
 
 export function exec(command, options) {
   return __std_os_exec(command, options ?? undefined);

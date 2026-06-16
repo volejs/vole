@@ -26,7 +26,7 @@ import {
   __fs_open,
   FileHandle,
   Stats,
-} from "vole:raw:os/fs";
+} from "vole:raw:fs";
 
 function encodeData(data) {
   if (data instanceof Uint8Array) {

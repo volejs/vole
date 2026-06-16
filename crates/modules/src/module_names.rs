@@ -1,4 +1,4 @@
-/// Produce a built-in module specifier string like `vole:os` or `vole:net/http`.
+/// Produce a built-in module specifier string like `vole:os` or `vole:http`.
 #[macro_export]
 macro_rules! vole_mod {
     ($name:ident) => {
@@ -9,8 +9,8 @@ macro_rules! vole_mod {
     };
 }
 
-/// Produce an internal raw module specifier string like `vole:raw:os/fs`
-/// or `vole:raw:net/http`.
+/// Produce an internal raw module specifier string like `vole:raw:env`
+/// or `vole:raw:http`.
 #[macro_export]
 macro_rules! vole_raw_mod {
     ($name:ident) => {
@@ -23,8 +23,8 @@ macro_rules! vole_raw_mod {
 
 /// Include a bundled JS shim source by its logical module path.
 ///
-/// `vole_js_shim!("net/http")` resolves to the content of
-/// `crates/modules/src/js_shims/net/http.js` via the embedded asset store.
+/// `vole_js_shim!("http")` resolves to the content of
+/// `crates/modules/src/js_shims/http.js` via the embedded asset store.
 /// It can be called from anywhere because the path is anchored to the
 /// `vole-module` crate root.
 #[macro_export]
@@ -39,16 +39,19 @@ macro_rules! vole_js_shim {
 pub const PUBLIC_VOLE_MODULES: &[&str] = &[
     vole_mod!(ffi),
     vole_mod!(path),
+    // OS-like runtime modules.
     vole_mod!("os"),
-    vole_mod!("os/env"),
-    vole_mod!("os/fs"),
-    vole_mod!("os/exec"),
+    vole_mod!("env"),
+    vole_mod!("fs"),
+    vole_mod!("exec"),
+    vole_mod!("signal"),
+    vole_mod!("tls"),
+    // Network modules.
+    vole_mod!("http"),
+    vole_mod!("socket"),
+    vole_mod!("tcp"),
+    vole_mod!("udp"),
     vole_mod!(test),
     vole_mod!(until),
     vole_mod!(wasm),
-    // Network namespace
-    vole_mod!("net/http"),
-    vole_mod!("net/socket"),
-    vole_mod!("net/tcp"),
-    vole_mod!("net/udp"),
 ];

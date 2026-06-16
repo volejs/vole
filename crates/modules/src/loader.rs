@@ -27,17 +27,18 @@ impl ModuleLoader {
         insert_shim!(vole_modules, "ffi");
         insert_shim!(vole_modules, "path");
         insert_shim!(vole_modules, "os");
-        insert_shim!(vole_modules, "os/env");
-        insert_shim!(vole_modules, "os/fs");
-        insert_shim!(vole_modules, "os/exec");
+        insert_shim!(vole_modules, "env");
+        insert_shim!(vole_modules, "fs");
+        insert_shim!(vole_modules, "exec");
+        insert_shim!(vole_modules, "signal");
+        insert_shim!(vole_modules, "tls");
         insert_shim!(vole_modules, "test");
         insert_shim!(vole_modules, "until");
         insert_shim!(vole_modules, "wasm");
-        // Network namespace
-        insert_shim!(vole_modules, "net/http");
-        insert_shim!(vole_modules, "net/socket");
-        insert_shim!(vole_modules, "net/tcp");
-        insert_shim!(vole_modules, "net/udp");
+        insert_shim!(vole_modules, "http");
+        insert_shim!(vole_modules, "socket");
+        insert_shim!(vole_modules, "tcp");
+        insert_shim!(vole_modules, "udp");
 
         ModuleLoader {
             vole_modules,

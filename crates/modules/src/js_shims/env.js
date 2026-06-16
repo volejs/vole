@@ -5,7 +5,7 @@ import {
   __std_env_remove,
   __std_env_entries,
   __std_env_load,
-} from "vole:raw:os/env";
+} from "vole:raw:env";
 
 function assertEnvName(name) {
   if (typeof name !== "string") {

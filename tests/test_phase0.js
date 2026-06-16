@@ -58,9 +58,9 @@ console.log("PATH exists:", has("PATH"));
 console.log("env.entries keys count:", Object.keys(entries()).length);
 console.log("env.HOME:", env.get("HOME"));
 
-// 8. vole:process
-console.log("=== vole:process ===");
-import { pid, platform, arch, version, args, cwd, stdout, stderr } from "vole:process";
+// 8. vole:os
+console.log("=== vole:os ===");
+import { pid, platform, arch, version, args, cwd, stdout, stderr } from "vole:os";
 console.log("pid:", pid);
 console.log("platform:", platform);
 console.log("arch:", arch);

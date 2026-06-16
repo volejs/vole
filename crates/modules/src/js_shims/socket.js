@@ -6,7 +6,7 @@ import {
   __std_socket_listen,
   __std_socket_server_accept,
   __std_socket_server_close,
-} from "vole:raw:net/socket";
+} from "vole:raw:socket";
 
 export async function connect(path) {
   const info = await __std_socket_connect(path);
@@ -24,7 +24,7 @@ export async function listen(path) {
   return {
     _id: info._id,
     path: info.path,
-    accept: () => __std_socket_server_accept(info._id).then(s => ({
+    accept: () => __std_socket_server_accept(info._id).then((s) => ({
       _id: s._id,
       read: (size) => __std_socket_read(s._id, size),
       write: (data) => __std_socket_write(s._id, data),
