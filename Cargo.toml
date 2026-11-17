@@ -56,6 +56,8 @@ flate2 = "1.0"
 
 dotenvy = "0.15"
 
+hickory-resolver = { version = "0.26.1", default-features = false }
+
 libffi = "4.1"
 libloading = "0.8"
 

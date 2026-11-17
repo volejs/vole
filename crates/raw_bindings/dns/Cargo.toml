@@ -1,0 +1,19 @@
+[package]
+name = "vole-raw-dns"
+version = "0.1.0"
+edition.workspace = true
+
+authors = ["vole-runtime"]
+
+description = "Raw DNS resolver bindings for vole runtime"
+
+[features]
+default = []
+doh3 = [
+    "hickory-resolver/h3-ring",
+    "hickory-resolver/webpki-roots",
+]
+
+[dependencies]
+hickory-resolver = { workspace = true, features = ["system-config", "tokio"] }
+rquickjs = { workspace = true, features = ["futures", "loader"] }
