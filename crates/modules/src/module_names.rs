@@ -44,6 +44,7 @@ pub const PUBLIC_VOLE_MODULES: &[&str] = &[
     vole_mod!("env"),
     vole_mod!("fs"),
     vole_mod!("exec"),
+    vole_mod!("dns"),
     vole_mod!("signal"),
     vole_mod!("tls"),
     // Network modules.

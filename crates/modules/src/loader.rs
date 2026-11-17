@@ -30,6 +30,7 @@ impl ModuleLoader {
         insert_shim!(vole_modules, "env");
         insert_shim!(vole_modules, "fs");
         insert_shim!(vole_modules, "exec");
+        insert_shim!(vole_modules, "dns");
         insert_shim!(vole_modules, "signal");
         insert_shim!(vole_modules, "tls");
         insert_shim!(vole_modules, "test");
