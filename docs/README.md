@@ -30,6 +30,27 @@ Use `maudit preview` to preview the production output.
 The optional `bun run dev`, `bun run build`, and `bun run typecheck` commands are
 aliases for the Rust/Maudit commands. No JavaScript package installation is needed.
 
+## Cloudflare deployment
+
+Production URL: https://vole.zestack.dev
+
+The site is deployed as static assets on the Cloudflare Worker `vole-docs`.
+From this directory, authenticate with an account that manages `zestack.dev`,
+then deploy:
+
+```sh
+bunx wrangler login
+bun run deploy
+```
+
+`wrangler.toml` builds the site with `SITE_URL=https://vole.zestack.dev`, uploads
+`dist/`, and binds the custom domain. Cloudflare serves directory-index routes
+with trailing slashes and returns the generated `404.html` for missing pages.
+The default workers.dev endpoint and preview URLs are disabled.
+
+Wrangler runs through Bun for deployment only; the local Rust build is unchanged.
+Keep Cloudflare credentials outside the repository.
+
 ## Structure
 
 The homepage (`/`) has an independent layout. Top-level navigation contains:

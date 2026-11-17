@@ -1,0 +1,16 @@
+name = "vole-docs"
+compatibility_date = "2026-11-17"
+workers_dev = false
+preview_urls = false
+
+[build]
+command = "SITE_URL=https://vole.zestack.dev cargo run --locked"
+
+[assets]
+directory = "./dist"
+html_handling = "auto-trailing-slash"
+not_found_handling = "404-page"
+
+[[routes]]
+pattern = "vole.zestack.dev"
+custom_domain = true

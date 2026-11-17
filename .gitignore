@@ -41,6 +41,7 @@ tests/fixtures/*.out
 docs/dist/
 docs/target/
 docs/.maudit/
+docs/.wrangler/
 
 # LLRT upstream TS backups (只保留适配后的 JS 测试)
 llrt/

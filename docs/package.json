@@ -3,6 +3,7 @@
     "dev": "maudit dev",
     "build": "cargo run --locked",
     "typecheck": "cargo check --locked",
-    "preview": "maudit preview"
+    "preview": "maudit preview",
+    "deploy": "bunx wrangler deploy --config wrangler.toml"
   }
 }
