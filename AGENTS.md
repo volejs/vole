@@ -111,6 +111,7 @@ known runtime differences.
 | env     | vole:env     | Implemented | 环境变量读写与 `.env` 加载                                  |
 | fs      | vole:fs      | Implemented | 同步/异步文件与目录操作；统一 `FileHandle`                    |
 | exec    | vole:exec    | Implemented | 命令执行与子进程 `spawn`                                   |
+| dns     | vole:dns     | Implemented | Native DNS resolver based on Hickory Resolver              |
 | ffi     | vole:ffi     | Implemented | Dynamic library calls via libffi/libloading              |
 | signal  | vole:signal  | Implemented | 进程信号发送与基础信号能力查询                            |
 | tls     | vole:tls     | Implemented | TLS 能力探测（占位实现）                                  |

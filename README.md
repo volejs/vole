@@ -112,6 +112,7 @@ vole install some-package
 - `vole:env`
 - `vole:exec`
 - `vole:fs`
+- `vole:dns`
 - `vole:ffi`
 - `vole:http`
 - `vole:tcp`

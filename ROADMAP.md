@@ -195,6 +195,7 @@
 | `vole:exec` |  ✅  | 进程执行与子进程 `spawn`                                                      |
 | `vole:test`    |  ✅  | test/describe/it/beforeAll/afterAll/beforeEach/afterEach/run + CLI `vole test` |
 | `vole:http`    |  ✅  | client: request/fetch；server: serve/Server（axum + JS handler 回调）          |
+| `vole:dns`     |  ✅  | native-first DNS resolver；基于 hickory-resolver，支持 lookupHost/lookupIp |
 
 ### 2.2 其他模块
 
