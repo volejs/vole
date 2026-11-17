@@ -208,6 +208,17 @@ cargo run -p vole-cli -- test tests/
 
 ## 文档
 
+`docs/` 使用 [Maudit](https://maudit.org/) 构建文档站点：
+
+```sh
+cargo install maudit-cli --locked
+cd docs
+maudit dev
+```
+
+使用 `cargo run --locked` 构建静态站点，输出目录为 `docs/dist/`。
+站点结构和 Markdown 用法见 [docs/README.md](docs/README.md)。
+
 - `AGENTS.md`：给维护 Agent 的工作区说明、提交约定和架构约定。
 - `ROADMAP.md`：当前实现状态和优先级，作为状态来源。
 - `API.md`：API 设计和规划。

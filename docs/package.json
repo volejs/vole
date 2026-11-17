@@ -1,0 +1,8 @@
+{
+  "scripts": {
+    "dev": "maudit dev",
+    "build": "cargo run --locked",
+    "typecheck": "cargo check --locked",
+    "preview": "maudit preview"
+  }
+}

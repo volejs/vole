@@ -37,6 +37,11 @@ logs/
 tests/fixtures/*.tmp
 tests/fixtures/*.out
 
+# Docs build output
+docs/dist/
+docs/target/
+docs/.maudit/
+
 # LLRT upstream TS backups (只保留适配后的 JS 测试)
 llrt/
 tests/external/llrt/*.ts
@@ -45,3 +50,6 @@ tests/external/llrt/*.ts
 *.dylib
 *.so
 *.dll
+
+# Temporary documents
+.temp-*.md

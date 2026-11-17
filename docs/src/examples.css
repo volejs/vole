@@ -1,0 +1,20 @@
+.examples-page [hidden] { display: none !important; }
+.examples-controls { display: grid; gap: .75rem; margin: 2rem 0 1rem; }
+.examples-controls label { font-size: .8rem; font-weight: 600; }
+.examples-controls input { width: 100%; padding: .7rem .9rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--fg); }
+.example-filters { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .5rem; }
+.example-filters button { display: inline-flex; gap: .5rem; align-items: center; padding: .35rem .65rem; font-size: .75rem; background: var(--bg); }
+.example-filters button span { font-family: "IBM Plex Mono", monospace; color: var(--muted); font-size: .65rem; }
+.example-filters button[aria-pressed="true"] { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+.example-filters button:disabled { cursor: default; opacity: .4; }
+.examples-status, .examples-empty { font-size: .8rem; color: var(--muted); }
+.examples-group { margin-top: 3rem; }
+.examples-group > h2 { margin: 0 0 1.25rem; font-size: 1.2rem; }
+.examples-group > h2 a { color: var(--fg); }
+.example-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.example-entry { display: flex; flex-direction: column; gap: .6rem; padding: 1.2rem; border: 1px solid var(--border); border-radius: var(--radius); color: var(--fg); }
+.example-entry h3 { margin: 0; font-size: 1rem; }
+.example-entry p { flex: 1; margin: 0; font-size: .85rem; color: var(--muted); }
+.example-link-label { color: var(--accent); font-size: .75rem; margin-top: .4rem; }
+.example-entry:hover { border-color: var(--accent); text-decoration: none; }
+@media (max-width: 42rem) { .example-grid { grid-template-columns: minmax(0, 1fr); } }
