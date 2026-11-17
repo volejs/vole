@@ -24,6 +24,7 @@ vole-global-streams = { path = "../global_bindings/streams" }
 vole-global-structured_clone = { path = "../global_bindings/structured_clone" }
 vole-global-timers = { path = "../global_bindings/timers" }
 vole-global-url = { path = "../global_bindings/url" }
+vole-raw-dns = { path = "../raw_bindings/dns" }
 vole-raw-ffi = { path = "../raw_bindings/ffi" }
 vole-raw-http = { path = "../raw_bindings/http" }
 vole-raw-socket = { path = "../raw_bindings/socket" }

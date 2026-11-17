@@ -4215,6 +4215,7 @@ dependencies = [
  "vole-global-timers",
  "vole-global-url",
  "vole-module",
+ "vole-raw-dns",
  "vole-raw-env",
  "vole-raw-exec",
  "vole-raw-ffi",
