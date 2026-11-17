@@ -6,6 +6,7 @@
 /// <reference path="./env.d.ts" />
 /// <reference path="./ffi.d.ts" />
 /// <reference path="./exec.d.ts" />
+/// <reference path="./dns.d.ts" />
 /// <reference path="./fs.d.ts" />
 /// <reference path="./http.d.ts" />
 /// <reference path="./os.d.ts" />
